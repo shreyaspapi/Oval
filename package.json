@@ -1,8 +1,8 @@
 {
-  "name": "app",
-  "productName": "app",
+  "name": "open-webui",
+  "productName": "Open WebUI",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "Open WebUI",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -43,8 +43,12 @@
   },
   "license": "MIT",
   "dependencies": {
+    "electron-log": "^5.2.4",
     "electron-squirrel-startup": "^1.0.1",
     "tar": "^7.4.3",
     "update-electron-app": "^3.1.0"
-  }
+  },
+  "extraResources": [
+    "resources/py311.tar.gz"
+  ]
 }
