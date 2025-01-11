@@ -19,7 +19,7 @@
       onclick={() => {
         console.log("clicked");
         if (window?.electronAPI) {
-          window.electronAPI.loadWebUI();
+          window.electronAPI.installPackage();
         }
       }}>Install Open WebUI</button
     >

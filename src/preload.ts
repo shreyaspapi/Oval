@@ -15,12 +15,16 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  sendPing: () => {
+  sendPing: async () => {
     console.log("Sending PING to main process...");
-    ipcRenderer.send("send-ping"); // Send the ping back to the main process
+    await ipcRenderer.invoke("send-ping"); // Send the ping back to the main process
   },
 
-  loadWebUI: (arg) => {
-    ipcRenderer.send("load-webui", arg);
+  installPackage: async () => {
+    await ipcRenderer.invoke("install-package");
+  },
+
+  loadWebUI: async (arg) => {
+    await ipcRenderer.invoke("load-webui", arg);
   },
 });

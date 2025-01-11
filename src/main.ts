@@ -10,6 +10,8 @@ import {
 import path from "path";
 import started from "electron-squirrel-startup";
 
+import { installPackage } from "./utils";
+
 // Restrict app to a single instance
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -68,6 +70,10 @@ if (!gotTheLock) {
       );
     }
 
+    if (!app.isPackaged) {
+      mainWindow.webContents.openDevTools();
+    }
+
     // Create a system tray icon
     const image = nativeImage.createFromPath(
       path.join(__dirname, "assets/tray.png")
@@ -102,7 +108,12 @@ if (!gotTheLock) {
     });
   };
 
-  ipcMain.on("load-webui", (event, arg) => {
+  ipcMain.handle("install-package", async (event) => {
+    console.log("Installing package...");
+    installPackage();
+  });
+
+  ipcMain.handle("load-webui", async (event, arg) => {
     console.log(arg); // prints "ping"
     mainWindow.loadURL("http://localhost:8080");
 
@@ -118,9 +129,14 @@ if (!gotTheLock) {
     });
   });
 
+  app.on("before-quit", () => {
+    app.isQuiting = true; // Ensure quit flag is set
+  });
+
   // Quit when all windows are closed, except on macOS
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
+      app.isQuitting = true;
       app.quit();
     }
   });
