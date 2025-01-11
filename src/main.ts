@@ -10,7 +10,7 @@ import {
 import path from "path";
 import started from "electron-squirrel-startup";
 
-import { installPackage } from "./utils";
+import { installPackage, startServer, stopAllServers } from "./utils";
 
 // Restrict app to a single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -108,9 +108,21 @@ if (!gotTheLock) {
     });
   };
 
-  ipcMain.handle("install-package", async (event) => {
+  ipcMain.handle("install", async (event) => {
     console.log("Installing package...");
     installPackage();
+  });
+
+  ipcMain.handle("server:start", async (event) => {
+    console.log("Starting server...");
+
+    startServer();
+  });
+
+  ipcMain.handle("server:stop", async (event) => {
+    console.log("Stopping server...");
+
+    stopAllServers();
   });
 
   ipcMain.handle("load-webui", async (event, arg) => {
@@ -131,6 +143,7 @@ if (!gotTheLock) {
 
   app.on("before-quit", () => {
     app.isQuiting = true; // Ensure quit flag is set
+    stopAllServers();
   });
 
   // Quit when all windows are closed, except on macOS

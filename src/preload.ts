@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from "electron";
+import { start } from "repl";
 
 window.addEventListener("DOMContentLoaded", () => {
   // Listen for messages from the main process
@@ -21,10 +22,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   installPackage: async () => {
-    await ipcRenderer.invoke("install-package");
+    await ipcRenderer.invoke("install");
   },
 
-  loadWebUI: async (arg) => {
-    await ipcRenderer.invoke("load-webui", arg);
+  startServer: async () => {
+    await ipcRenderer.invoke("server:start");
+  },
+
+  stopServer: async () => {
+    await ipcRenderer.invoke("server:stop");
   },
 });

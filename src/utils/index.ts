@@ -10,6 +10,7 @@ import {
   spawn,
   ChildProcess,
 } from "child_process";
+import net from "net";
 
 import * as tar from "tar";
 import log from "electron-log";
@@ -43,6 +44,53 @@ export function getUserDataPath(): string {
   }
 
   return userDataDir;
+}
+
+export function getOpenWebUIDataPath(): string {
+  const openWebUIDataDir = path.join(getUserDataPath(), "data");
+
+  if (!fs.existsSync(openWebUIDataDir)) {
+    try {
+      fs.mkdirSync(openWebUIDataDir, { recursive: true });
+    } catch (error) {
+      log.error(error);
+    }
+  }
+
+  return openWebUIDataDir;
+}
+
+export async function portInUse(
+  port: number,
+  host: string = "127.0.0.1"
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const client = new net.Socket();
+
+    // Attempt to connect to the port
+    client
+      .setTimeout(1000) // Timeout for the connection attempt
+      .once("connect", () => {
+        // If connection succeeds, port is in use
+        client.destroy();
+        resolve(true);
+      })
+      .once("timeout", () => {
+        // If no connection after the timeout, port is not in use
+        client.destroy();
+        resolve(false);
+      })
+      .once("error", (err: any) => {
+        if (err.code === "ECONNREFUSED") {
+          // Port is not in use or no listener is accepting connections
+          resolve(false);
+        } else {
+          // Unexpected error
+          resolve(false);
+        }
+      })
+      .connect(port, host);
+  });
 }
 
 ////////////////////////////////////////////////
@@ -131,8 +179,8 @@ export async function installOpenWebUI(installationPath: string) {
   console.log(installationPath);
   let unpackCommand =
     process.platform === "win32"
-      ? `${installationPath}\\Scripts\\activate.bat && pip install open-webui -U`
-      : `source "${installationPath}/bin/activate" && pip install open-webui -U`;
+      ? `${installationPath}\\Scripts\\activate.bat && uv pip install open-webui -U`
+      : `source "${installationPath}/bin/activate" && uv pip install open-webui -U`;
 
   // only unsign when installing from bundled installer
   // if (platform === "darwin") {
@@ -145,7 +193,6 @@ export async function installOpenWebUI(installationPath: string) {
     shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
   });
 
-  // once the environment is activated, print the python version
   commandProcess.stdout?.on("data", (data) => {
     console.log(data);
   });
@@ -202,13 +249,20 @@ export async function installBundledPython(installationPath?: string) {
 export async function installPackage(installationPath?: string) {
   installationPath = installationPath || getBundledPythonInstallationPath();
 
-  if (!isBundledPythonInstalled()) {
-    try {
-      await installBundledPython(installationPath);
-    } catch (error) {
-      log.error("Failed to install bundled Python", error);
-      return Promise.reject("Failed to install bundled Python");
-    }
+  // if (!isBundledPythonInstalled()) {
+  //   try {
+  //     await installBundledPython(installationPath);
+  //   } catch (error) {
+  //     log.error("Failed to install bundled Python", error);
+  //     return Promise.reject("Failed to install bundled Python");
+  //   }
+  // }
+
+  try {
+    await installBundledPython(installationPath);
+  } catch (error) {
+    log.error("Failed to install bundled Python", error);
+    return Promise.reject("Failed to install bundled Python");
   }
 
   try {
@@ -218,79 +272,85 @@ export async function installPackage(installationPath?: string) {
     return Promise.reject("Failed to install open-webui");
   }
 }
+////////////////////////////////////////////////
+//
+// Server Manager
+//
+////////////////////////////////////////////////
+
+// Set to keep track of all spawned child processes from the app
+const childProcesses: Set<ChildProcess> = new Set();
 
 /**
  * Validates that Python is installed and the `open-webui` package is present
  * within the specified virtual environment.
- *
- * @param installationPath - The path to the virtual environment installation
- * @returns Promise<void> - Resolves if all prerequisites are valid; rejects otherwise
  */
 export async function validateInstallation(
   installationPath: string
 ): Promise<void> {
   const pythonPath = getPythonPath(installationPath);
-
-  // Check if Python binary exists
   if (!fs.existsSync(pythonPath)) {
-    return Promise.reject(
-      `Python binary not found in environment: ${pythonPath}`
-    );
+    throw new Error(`Python binary not found in environment: ${pythonPath}`);
   }
-
   try {
-    // Check if `open-webui` is installed
     const checkCommand =
       process.platform === "win32"
         ? `${installationPath}\\Scripts\\activate.bat && pip show open-webui`
         : `source "${installationPath}/bin/activate" && pip show open-webui`;
-
-    execSync(checkCommand, { stdio: "ignore", shell: true });
+    execSync(checkCommand, { stdio: "ignore" });
   } catch (error) {
-    return Promise.reject(
-      `The 'open-webui' package is not installed in the virtual environment at ${installationPath}. Install it first.`
+    throw new Error(
+      `The 'open-webui' package is not installed in the environment at ${installationPath}.`
     );
   }
-
-  // All validation passed
-  return Promise.resolve();
 }
 
-// Map to track running processes by installation path
-const activeProcesses: Map<string, ChildProcess> = new Map();
+////////////////////////////////////////////////
+//
+// Process Management
+//
+////////////////////////////////////////////////
+
+// Tracks all spawned server process PIDs
+const serverPIDs: Set<number> = new Set();
 
 /**
- * Starts the Open-WebUI server.
- *
- * @param installationPath - The path to the virtual environment installation
- * @param port - The port on which the server will run
+ * Spawn the Open-WebUI server process.
  */
-export async function startOpenWebUIServer(
-  installationPath: string,
-  port: number
+export async function startServer(
+  installationPath?: string,
+  port?: number
 ): Promise<void> {
-  try {
-    await validateInstallation(installationPath);
-  } catch (validationError) {
-    console.error(validationError);
-    return Promise.reject(validationError); // Abort if validation fails
-  }
+  installationPath = path.normalize(
+    installationPath || getBundledPythonInstallationPath()
+  );
 
-  // Construct the command based on the platform
   let startCommand =
     process.platform === "win32"
-      ? `${installationPath}\\Scripts\\activate.bat && open-webui serve`
-      : `source "${installationPath}/bin/activate" && open-webui serve`;
+      ? `${installationPath}\\Scripts\\activate.bat && set DATA_DIR="${path.join(
+          app.getPath("userData"),
+          "data"
+        )}" && open-webui serve`
+      : `source "${installationPath}/bin/activate" && export DATA_DIR="${path.join(
+          app.getPath("userData"),
+          "data"
+        )}" && open-webui serve`;
 
-  if (port) {
-    startCommand += ` --port ${port}`;
+  port = port || 8080;
+  while (await portInUse(port)) {
+    port++;
   }
 
-  // Spawn the process
-  console.log("Starting Open-WebUI server...");
-  const childProcess = spawn(startCommand, [], { shell: true });
+  startCommand += ` --port ${port}`;
 
-  // Log process output
+  console.log("Starting Open-WebUI server...");
+  const childProcess = spawn(startCommand, {
+    shell: true,
+    detached: true,
+    stdio: "pipe",
+  });
+
+  // Log any output (optional)
   childProcess.stdout?.on("data", (data) => {
     console.log(`[Open-WebUI]: ${data.toString().trim()}`);
   });
@@ -299,38 +359,56 @@ export async function startOpenWebUIServer(
     console.error(`[Open-WebUI Error]: ${data.toString().trim()}`);
   });
 
-  childProcess.on("exit", (exitCode) => {
-    console.log(`Open-WebUI server exited with code ${exitCode}`);
+  childProcess.on("exit", (code) => {
+    console.log(`Open-WebUI server exited with code ${code}`);
   });
 
-  // Keep track of the process for later termination
-  activeProcesses.set(installationPath, childProcess);
+  // Track server PID
+  if (childProcess.pid) {
+    serverPIDs.add(childProcess.pid);
+    console.log(`Server started with PID: ${childProcess.pid}`);
+  } else {
+    console.error("Failed to start the server: PID not found");
+  }
 }
 
 /**
- * Stops the running Open-WebUI server.
- *
- * @param installationPath - The path to the virtual environment installation
+ * Terminates all server processes.
  */
-export async function stopOpenWebUIServer(
-  installationPath: string
-): Promise<void> {
-  const processToStop = activeProcesses.get(installationPath);
-
-  if (!processToStop) {
-    console.error(
-      "No active server found for the specified installation path."
-    );
-    return;
+export async function stopAllServers(): Promise<void> {
+  console.log("Stopping all servers...");
+  for (const pid of serverPIDs) {
+    try {
+      terminateProcessTree(pid);
+      serverPIDs.delete(pid); // Remove from tracking set after termination
+    } catch (error) {
+      console.error(`Error stopping server with PID ${pid}:`, error);
+    }
   }
+  console.log("All servers stopped successfully.");
+}
 
-  console.log("Stopping Open-WebUI server...");
-
-  // Terminate the process
-  processToStop.kill();
-
-  // Remove from the active processes map
-  activeProcesses.delete(installationPath);
-
-  console.log("Open-WebUI server stopped successfully.");
+/**
+ * Kills a process tree by PID.
+ */
+function terminateProcessTree(pid: number): void {
+  if (process.platform === "win32") {
+    // Use `taskkill` on Windows to recursively kill the process and its children
+    try {
+      execSync(`taskkill /PID ${pid} /T /F`); // /T -> terminate child processes, /F -> force termination
+      console.log(`Terminated server process tree (PID: ${pid}) on Windows.`);
+    } catch (error) {
+      log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
+    }
+  } else {
+    // Use `kill` on Unix-like platforms to terminate the process group (-pid)
+    try {
+      process.kill(-pid, "SIGKILL"); // Negative PID (-pid) kills the process group
+      console.log(
+        `Terminated server process tree (PID: ${pid}) on Unix-like OS.`
+      );
+    } catch (error) {
+      log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
+    }
+  }
 }
