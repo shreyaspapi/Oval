@@ -57,6 +57,7 @@ if (!gotTheLock) {
       webPreferences: {
         preload: path.join(__dirname, "preload.js"),
       },
+      titleBarStyle: "hidden",
     });
 
     mainWindow.setIcon(path.join(__dirname, "assets/icon.png"));

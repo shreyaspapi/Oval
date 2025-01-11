@@ -2,7 +2,10 @@
   import { onMount } from "svelte";
 </script>
 
-<div class="flex flex-row w-full h-full">
+<div class="flex flex-row w-full h-full relative">
+  <div
+    class="absolute top-0 left-0 w-full h-6 bg-gray-900 bg-opacity-50 draggable"
+  ></div>
   <div class="m-auto flex flex-col">
     <div class=" flex justify-center mb-3">
       <img
@@ -45,3 +48,9 @@
     >
   </div>
 </div>
+
+<style>
+  .draggable {
+    -webkit-app-region: drag;
+  }
+</style>
