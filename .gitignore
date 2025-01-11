@@ -91,5 +91,5 @@ typings/
 # Electron-Forge
 out/
 
-
+resources/python
 resources/python.tar.gz

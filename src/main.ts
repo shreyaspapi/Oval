@@ -45,6 +45,9 @@ if (!gotTheLock) {
 
   const onReady = () => {
     console.log(process.resourcesPath);
+    console.log(app.getName());
+    console.log(app.getPath("userData"));
+    console.log(app.getPath("appData"));
     mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
