@@ -47,8 +47,5 @@
     "electron-squirrel-startup": "^1.0.1",
     "tar": "^7.4.3",
     "update-electron-app": "^3.1.0"
-  },
-  "extraResources": [
-    "resources/py311.tar.gz"
-  ]
+  }
 }

@@ -1,8 +1,29 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Archivo";
+  src: url("/assets/fonts/Archivo-Variable.ttf");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InstrumentSerif";
+  src: url("/assets/fonts/InstrumentSerif-Regular.ttf");
+  font-display: swap;
+}
+
+.font-secondary {
+  font-family: "InstrumentSerif", sans-serif;
+}
+
+html {
+  font-family: "Archivo";
+}
+
 @theme {
   --color-*: initial;
 
+  --color-white: #fff;
   --color-gray-50: #f9f9f9;
   --color-gray-100: #ececec;
   --color-gray-200: #e3e3e3;

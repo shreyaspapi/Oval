@@ -1,25 +1,27 @@
 <script lang="ts">
   import { onMount } from "svelte";
-
-  import ServerList from "./main/ServerList.svelte";
-  import ServerView from "./main/ServerView.svelte";
-
-  onMount(() => {
-    console.log("Mounted");
-  });
 </script>
 
 <div class="flex flex-row w-full h-full">
-  <div class="">
-    <ServerList />
-  </div>
-
-  <div class="my-1.5 mr-1.5 flex-1">
-    <div class="w-full h-full rounded-lg border border-gray-850">
-      <ServerView
-        className="rounded-lg w-full h-full"
-        url="http://localhost:8080"
+  <div class="m-auto">
+    <!-- <div class=" flex justify-center mb-3">
+      <img
+        src="./assets/images/splash.png"
+        class="size-16 dark:invert"
+        alt="hero"
       />
-    </div>
+    </div> -->
+
+    <!-- <div class=" text-2xl text-gray-50 font-secondary">Install Open WebUI</div> -->
+
+    <button
+      class=" text-gray-100 hover:text-white transition font-medium cursor-pointer"
+      onclick={() => {
+        console.log("clicked");
+        if (window?.electronAPI) {
+          window.electronAPI.loadWebUI();
+        }
+      }}>Install Open WebUI</button
+    >
   </div>
 </div>

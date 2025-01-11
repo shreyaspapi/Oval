@@ -10,7 +10,8 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: "src/assets/icon.png",
+    icon: "public/assets/icon.png",
+    extraResource: ["public/assets", "resources"],
   },
   rebuildConfig: {},
   makers: [
