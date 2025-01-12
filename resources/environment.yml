@@ -4,7 +4,6 @@ channels:
 dependencies:
   - python=3.11
   - pip
-  - uv
 platforms:
   - linux-64
   - linux-aarch64 # aka arm64, use for Docker on Apple Silicon

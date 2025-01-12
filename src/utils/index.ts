@@ -196,8 +196,8 @@ export async function installOpenWebUI(installationPath: string, version?: strin
 	console.log(installationPath);
 	let unpackCommand =
 		process.platform === 'win32'
-			? `${installationPath}\\Scripts\\activate.bat && uv pip install open-webui${version ? `==${version}` : ' -U'}`
-			: `source "${installationPath}/bin/activate" && uv pip install open-webui${version ? `==${version}` : ' -U'}`;
+			? `${installationPath}\\Scripts\\activate.bat && pip install open-webui${version ? `==${version}` : ' -U'}`
+			: `source "${installationPath}/bin/activate" && pip install open-webui${version ? `==${version}` : ' -U'}`;
 
 	// only unsign when installing from bundled installer
 	// if (platform === "darwin") {
