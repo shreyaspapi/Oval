@@ -30,8 +30,12 @@ export const logEmitter = new EventEmitter();
 ////////////////////////////////////////////////
 
 export function getAppPath(): string {
-	let appDir = app.getAppPath();
-	return appDir;
+	let appPath = app.getAppPath();
+	if (app.isPackaged) {
+		appPath = path.dirname(appPath);
+	}
+
+	return appPath;
 }
 
 export function getUserHomePath(): string {
@@ -231,6 +235,9 @@ export async function installBundledPython(installationPath?: string) {
 	const pythonTarPath = getBundledPythonTarPath();
 
 	console.log(installationPath, pythonTarPath);
+	logEmitter.emit('log', `Installing bundled Python to: ${installationPath}`); // Emit log
+	logEmitter.emit('log', `Python tarball path: ${pythonTarPath}`); // Emit log
+
 	if (!fs.existsSync(pythonTarPath)) {
 		log.error('Python tarball not found');
 		logEmitter.emit('log', 'Python tarball not found'); // Emit log
