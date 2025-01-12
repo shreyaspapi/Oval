@@ -1,5 +1,7 @@
 # Open WebUI App (Experimental) 🚀
 
+![App Demo](./demo.png)
+
 **Open WebUI App** is the upcoming cross-platform desktop application for [Open WebUI](https://github.com/open-webui/open-webui). It brings the *full-featured Open WebUI experience* directly to your device, effectively transforming it into a powerful server—without the complexities of manual setup. 
 
 This project is still in an **experimental phase** and under active development. 🛠️ Expect frequent updates and potential changes as we refine the application.
