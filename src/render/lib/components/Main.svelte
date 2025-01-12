@@ -76,6 +76,20 @@
 			</div>
 		</div>
 	</div>
+{:else}
+	<div class="flex flex-row w-full h-full relative dark:text-gray-100">
+		<div class="absolute top-0 left-0 w-full h-7 bg-transparent draggable"></div>
+
+		<div class="flex-1 w-full flex justify-center relative">
+			<div class="m-auto">
+				<div class="flex flex-col gap-3">
+					<Spinner className="size-5" />
+
+					<div class=" font-secondary">Launching Open WebUI...</div>
+				</div>
+			</div>
+		</div>
+	</div>
 {/if}
 
 <style>
