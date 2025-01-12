@@ -11,7 +11,7 @@ const config: ForgeConfig = {
 	packagerConfig: {
 		asar: true,
 		icon: 'public/assets/icon.png',
-		extraResource: ['public/assets', 'resources/python.tar.gz']
+		extraResource: ['public/assets', 'resources']
 	},
 	rebuildConfig: {},
 	makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],

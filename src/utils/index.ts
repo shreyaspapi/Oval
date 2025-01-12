@@ -192,8 +192,13 @@ export function createAdHocSignCommand(envPath: string): string {
 	return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(' ')} && cd -`;
 }
 
-export async function installOpenWebUI(installationPath: string, version?: string) {
+export async function installOpenWebUI(
+	installationPath: string,
+	version?: string
+): Promise<boolean> {
 	console.log(installationPath);
+
+	// Build the appropriate unpack command based on the platform
 	let unpackCommand =
 		process.platform === 'win32'
 			? `${installationPath}\\Scripts\\activate.bat && pip install open-webui${version ? `==${version}` : ' -U'}`
@@ -204,32 +209,47 @@ export async function installOpenWebUI(installationPath: string, version?: strin
 	//     unpackCommand = `${createAdHocSignCommand(installationPath)}\n${unpackCommand}`;
 	// }
 
-	const commandProcess = exec(unpackCommand, {
-		shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash'
-	});
+	// Wrap the logic in a Promise to properly handle async execution and return a boolean
+	return new Promise((resolve, reject) => {
+		const commandProcess = exec(unpackCommand, {
+			shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash'
+		});
 
-	const onLog = (data) => {
-		console.log(data);
-		logEmitter.emit('log', data);
-	};
+		// Function to handle logging output
+		const onLog = (data: any) => {
+			console.log(data);
+			logEmitter.emit('log', data);
+		};
 
-	commandProcess.stdout?.on('data', onLog);
-	commandProcess.stderr?.on('data', onLog);
+		// Listen to stdout and stderr for logging
+		commandProcess.stdout?.on('data', onLog);
+		commandProcess.stderr?.on('data', onLog);
 
-	commandProcess.on('exit', (code) => {
-		console.log(`Child exited with code ${code}`);
-		logEmitter.emit('log', `Child exited with code ${code}`);
+		// Handle the exit event
+		commandProcess.on('exit', (code) => {
+			console.log(`Child exited with code ${code}`);
+			logEmitter.emit('log', `Child exited with code ${code}`);
 
-		if (code !== 0) {
-			log.error(`Failed to install open-webui: ${code}`);
-			logEmitter.emit('log', `Failed to install open-webui: ${code}`);
-		} else {
-			logEmitter.emit('log', 'open-webui installed successfully');
-		}
+			if (code !== 0) {
+				log.error(`Failed to install open-webui: ${code}`);
+				logEmitter.emit('log', `Failed to install open-webui: ${code}`);
+				resolve(false); // Resolve the Promise with `false` if the command fails
+			} else {
+				logEmitter.emit('log', 'open-webui installed successfully');
+				resolve(true); // Resolve the Promise with `true` if the command succeeds
+			}
+		});
+
+		// Handle errors during execution
+		commandProcess.on('error', (error) => {
+			log.error(`Error occurred while installing open-webui: ${error.message}`);
+			logEmitter.emit('log', `Error occurred while installing open-webui: ${error.message}`);
+			reject(error); // Reject the Promise if an unexpected error occurs
+		});
 	});
 }
 
-export async function installBundledPython(installationPath?: string) {
+export async function installBundledPython(installationPath?: string): Promise<boolean> {
 	installationPath = installationPath || getBundledPythonInstallationPath();
 
 	const pythonTarPath = getBundledPythonTarPath();
@@ -241,7 +261,7 @@ export async function installBundledPython(installationPath?: string) {
 	if (!fs.existsSync(pythonTarPath)) {
 		log.error('Python tarball not found');
 		logEmitter.emit('log', 'Python tarball not found'); // Emit log
-		return;
+		return false;
 	}
 
 	try {
@@ -253,6 +273,7 @@ export async function installBundledPython(installationPath?: string) {
 	} catch (error) {
 		log.error(error);
 		logEmitter.emit('log', error); // Emit log
+		return false; // Return false to indicate failure
 	}
 
 	// Get the path to the installed Python binary
@@ -261,7 +282,7 @@ export async function installBundledPython(installationPath?: string) {
 	if (!fs.existsSync(bundledPythonPath)) {
 		log.error('Python binary not found in install path');
 		logEmitter.emit('log', 'Python binary not found in install path'); // Emit log
-		return;
+		return false; // Return false to indicate failure
 	}
 
 	try {
@@ -271,12 +292,17 @@ export async function installBundledPython(installationPath?: string) {
 		});
 		console.log('Installed Python Version:', pythonVersion.trim());
 		logEmitter.emit('log', `Installed Python Version: ${pythonVersion.trim()}`); // Emit log
+
+		return true; // Return true to indicate success
 	} catch (error) {
 		log.error('Failed to execute Python binary', error);
+
+		return false; // Return false to indicate failure
 	}
 }
 
-export async function installPackage(installationPath?: string) {
+export async function installPackage(installationPath?: string): Promise<boolean> {
+	// Resolve the installation path or use the default bundled Python installation path
 	installationPath = installationPath || getBundledPythonInstallationPath();
 
 	// if (!isBundledPythonInstalled()) {
@@ -288,24 +314,35 @@ export async function installPackage(installationPath?: string) {
 	//     }
 	// }
 
-	console.log('Installing python...');
+	// Log the status for installation steps
+	console.log('Installing Python...');
 
 	try {
-		await installBundledPython(installationPath);
+		// Install the bundled Python
+		const res = await installBundledPython(installationPath);
+		if (!res) {
+			throw new Error('Failed to install bundled Python');
+		}
 	} catch (error) {
-		log.error('Failed to install bundled Python', error);
-
 		throw new Error('Failed to install bundled Python');
 	}
 
 	console.log('Installing open-webui...');
 	try {
-		await installOpenWebUI(installationPath);
+		// Install the Open-WebUI package
+		const success = await installOpenWebUI(installationPath);
+		if (!success) {
+			// Handle a scenario where `installOpenWebUI` returns `false`
+			log.error('Failed to install open-webui');
+			throw new Error('Failed to install open-webui');
+		}
 	} catch (error) {
+		// Log and throw an error if the Open-WebUI installation fails
 		log.error('Failed to install open-webui', error);
 		throw new Error('Failed to install open-webui');
 	}
 
+	// Return true if all installations are successful
 	return true;
 }
 

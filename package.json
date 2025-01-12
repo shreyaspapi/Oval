@@ -12,7 +12,7 @@
 		"lint": "eslint --ext .ts,.tsx .",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\"",
 		"create:conda-lock": "cd resources && rimraf conda-lock.yml && conda-lock -f environment.yml && cd -",
-		"create:python-tar": "rimraf ./resources/python.tar.gz && conda-lock install --prefix ./resources/python ./resources/conda-lock.yml && conda pack -p ./resources/python -o ./resources/python.tar.gz"
+		"create:python-tar": "rimraf ./resources/python.tar.gz && conda-lock install --prefix ./resources/python ./resources/conda-lock.yml && conda pack -p ./resources/python -o ./resources/python.tar.gz && rimraf ./resources/python"
 	},
 	"devDependencies": {
 		"@electron-forge/cli": "^7.6.0",

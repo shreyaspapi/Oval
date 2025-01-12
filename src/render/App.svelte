@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { installStatus, serverStatus } from './lib/stores';
+	import { installStatus, serverStatus, serverStartedAt } from './lib/stores';
 
 	import Main from './lib/components/Main.svelte';
 
@@ -28,6 +28,9 @@
 						console.log('Server status:', event.data.data);
 						serverStatus.set(event.data.data);
 
+						if ($serverStatus) {
+							serverStartedAt.set(Date.now());
+						}
 						break;
 
 					default:

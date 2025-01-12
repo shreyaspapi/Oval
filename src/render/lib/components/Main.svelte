@@ -2,12 +2,14 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 
-	import { installStatus, serverStatus } from '../stores';
+	import { installStatus, serverStatus, serverStartedAt } from '../stores';
 
 	import Spinner from './common/Spinner.svelte';
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
 
 	import backgroundImage from '../assets/images/green.jpg';
+
+	let currentTime = Date.now();
 
 	let installing = false;
 	const continueHandler = async () => {
@@ -16,6 +18,16 @@
 			installing = true;
 		}
 	};
+
+	onMount(() => {
+		const interval = setInterval(() => {
+			currentTime = Date.now();
+		}, 1000); // Update every second
+
+		return () => {
+			clearInterval(interval); // Cleanup interval on destroy
+		};
+	});
 </script>
 
 {#if $installStatus === null}
@@ -107,10 +119,22 @@
 			{:else if $installStatus === true}
 				<div class="flex-1 w-full flex justify-center relative">
 					<div class="m-auto">
-						<div class="flex flex-col gap-3">
+						<div class="flex flex-col gap-3 text-center">
 							<Spinner className="size-5" />
 
 							<div class=" font-secondary">Launching Open WebUI...</div>
+
+							{#if $serverStartedAt}
+								{#if currentTime - $serverStartedAt > 10000}
+									<div
+										class=" font-default text-xs"
+										in:fly={{ duration: 500, y: 10 }}
+									>
+										If it's your first time, it might take a few minutes to
+										start.
+									</div>
+								{/if}
+							{/if}
 						</div>
 					</div>
 				</div>
