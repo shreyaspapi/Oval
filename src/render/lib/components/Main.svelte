@@ -5,6 +5,8 @@
 	import Spinner from './common/Spinner.svelte';
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
 
+	import backgroundImage from '../assets/images/green.jpg';
+
 	let installing = false;
 	const continueHandler = async () => {
 		if (window?.electronAPI) {
@@ -46,7 +48,7 @@
 
 		<div
 			class="image w-full h-full absolute top-0 left-0 bg-cover bg-center transition-opacity duration-1000"
-			style="opacity: 1; background-image: url('./assets/images/green.jpg')"
+			style="opacity: 1; background-image: url({backgroundImage})"
 		></div>
 
 		<div
