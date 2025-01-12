@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
+
 	import { installStatus, serverStatus } from '../stores';
 
 	import Spinner from './common/Spinner.svelte';
@@ -73,10 +75,18 @@
 					<div class="flex justify-center mt-8">
 						<div class="flex flex-col justify-center items-center">
 							{#if installing}
-								<div class="flex flex-col gap-3">
+								<div class="flex flex-col gap-3 text-center">
 									<Spinner className="size-5" />
 
 									<div class=" font-secondary">Installing...</div>
+
+									<div
+										class=" font-default text-xs"
+										in:fly={{ duration: 500, y: 10 }}
+									>
+										This might take a few minutes, We’ll notify you when it’s
+										ready.
+									</div>
 								</div>
 							{:else}
 								<button
