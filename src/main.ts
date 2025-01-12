@@ -104,35 +104,17 @@ if (!gotTheLock) {
 		// Wait for the renderer to finish loading
 		mainWindow.webContents.once('did-finish-load', async () => {
 			console.log('Renderer finished loading');
-
-			// Check installation and start the server
-			if (validateInstallation()) {
-				try {
-					SERVER_URL = await startServer();
-					console.log('Server URL:', SERVER_URL);
-
-					// Send the server URL to the renderer
-					mainWindow.webContents.send('main:data', {
-						type: 'server:url',
-						data: SERVER_URL
-					});
-				} catch (error) {
-					console.error('Failed to start server:', error);
-
-					// Send an error message if the server fails to start
-					mainWindow.webContents.send('main:data', {
-						type: 'server:error',
-						data: 'Failed to start the server'
-					});
-				}
-			} else {
-				// No valid installation, send fallback info
-				mainWindow.webContents.send('main:data', {
-					type: 'server:url',
-					data: null
-				});
-			}
 		});
+
+		// Check installation and start the server
+		if (validateInstallation()) {
+			try {
+				SERVER_URL = await startServer();
+				mainWindow.loadURL(SERVER_URL);
+			} catch (error) {
+				console.error('Failed to start server:', error);
+			}
+		}
 
 		globalShortcut.register('Alt+CommandOrControl+O', () => {
 			mainWindow?.show();
