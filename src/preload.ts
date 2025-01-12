@@ -1,5 +1,17 @@
 import { ipcRenderer, contextBridge } from "electron";
-import { start } from "repl";
+
+const isLocalSource = () => {
+  // Check if the execution environment is local
+  const origin = window.location.origin;
+
+  // Allow local sources: file protocol, localhost, or 0.0.0.0
+  return (
+    origin.startsWith("file://") ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("0.0.0.0")
+  );
+};
 
 window.addEventListener("DOMContentLoaded", () => {
   // Listen for messages from the main process
@@ -22,14 +34,42 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   installPackage: async () => {
+    if (!isLocalSource()) {
+      throw new Error(
+        "Access restricted: This operation is only allowed in a local environment."
+      );
+    }
+
     await ipcRenderer.invoke("install");
   },
 
+  removePackage: async () => {
+    if (!isLocalSource()) {
+      throw new Error(
+        "Access restricted: This operation is only allowed in a local environment."
+      );
+    }
+
+    await ipcRenderer.invoke("remove");
+  },
+
   startServer: async () => {
+    if (!isLocalSource()) {
+      throw new Error(
+        "Access restricted: This operation is only allowed in a local environment."
+      );
+    }
+
     await ipcRenderer.invoke("server:start");
   },
 
   stopServer: async () => {
+    if (!isLocalSource()) {
+      throw new Error(
+        "Access restricted: This operation is only allowed in a local environment."
+      );
+    }
+
     await ipcRenderer.invoke("server:stop");
   },
 });

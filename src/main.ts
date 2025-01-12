@@ -1,16 +1,23 @@
 import {
   app,
-  protocol,
   nativeImage,
   Tray,
   Menu,
+  MenuItem,
   BrowserWindow,
+  globalShortcut,
   ipcMain,
 } from "electron";
 import path from "path";
 import started from "electron-squirrel-startup";
 
-import { installPackage, startServer, stopAllServers } from "./utils";
+import {
+  installPackage,
+  removePackage,
+  startServer,
+  stopAllServers,
+  validateInstallation,
+} from "./utils";
 
 // Restrict app to a single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -45,11 +52,23 @@ if (!gotTheLock) {
   let mainWindow: BrowserWindow | null = null;
   let tray: Tray | null = null;
 
-  const onReady = () => {
+  const loadDefaultView = () => {
+    // Load index.html or dev server URL
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    } else {
+      mainWindow.loadFile(
+        path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
+      );
+    }
+  };
+
+  const onReady = async () => {
     console.log(process.resourcesPath);
     console.log(app.getName());
     console.log(app.getPath("userData"));
     console.log(app.getPath("appData"));
+
     mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
@@ -59,21 +78,48 @@ if (!gotTheLock) {
       },
       titleBarStyle: "hidden",
     });
-
     mainWindow.setIcon(path.join(__dirname, "assets/icon.png"));
 
-    // Load index.html or dev server URL
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    } else {
-      mainWindow.loadFile(
-        path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
-      );
-    }
-
+    loadDefaultView();
     if (!app.isPackaged) {
       mainWindow.webContents.openDevTools();
     }
+
+    if (validateInstallation()) {
+      const serverUrl = await startServer();
+      mainWindow.loadURL(serverUrl);
+    }
+
+    globalShortcut.register("Alt+CommandOrControl+O", () => {
+      mainWindow?.show();
+
+      if (mainWindow?.isMinimized()) mainWindow?.restore();
+      mainWindow?.focus();
+    });
+
+    const defaultMenu = Menu.getApplicationMenu();
+
+    console.log(defaultMenu);
+    // Convert the default menu to a template we can modify
+    let menuTemplate = defaultMenu ? defaultMenu.items.map((item) => item) : [];
+
+    // Add your own custom menu items
+    menuTemplate.push({
+      label: "Action",
+      submenu: [
+        {
+          label: "Home",
+          accelerator: process.platform === "darwin" ? "Cmd+H" : "Ctrl+H",
+          click: () => {
+            loadDefaultView();
+          },
+        },
+      ],
+    });
+
+    // Build the updated menu and set it as the application menu
+    const updatedMenu = Menu.buildFromTemplate(menuTemplate);
+    Menu.setApplicationMenu(updatedMenu);
 
     // Create a system tray icon
     const image = nativeImage.createFromPath(
@@ -89,7 +135,8 @@ if (!gotTheLock) {
         },
       },
       {
-        label: "Quit",
+        label: "Quit Open WebUI",
+        accelerator: "CommandOrControl+Q",
         click: () => {
           app.isQuiting = true; // Mark as quitting
           app.quit(); // Quit the application
@@ -112,6 +159,11 @@ if (!gotTheLock) {
   ipcMain.handle("install", async (event) => {
     console.log("Installing package...");
     installPackage();
+  });
+
+  ipcMain.handle("remove", async (event) => {
+    console.log("Resetting package...");
+    removePackage();
   });
 
   ipcMain.handle("server:start", async (event) => {

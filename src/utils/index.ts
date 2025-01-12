@@ -272,25 +272,33 @@ export async function installPackage(installationPath?: string) {
     return Promise.reject("Failed to install open-webui");
   }
 }
+
+export async function removePackage(installationPath?: string) {
+  installationPath = installationPath || getBundledPythonInstallationPath();
+
+  // remove the python env entirely
+  if (fs.existsSync(installationPath)) {
+    fs.rmdirSync(installationPath, { recursive: true });
+  }
+}
+
 ////////////////////////////////////////////////
 //
 // Server Manager
 //
 ////////////////////////////////////////////////
 
-// Set to keep track of all spawned child processes from the app
-const childProcesses: Set<ChildProcess> = new Set();
-
 /**
  * Validates that Python is installed and the `open-webui` package is present
  * within the specified virtual environment.
  */
 export async function validateInstallation(
-  installationPath: string
-): Promise<void> {
+  installationPath?: string
+): Promise<boolean> {
+  installationPath = installationPath || getBundledPythonInstallationPath();
   const pythonPath = getPythonPath(installationPath);
   if (!fs.existsSync(pythonPath)) {
-    throw new Error(`Python binary not found in environment: ${pythonPath}`);
+    return false;
   }
   try {
     const checkCommand =
@@ -299,17 +307,11 @@ export async function validateInstallation(
         : `source "${installationPath}/bin/activate" && pip show open-webui`;
     execSync(checkCommand, { stdio: "ignore" });
   } catch (error) {
-    throw new Error(
-      `The 'open-webui' package is not installed in the environment at ${installationPath}.`
-    );
+    return false;
   }
-}
 
-////////////////////////////////////////////////
-//
-// Process Management
-//
-////////////////////////////////////////////////
+  return true;
+}
 
 // Tracks all spawned server process PIDs
 const serverPIDs: Set<number> = new Set();
@@ -320,10 +322,15 @@ const serverPIDs: Set<number> = new Set();
 export async function startServer(
   installationPath?: string,
   port?: number
-): Promise<void> {
+): Promise<string> {
   installationPath = path.normalize(
     installationPath || getBundledPythonInstallationPath()
   );
+
+  if (!validateInstallation(installationPath)) {
+    console.error("Failed to validate installation");
+    return;
+  }
 
   let startCommand =
     process.platform === "win32"
@@ -347,29 +354,70 @@ export async function startServer(
   const childProcess = spawn(startCommand, {
     shell: true,
     detached: true,
-    stdio: "pipe",
+    stdio: ["ignore", "pipe", "pipe"], // Let us capture logs via stdout/stderr
   });
 
-  // Log any output (optional)
-  childProcess.stdout?.on("data", (data) => {
-    console.log(`[Open-WebUI]: ${data.toString().trim()}`);
-  });
+  let serverCrashed = false;
+  let detectedURL: string | null = null;
 
-  childProcess.stderr?.on("data", (data) => {
-    console.error(`[Open-WebUI Error]: ${data.toString().trim()}`);
-  });
+  // Wait for log output to confirm the server has started
+  async function monitorServerLogs(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const handleLog = (data: Buffer) => {
+        const logLine = data.toString().trim();
+        console.log(`[Open-WebUI Log]: ${logLine}`);
 
-  childProcess.on("exit", (code) => {
-    console.log(`Open-WebUI server exited with code ${code}`);
-  });
+        // Look for "Uvicorn running on http://<hostname>:<port>"
+        const match = logLine.match(
+          /Uvicorn running on (http:\/\/[^\s]+) \(Press CTRL\+C to quit\)/
+        );
+        if (match) {
+          detectedURL = match[1]; // e.g., "http://0.0.0.0:8081"
+          resolve();
+        }
+      };
 
-  // Track server PID
+      // Combine stdout and stderr streams as a unified log source
+      childProcess.stdout?.on("data", handleLog);
+      childProcess.stderr?.on("data", handleLog);
+
+      childProcess.on("close", (code) => {
+        serverCrashed = true;
+        if (!detectedURL) {
+          reject(
+            new Error(
+              `Process exited unexpectedly with code ${code}. No server URL detected.`
+            )
+          );
+        }
+      });
+    });
+  }
+
+  // Track the child process PID
   if (childProcess.pid) {
     serverPIDs.add(childProcess.pid);
     console.log(`Server started with PID: ${childProcess.pid}`);
   } else {
-    console.error("Failed to start the server: PID not found");
+    throw new Error("Failed to start server: No PID available");
   }
+
+  // Wait until the server log confirms it's started
+  try {
+    await monitorServerLogs();
+  } catch (error) {
+    if (serverCrashed) {
+      throw new Error("Server crashed unexpectedly.");
+    }
+    throw error;
+  }
+
+  if (!detectedURL) {
+    throw new Error("Failed to detect server URL from logs.");
+  }
+
+  console.log(`Server is now running at ${detectedURL}`);
+  return detectedURL; // Return the detected URL
 }
 
 /**
