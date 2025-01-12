@@ -223,7 +223,23 @@ if (!gotTheLock) {
 
 	ipcMain.handle('install', async (event) => {
 		console.log('Installing package...');
-		installPackage();
+
+		try {
+			const res = await installPackage();
+			if (res) {
+				mainWindow.webContents.send('main:data', {
+					type: 'install:status',
+					data: true
+				});
+
+				await startServerHandler();
+			}
+		} catch (error) {
+			mainWindow.webContents.send('main:data', {
+				type: 'install:status',
+				data: false
+			});
+		}
 	});
 
 	ipcMain.handle('install:status', async (event) => {

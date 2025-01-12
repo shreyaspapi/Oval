@@ -188,12 +188,12 @@ export function createAdHocSignCommand(envPath: string): string {
 	return `cd ${envPath} && codesign -s - -o 0x2 -f ${signList.join(' ')} && cd -`;
 }
 
-export async function installOpenWebUI(installationPath: string) {
+export async function installOpenWebUI(installationPath: string, version?: string) {
 	console.log(installationPath);
 	let unpackCommand =
 		process.platform === 'win32'
-			? `${installationPath}\\Scripts\\activate.bat && uv pip install open-webui -U`
-			: `source "${installationPath}/bin/activate" && uv pip install open-webui -U`;
+			? `${installationPath}\\Scripts\\activate.bat && uv pip install open-webui${version ? `==${version}` : ' -U'}`
+			: `source "${installationPath}/bin/activate" && uv pip install open-webui${version ? `==${version}` : ' -U'}`;
 
 	// only unsign when installing from bundled installer
 	// if (platform === "darwin") {
@@ -215,6 +215,13 @@ export async function installOpenWebUI(installationPath: string) {
 	commandProcess.on('exit', (code) => {
 		console.log(`Child exited with code ${code}`);
 		logEmitter.emit('log', `Child exited with code ${code}`);
+
+		if (code !== 0) {
+			log.error(`Failed to install open-webui: ${code}`);
+			logEmitter.emit('log', `Failed to install open-webui: ${code}`);
+		} else {
+			logEmitter.emit('log', 'open-webui installed successfully');
+		}
 	});
 }
 
@@ -274,19 +281,25 @@ export async function installPackage(installationPath?: string) {
 	//     }
 	// }
 
+	console.log('Installing python...');
+
 	try {
 		await installBundledPython(installationPath);
 	} catch (error) {
 		log.error('Failed to install bundled Python', error);
-		return Promise.reject('Failed to install bundled Python');
+
+		throw new Error('Failed to install bundled Python');
 	}
 
+	console.log('Installing open-webui...');
 	try {
 		await installOpenWebUI(installationPath);
 	} catch (error) {
 		log.error('Failed to install open-webui', error);
-		return Promise.reject('Failed to install open-webui');
+		throw new Error('Failed to install open-webui');
 	}
+
+	return true;
 }
 
 export async function removePackage(installationPath?: string) {
