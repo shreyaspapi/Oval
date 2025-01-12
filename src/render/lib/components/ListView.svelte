@@ -5,7 +5,7 @@
 	let selected = 'home';
 </script>
 
-<div class="min-w-18 bg-gray-950 flex gap-2.5 flex-col pt-9.5">
+<div class="min-w-18 bg-black flex gap-2.5 flex-col pt-9.5">
 	<div class="flex justify-center relative">
 		{#if selected === 'home'}
 			<div class="absolute top-0 left-0 flex h-full">
@@ -32,7 +32,7 @@
 		</Tooltip>
 	</div>
 
-	<div class="border-t border-gray-900 mx-3"></div>
+	<!-- <div class="border-t border-gray-900 mx-3"></div> -->
 
 	<!-- <div class="flex justify-center relative group">
         {#if selected === ""}
@@ -56,9 +56,9 @@
         </button>
     </div> -->
 
-	<div class="flex justify-center relative group text-gray-400">
+	<!-- <div class="flex justify-center relative group text-gray-400">
 		<button class=" cursor-pointer p-2" onclick={() => {}}>
 			<Plus className="size-5" strokeWidth="2" />
 		</button>
-	</div>
+	</div> -->
 </div>

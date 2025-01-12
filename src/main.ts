@@ -1,6 +1,8 @@
 import {
 	app,
 	nativeImage,
+	desktopCapturer,
+	session,
 	Tray,
 	Menu,
 	MenuItem,
@@ -52,14 +54,14 @@ if (!gotTheLock) {
 	let mainWindow: BrowserWindow | null = null;
 	let tray: Tray | null = null;
 
+	let SERVER_URL = null;
+
 	const loadDefaultView = () => {
 		// Load index.html or dev server URL
 		if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
 			mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
 		} else {
-			mainWindow.loadFile(
-				path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
-			);
+			mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
 		}
 	};
 
@@ -83,15 +85,54 @@ if (!gotTheLock) {
 		});
 		mainWindow.setIcon(path.join(__dirname, 'assets/icon.png'));
 
+		// Enables navigator.mediaDevices.getUserMedia API. See https://www.electronjs.org/docs/latest/api/desktop-capturer
+		session.defaultSession.setDisplayMediaRequestHandler(
+			(request, callback) => {
+				desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+					// Grant access to the first screen found.
+					callback({ video: sources[0], audio: 'loopback' });
+				});
+			},
+			{ useSystemPicker: true }
+		);
+
 		loadDefaultView();
 		if (!app.isPackaged) {
 			mainWindow.webContents.openDevTools();
 		}
 
-		if (validateInstallation()) {
-			const serverUrl = await startServer();
-			mainWindow.loadURL(serverUrl);
-		}
+		// Wait for the renderer to finish loading
+		mainWindow.webContents.once('did-finish-load', async () => {
+			console.log('Renderer finished loading');
+
+			// Check installation and start the server
+			if (validateInstallation()) {
+				try {
+					SERVER_URL = await startServer();
+					console.log('Server URL:', SERVER_URL);
+
+					// Send the server URL to the renderer
+					mainWindow.webContents.send('main:data', {
+						type: 'server:url',
+						data: SERVER_URL
+					});
+				} catch (error) {
+					console.error('Failed to start server:', error);
+
+					// Send an error message if the server fails to start
+					mainWindow.webContents.send('main:data', {
+						type: 'server:error',
+						data: 'Failed to start the server'
+					});
+				}
+			} else {
+				// No valid installation, send fallback info
+				mainWindow.webContents.send('main:data', {
+					type: 'server:url',
+					data: null
+				});
+			}
+		});
 
 		globalShortcut.register('Alt+CommandOrControl+O', () => {
 			mainWindow?.show();
@@ -101,12 +142,7 @@ if (!gotTheLock) {
 		});
 
 		const defaultMenu = Menu.getApplicationMenu();
-
-		console.log(defaultMenu);
-		// Convert the default menu to a template we can modify
 		let menuTemplate = defaultMenu ? defaultMenu.items.map((item) => item) : [];
-
-		// Add your own custom menu items
 		menuTemplate.push({
 			label: 'Action',
 			submenu: [
@@ -119,8 +155,6 @@ if (!gotTheLock) {
 				}
 			]
 		});
-
-		// Build the updated menu and set it as the application menu
 		const updatedMenu = Menu.buildFromTemplate(menuTemplate);
 		Menu.setApplicationMenu(updatedMenu);
 
@@ -177,6 +211,10 @@ if (!gotTheLock) {
 		console.log('Stopping server...');
 
 		stopAllServers();
+	});
+
+	ipcMain.handle('server:url', async (event) => {
+		return SERVER_URL;
 	});
 
 	ipcMain.handle('load-webui', async (event, arg) => {

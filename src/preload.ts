@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from 'electron';
+import { ipcRenderer, contextBridge, desktopCapturer } from 'electron';
 
 const isLocalSource = () => {
 	// Check if the execution environment is local
@@ -19,8 +19,8 @@ window.addEventListener('DOMContentLoaded', () => {
 		// Forward the message to the renderer using window.postMessage
 		window.postMessage(
 			{
-				type: `electron:${data.type}`,
-				data: data
+				...data,
+				type: `electron:${data.type}`
 			},
 			window.location.origin
 		);
@@ -35,9 +35,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	installPackage: async () => {
 		if (!isLocalSource()) {
-			throw new Error(
-				'Access restricted: This operation is only allowed in a local environment.'
-			);
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
 		}
 
 		await ipcRenderer.invoke('install');
@@ -45,9 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	removePackage: async () => {
 		if (!isLocalSource()) {
-			throw new Error(
-				'Access restricted: This operation is only allowed in a local environment.'
-			);
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
 		}
 
 		await ipcRenderer.invoke('remove');
@@ -55,9 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	startServer: async () => {
 		if (!isLocalSource()) {
-			throw new Error(
-				'Access restricted: This operation is only allowed in a local environment.'
-			);
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
 		}
 
 		await ipcRenderer.invoke('server:start');
@@ -65,11 +59,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	stopServer: async () => {
 		if (!isLocalSource()) {
-			throw new Error(
-				'Access restricted: This operation is only allowed in a local environment.'
-			);
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
 		}
 
 		await ipcRenderer.invoke('server:stop');
+	},
+
+	getServerUrl: async () => {
+		return await ipcRenderer.invoke('server:url');
 	}
 });
