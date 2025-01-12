@@ -15,27 +15,31 @@ Ensure these tools are properly installed and configured before proceeding.
 ## Getting Started
 
 1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/open-webui/app
-   cd app
-   ```
+
+    ```bash
+    git clone https://github.com/open-webui/app
+    cd app
+    ```
 
 2. **Install Node.js dependencies**:
-   ```bash
-   npm i
-   ```
+
+    ```bash
+    npm i
+    ```
 
 3. **Generate the Python environment tarball**:
-   ```bash
-   npm run create:python-tar
-   ```
+
+    ```bash
+    npm run create:python-tar
+    ```
 
 4. **Start the development environment**:
-   ```bash
-   npm run start
-   ```
 
-   This will launch the project in development mode.
+    ```bash
+    npm run start
+    ```
+
+    This will launch the project in development mode.
 
 ---
 

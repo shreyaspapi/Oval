@@ -1,39 +1,44 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @font-face {
-  font-family: "Archivo";
-  src: url("/assets/fonts/Archivo-Variable.ttf");
-  font-display: swap;
+	font-family: 'Archivo';
+	src: url('/assets/fonts/Archivo-Variable.ttf');
+	font-display: swap;
 }
 
 @font-face {
-  font-family: "InstrumentSerif";
-  src: url("/assets/fonts/InstrumentSerif-Regular.ttf");
-  font-display: swap;
+	font-family: 'InstrumentSerif';
+	src: url('/assets/fonts/InstrumentSerif-Regular.ttf');
+	font-display: swap;
 }
 
 .font-secondary {
-  font-family: "InstrumentSerif", sans-serif;
+	font-family: 'InstrumentSerif', sans-serif;
 }
 
 html {
-  font-family: "Archivo";
+	font-family: 'Archivo';
 }
 
 @theme {
-  --color-*: initial;
+	--color-*: initial;
 
-  --color-white: #fff;
-  --color-gray-50: #f9f9f9;
-  --color-gray-100: #ececec;
-  --color-gray-200: #e3e3e3;
-  --color-gray-300: #cdcdcd;
-  --color-gray-400: #b4b4b4;
-  --color-gray-500: #9b9b9b;
-  --color-gray-600: #676767;
-  --color-gray-700: #4e4e4e;
-  --color-gray-800: #333;
-  --color-gray-850: #262626;
-  --color-gray-900: #171717;
-  --color-gray-950: #0d0d0d;
+	--color-white: #fff;
+	--color-black: #000;
+	--color-gray-50: #f9f9f9;
+	--color-gray-100: #ececec;
+	--color-gray-200: #e3e3e3;
+	--color-gray-300: #cdcdcd;
+	--color-gray-400: #b4b4b4;
+	--color-gray-500: #9b9b9b;
+	--color-gray-600: #676767;
+	--color-gray-700: #4e4e4e;
+	--color-gray-800: #333;
+	--color-gray-850: #262626;
+	--color-gray-900: #171717;
+	--color-gray-950: #0d0d0d;
+}
+
+.tippy-box[data-theme~='dark'] {
+	@apply rounded-lg bg-gray-950 text-xs border border-gray-900 shadow-xl;
 }
