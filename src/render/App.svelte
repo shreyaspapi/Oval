@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { serverUrl } from './lib/stores.ts';
+	import { installStatus } from './lib/stores';
 
 	import Main from './lib/components/Main.svelte';
 
@@ -18,10 +18,10 @@
 
 				// Perform actions based on the `type` or the `data`
 				switch (event.data.type) {
-					case 'electron:server:url':
-						console.log('Setting server URL:', event.data.data);
-						// Set the server URL
-						serverUrl.set(event.data.data);
+					case 'electron:install:status':
+						console.log('Install status:', event.data.data);
+						installStatus.set(event.data.data);
+
 						break;
 
 					default:
@@ -30,9 +30,8 @@
 			}
 		});
 
-		if (!$serverUrl) {
-			const url = await window.electronAPI.getServerUrl();
-			serverUrl.set(url);
+		if (window.electronAPI) {
+			installStatus.set(await window.electronAPI.getInstallStatus());
 		}
 	});
 </script>

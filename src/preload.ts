@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge, desktopCapturer } from 'electron';
+import { ipcRenderer, contextBridge } from 'electron';
 
 const isLocalSource = () => {
 	// Check if the execution environment is local
@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 		await ipcRenderer.invoke('install');
 	},
 
+	getInstallStatus: async () => {
+		return await ipcRenderer.invoke('install:status');
+	},
+
 	removePackage: async () => {
 		if (!isLocalSource()) {
 			throw new Error('Access restricted: This operation is only allowed in a local environment.');
@@ -67,5 +71,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 	getServerUrl: async () => {
 		return await ipcRenderer.invoke('server:url');
+	},
+
+	notification: async (title: string, body: string) => {
+		await ipcRenderer.invoke('notification', { title, body });
 	}
 });

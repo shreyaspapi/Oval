@@ -8,6 +8,7 @@ import {
 	MenuItem,
 	BrowserWindow,
 	globalShortcut,
+	Notification,
 	ipcMain
 } from 'electron';
 import path from 'path';
@@ -104,17 +105,27 @@ if (!gotTheLock) {
 		// Wait for the renderer to finish loading
 		mainWindow.webContents.once('did-finish-load', async () => {
 			console.log('Renderer finished loading');
-		});
 
-		// Check installation and start the server
-		if (validateInstallation()) {
-			try {
-				SERVER_URL = await startServer();
-				mainWindow.loadURL(SERVER_URL);
-			} catch (error) {
-				console.error('Failed to start server:', error);
+			// Check installation and start the server
+			if (await validateInstallation()) {
+				mainWindow.webContents.send('main:data', {
+					type: 'install:status',
+					data: true
+				});
+
+				try {
+					SERVER_URL = await startServer();
+					mainWindow.loadURL(SERVER_URL);
+				} catch (error) {
+					console.error('Failed to start server:', error);
+				}
+			} else {
+				mainWindow.webContents.send('main:data', {
+					type: 'install:status',
+					data: false
+				});
 			}
-		}
+		});
 
 		globalShortcut.register('Alt+CommandOrControl+O', () => {
 			mainWindow?.show();
@@ -133,6 +144,12 @@ if (!gotTheLock) {
 					accelerator: process.platform === 'darwin' ? 'Cmd+H' : 'Ctrl+H',
 					click: () => {
 						loadDefaultView();
+					}
+				},
+				{
+					label: 'Reset',
+					click: () => {
+						removePackage();
 					}
 				}
 			]
@@ -178,6 +195,10 @@ if (!gotTheLock) {
 		installPackage();
 	});
 
+	ipcMain.handle('install:status', async (event) => {
+		return await validateInstallation();
+	});
+
 	ipcMain.handle('remove', async (event) => {
 		console.log('Resetting package...');
 		removePackage();
@@ -197,6 +218,15 @@ if (!gotTheLock) {
 
 	ipcMain.handle('server:url', async (event) => {
 		return SERVER_URL;
+	});
+
+	ipcMain.handle('notification', async (event, { title, body }) => {
+		console.log('Received notification:', title, body);
+		const notification = new Notification({
+			title: title,
+			body: body
+		});
+		notification.show();
 	});
 
 	ipcMain.handle('load-webui', async (event, arg) => {

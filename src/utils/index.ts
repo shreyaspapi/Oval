@@ -269,11 +269,12 @@ export async function installPackage(installationPath?: string) {
 }
 
 export async function removePackage(installationPath?: string) {
+	await stopAllServers();
 	installationPath = installationPath || getBundledPythonInstallationPath();
 
 	// remove the python env entirely
 	if (fs.existsSync(installationPath)) {
-		fs.rmdirSync(installationPath, { recursive: true });
+		fs.rmSync(installationPath, { recursive: true });
 	}
 }
 
@@ -293,6 +294,7 @@ export async function validateInstallation(installationPath?: string): Promise<b
 	if (!fs.existsSync(pythonPath)) {
 		return false;
 	}
+
 	try {
 		const checkCommand =
 			process.platform === 'win32'
@@ -315,7 +317,7 @@ const serverPIDs: Set<number> = new Set();
 export async function startServer(installationPath?: string, port?: number): Promise<string> {
 	installationPath = path.normalize(installationPath || getBundledPythonInstallationPath());
 
-	if (!validateInstallation(installationPath)) {
+	if (!(await validateInstallation(installationPath))) {
 		console.error('Failed to validate installation');
 		return;
 	}
@@ -373,9 +375,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 				serverCrashed = true;
 				if (!detectedURL) {
 					reject(
-						new Error(
-							`Process exited unexpectedly with code ${code}. No server URL detected.`
-						)
+						new Error(`Process exited unexpectedly with code ${code}. No server URL detected.`)
 					);
 				}
 			});
