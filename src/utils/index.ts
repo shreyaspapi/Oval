@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import net from 'net';
+import crypto from 'crypto';
+
 import {
 	exec,
 	execFile,
@@ -10,12 +13,15 @@ import {
 	spawn,
 	ChildProcess
 } from 'child_process';
-import net from 'net';
+import { EventEmitter } from 'events';
 
 import * as tar from 'tar';
 import log from 'electron-log';
 
 import { app } from 'electron';
+
+// Create and export a global event emitter specifically for logs
+export const logEmitter = new EventEmitter();
 
 ////////////////////////////////////////////////
 //
@@ -58,6 +64,18 @@ export function getOpenWebUIDataPath(): string {
 	}
 
 	return openWebUIDataDir;
+}
+
+export function getSecretKey(keyPath?: string, key?: string): string {
+	keyPath = keyPath || path.join(getOpenWebUIDataPath(), '.key');
+
+	if (fs.existsSync(keyPath)) {
+		return fs.readFileSync(keyPath, 'utf-8');
+	}
+
+	key = key || crypto.randomBytes(64).toString('hex');
+	fs.writeFileSync(keyPath, key);
+	return key;
 }
 
 export async function portInUse(port: number, host: string = '127.0.0.1'): Promise<boolean> {
@@ -182,22 +200,21 @@ export async function installOpenWebUI(installationPath: string) {
 	//     unpackCommand = `${createAdHocSignCommand(installationPath)}\n${unpackCommand}`;
 	// }
 
-	console.log(unpackCommand);
-
 	const commandProcess = exec(unpackCommand, {
 		shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash'
 	});
 
-	commandProcess.stdout?.on('data', (data) => {
+	const onLog = (data) => {
 		console.log(data);
-	});
+		logEmitter.emit('log', data);
+	};
 
-	commandProcess.stderr?.on('data', (data) => {
-		console.error(data);
-	});
+	commandProcess.stdout?.on('data', onLog);
+	commandProcess.stderr?.on('data', onLog);
 
 	commandProcess.on('exit', (code) => {
 		console.log(`Child exited with code ${code}`);
+		logEmitter.emit('log', `Child exited with code ${code}`);
 	});
 }
 
@@ -209,6 +226,7 @@ export async function installBundledPython(installationPath?: string) {
 	console.log(installationPath, pythonTarPath);
 	if (!fs.existsSync(pythonTarPath)) {
 		log.error('Python tarball not found');
+		logEmitter.emit('log', 'Python tarball not found'); // Emit log
 		return;
 	}
 
@@ -220,6 +238,7 @@ export async function installBundledPython(installationPath?: string) {
 		});
 	} catch (error) {
 		log.error(error);
+		logEmitter.emit('log', error); // Emit log
 	}
 
 	// Get the path to the installed Python binary
@@ -227,6 +246,7 @@ export async function installBundledPython(installationPath?: string) {
 
 	if (!fs.existsSync(bundledPythonPath)) {
 		log.error('Python binary not found in install path');
+		logEmitter.emit('log', 'Python binary not found in install path'); // Emit log
 		return;
 	}
 
@@ -236,6 +256,7 @@ export async function installBundledPython(installationPath?: string) {
 			encoding: 'utf-8'
 		});
 		console.log('Installed Python Version:', pythonVersion.trim());
+		logEmitter.emit('log', `Installed Python Version: ${pythonVersion.trim()}`); // Emit log
 	} catch (error) {
 		log.error('Failed to execute Python binary', error);
 	}
@@ -319,6 +340,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 
 	if (!(await validateInstallation(installationPath))) {
 		console.error('Failed to validate installation');
+		logEmitter.emit('log', 'Failed to validate installation'); // Emit log
 		return;
 	}
 
@@ -327,11 +349,11 @@ export async function startServer(installationPath?: string, port?: number): Pro
 			? `${installationPath}\\Scripts\\activate.bat && set DATA_DIR="${path.join(
 					app.getPath('userData'),
 					'data'
-				)}" && open-webui serve`
+				)}" && set WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`
 			: `source "${installationPath}/bin/activate" && export DATA_DIR="${path.join(
 					app.getPath('userData'),
 					'data'
-				)}" && open-webui serve`;
+				)}" && export WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`;
 
 	port = port || 8080;
 	while (await portInUse(port)) {
@@ -341,6 +363,8 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	startCommand += ` --port ${port}`;
 
 	console.log('Starting Open-WebUI server...');
+	logEmitter.emit('log', 'Starting Open-WebUI server...'); // Emit log
+
 	const childProcess = spawn(startCommand, {
 		shell: true,
 		detached: true,
@@ -356,6 +380,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 			const handleLog = (data: Buffer) => {
 				const logLine = data.toString().trim();
 				console.log(`[Open-WebUI Log]: ${logLine}`);
+				logEmitter.emit('log', logLine);
 
 				// Look for "Uvicorn running on http://<hostname>:<port>"
 				const match = logLine.match(
@@ -386,6 +411,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	if (childProcess.pid) {
 		serverPIDs.add(childProcess.pid);
 		console.log(`Server started with PID: ${childProcess.pid}`);
+		logEmitter.emit('log', `Server started with PID: ${childProcess.pid}`); // Emit PID log
 	} else {
 		throw new Error('Failed to start server: No PID available');
 	}
@@ -405,6 +431,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	}
 
 	console.log(`Server is now running at ${detectedURL}`);
+	logEmitter.emit('log', `Server is now running at ${detectedURL}`); // Emit server URL log
 	return detectedURL; // Return the detected URL
 }
 

@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { installStatus } from '../stores';
+	import { installStatus, serverStatus } from '../stores';
 
 	import Spinner from './common/Spinner.svelte';
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
 
+	let installing = false;
+
 	const continueHandler = async () => {
 		if (window?.electronAPI) {
 			window.electronAPI.installPackage();
+			installing = true;
 		}
 	};
 </script>

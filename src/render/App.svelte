@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { installStatus } from './lib/stores';
+	import { installStatus, serverStatus } from './lib/stores';
 
 	import Main from './lib/components/Main.svelte';
 
@@ -24,6 +24,12 @@
 
 						break;
 
+					case 'electron:server:status':
+						console.log('Server status:', event.data.data);
+						serverStatus.set(event.data.data);
+
+						break;
+
 					default:
 						console.warn('Unhandled message type:', event.data.type);
 				}
@@ -32,6 +38,11 @@
 
 		if (window.electronAPI) {
 			installStatus.set(await window.electronAPI.getInstallStatus());
+			serverStatus.set(await window.electronAPI.getServerStatus());
+
+			window.electronAPI.onLog((log) => {
+				console.log('Electron log:', log);
+			});
 		}
 	});
 </script>

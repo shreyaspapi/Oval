@@ -9,7 +9,8 @@ import {
 	BrowserWindow,
 	globalShortcut,
 	Notification,
-	ipcMain
+	ipcMain,
+	ipcRenderer
 } from 'electron';
 import path from 'path';
 import started from 'electron-squirrel-startup';
@@ -17,6 +18,7 @@ import started from 'electron-squirrel-startup';
 import {
 	installPackage,
 	removePackage,
+	logEmitter,
 	startServer,
 	stopAllServers,
 	validateInstallation
@@ -56,6 +58,11 @@ if (!gotTheLock) {
 	let tray: Tray | null = null;
 
 	let SERVER_URL = null;
+	let SERVER_STATUS = 'stopped';
+
+	logEmitter.on('log', (message) => {
+		mainWindow?.webContents.send('main:log', message);
+	});
 
 	const loadDefaultView = () => {
 		// Load index.html or dev server URL
@@ -63,6 +70,34 @@ if (!gotTheLock) {
 			mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
 		} else {
 			mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+		}
+	};
+
+	const startServerHandler = async () => {
+		SERVER_STATUS = 'starting';
+		mainWindow.webContents.send('main:data', {
+			type: 'server:status',
+			data: SERVER_STATUS
+		});
+
+		try {
+			SERVER_URL = await startServer();
+			SERVER_STATUS = 'started';
+			mainWindow.webContents.send('main:data', {
+				type: 'server:status',
+				data: SERVER_STATUS
+			});
+
+			mainWindow.loadURL(SERVER_URL);
+		} catch (error) {
+			console.error('Failed to start server:', error);
+			SERVER_STATUS = 'failed';
+			mainWindow.webContents.send('main:data', {
+				type: 'server:status',
+				data: SERVER_STATUS
+			});
+
+			mainWindow.webContents.send('main:log', `Failed to start server: ${error}`);
 		}
 	};
 
@@ -113,12 +148,7 @@ if (!gotTheLock) {
 					data: true
 				});
 
-				try {
-					SERVER_URL = await startServer();
-					mainWindow.loadURL(SERVER_URL);
-				} catch (error) {
-					console.error('Failed to start server:', error);
-				}
+				await startServerHandler();
 			} else {
 				mainWindow.webContents.send('main:data', {
 					type: 'install:status',
@@ -204,16 +234,25 @@ if (!gotTheLock) {
 		removePackage();
 	});
 
+	ipcMain.handle('server:status', async (event) => {
+		return SERVER_STATUS;
+	});
+
 	ipcMain.handle('server:start', async (event) => {
 		console.log('Starting server...');
 
-		startServer();
+		await startServerHandler();
 	});
 
 	ipcMain.handle('server:stop', async (event) => {
 		console.log('Stopping server...');
 
-		stopAllServers();
+		await stopAllServers();
+		SERVER_STATUS = 'stopped';
+		mainWindow.webContents.send('main:data', {
+			type: 'server:status',
+			data: SERVER_STATUS
+		});
 	});
 
 	ipcMain.handle('server:url', async (event) => {

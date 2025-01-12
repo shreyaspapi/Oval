@@ -28,9 +28,12 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
-	sendPing: async () => {
-		console.log('Sending PING to main process...');
-		await ipcRenderer.invoke('send-ping'); // Send the ping back to the main process
+	onLog: (callback: (message: string) => void) => {
+		if (!isLocalSource()) {
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
+		}
+
+		ipcRenderer.on('main:log', (_, message: string) => callback(message));
 	},
 
 	installPackage: async () => {
@@ -51,6 +54,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 		}
 
 		await ipcRenderer.invoke('remove');
+	},
+
+	getServerStatus: async () => {
+		if (!isLocalSource()) {
+			throw new Error('Access restricted: This operation is only allowed in a local environment.');
+		}
+
+		return await ipcRenderer.invoke('server:status');
 	},
 
 	startServer: async () => {
