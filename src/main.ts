@@ -179,6 +179,7 @@ if (!gotTheLock) {
 				{
 					label: 'Reset',
 					click: () => {
+						loadDefaultView();
 						removePackage();
 					}
 				}

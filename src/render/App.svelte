@@ -40,6 +40,10 @@
 			installStatus.set(await window.electronAPI.getInstallStatus());
 			serverStatus.set(await window.electronAPI.getServerStatus());
 
+			if ($installStatus && $serverStatus === 'stopped') {
+				window.electronAPI.startServer();
+			}
+
 			window.electronAPI.onLog((log) => {
 				console.log('Electron log:', log);
 			});
