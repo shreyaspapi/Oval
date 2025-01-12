@@ -74,11 +74,13 @@
 		<div class="flex-1 w-full flex justify-center relative">
 			{#if $installStatus === false}
 				<div class="m-auto flex flex-col justify-center text-center max-w-md">
-					<div class=" font-medium text-5xl text-center mb-4 font-secondary">
+					<div
+						class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
+					>
 						Open WebUI
 					</div>
 
-					<div class=" text-sm text-center mb-3">
+					<div class=" text-sm xl:text-lg text-center mb-3">
 						To install Open WebUI, click Continue.
 					</div>
 				</div>
@@ -90,7 +92,7 @@
 								<div class="flex flex-col gap-3 text-center">
 									<Spinner className="size-5" />
 
-									<div class=" font-secondary">Installing...</div>
+									<div class=" font-secondary xl:text-lg">Installing...</div>
 
 									<div
 										class=" font-default text-xs"
@@ -122,7 +124,7 @@
 						<div class="flex flex-col gap-3 text-center">
 							<Spinner className="size-5" />
 
-							<div class=" font-secondary">Launching Open WebUI...</div>
+							<div class=" font-secondary xl:text-lg">Launching Open WebUI...</div>
 
 							{#if $serverStartedAt}
 								{#if currentTime - $serverStartedAt > 10000}
