@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { fly } from 'svelte/transition';
 
 	import { installStatus, serverStatus, serverStartedAt } from '../stores';
@@ -9,6 +9,7 @@
 
 	import backgroundImage from '../assets/images/green.jpg';
 
+	let mounted = false;
 	let currentTime = Date.now();
 
 	let installing = false;
@@ -20,6 +21,13 @@
 	};
 
 	onMount(() => {
+		installStatus.subscribe(async (value) => {
+			if (value !== null) {
+				await tick();
+				mounted = true;
+			}
+		});
+
 		const interval = setInterval(() => {
 			currentTime = Date.now();
 		}, 1000); // Update every second
@@ -74,15 +82,21 @@
 		<div class="flex-1 w-full flex justify-center relative">
 			{#if $installStatus === false}
 				<div class="m-auto flex flex-col justify-center text-center max-w-md">
-					<div
-						class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
-					>
-						Open WebUI
-					</div>
+					{#if mounted}
+						<div
+							class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
+							in:fly={{ duration: 750, y: 20 }}
+						>
+							Open WebUI
+						</div>
 
-					<div class=" text-sm xl:text-lg text-center mb-3">
-						To install Open WebUI, click Continue.
-					</div>
+						<div
+							class=" text-sm xl:text-lg text-center mb-3"
+							in:fly={{ delay: 250, duration: 750, y: 10 }}
+						>
+							To install Open WebUI, click Continue.
+						</div>
+					{/if}
 				</div>
 
 				<div class="absolute bottom-0 pb-10">
@@ -92,26 +106,32 @@
 								<div class="flex flex-col gap-3 text-center">
 									<Spinner className="size-5" />
 
-									<div class=" font-secondary xl:text-lg">Installing...</div>
+									<div class=" font-secondary xl:text-lg -mt-0.5">
+										Installing...
+									</div>
 
 									<div
 										class=" font-default text-xs"
-										in:fly={{ duration: 500, y: 10 }}
+										in:fly={{ delay: 100, duration: 500, y: 10 }}
 									>
 										This might take a few minutes, We’ll notify you when it’s
 										ready.
 									</div>
 								</div>
-							{:else}
+							{:else if mounted}
 								<button
 									class="relative z-20 flex p-1 rounded-full bg-white/5 hover:bg-white/10 transition font-medium text-sm cursor-pointer"
 									on:click={() => {
 										continueHandler();
 									}}
+									in:fly={{ delay: 500, duration: 750, y: 10 }}
 								>
 									<ArrowRightCircle className="size-6" />
 								</button>
-								<div class="mt-1.5 font-primary text-base font-medium">
+								<div
+									class="mt-1.5 font-primary text-base font-medium"
+									in:fly={{ delay: 500, duration: 750, y: 10 }}
+								>
 									{`Continue`}
 								</div>
 							{/if}

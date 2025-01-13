@@ -177,7 +177,7 @@ if (!gotTheLock) {
 					}
 				},
 				{
-					label: 'Reset',
+					label: 'Uninstall',
 					click: () => {
 						loadDefaultView();
 						removePackage();
