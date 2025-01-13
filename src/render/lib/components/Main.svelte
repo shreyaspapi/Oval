@@ -146,6 +146,16 @@
 								>
 									{`Continue`}
 								</div>
+
+								<button
+									class="text-xs mt-3 text-gray-500 cursor-pointer"
+									in:fly={{ delay: 500, duration: 750, y: 10 }}
+									onclick={() => {
+										console.log('hi');
+									}}
+								>
+									To connect to an existing server, click here.
+								</button>
 							{/if}
 						</div>
 					</div>
