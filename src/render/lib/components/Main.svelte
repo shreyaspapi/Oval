@@ -2,7 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import { fly } from 'svelte/transition';
 
-	import { installStatus, serverStatus, serverStartedAt } from '../stores';
+	import { installStatus, serverStatus, serverStartedAt, serverLogs } from '../stores';
 
 	import Spinner from './common/Spinner.svelte';
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
@@ -11,6 +11,8 @@
 
 	let mounted = false;
 	let currentTime = Date.now();
+
+	let showLogs = false;
 
 	let installing = false;
 	const continueHandler = async () => {
@@ -53,18 +55,18 @@
 		</div>
 	</div>
 {:else}
-	<div class="flex flex-row w-full h-full relative dark:text-gray-100">
+	<div class="flex flex-row w-full h-full relative dark:text-gray-100 p-1">
 		<div class="absolute top-0 left-0 w-full h-7 bg-transparent draggable"></div>
 
 		<div class="fixed right-0 m-10 z-50">
 			<div class="flex space-x-2">
-				<div class=" self-center">
+				<button class=" self-center cursor-pointer" onclick={() => (showLogs = !showLogs)}>
 					<img
 						src="./assets/images/splash.png"
 						class=" w-6 rounded-full dark:invert"
 						alt="logo"
 					/>
-				</div>
+				</button>
 			</div>
 		</div>
 
@@ -81,7 +83,7 @@
 
 		<div class="flex-1 w-full flex justify-center relative">
 			{#if $installStatus === false}
-				<div class="m-auto flex flex-col justify-center text-center max-w-md">
+				<div class="m-auto flex flex-col justify-center text-center">
 					{#if mounted}
 						<div
 							class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
@@ -95,6 +97,16 @@
 							in:fly={{ delay: 250, duration: 750, y: 10 }}
 						>
 							To install Open WebUI, click Continue.
+						</div>
+					{/if}
+
+					{#if showLogs}
+						<div
+							class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse"
+						>
+							{#each $serverLogs.reverse() as log, idx}
+								<div class="text-xs font-mono">{log}</div>
+							{/each}
 						</div>
 					{/if}
 				</div>
@@ -121,7 +133,7 @@
 							{:else if mounted}
 								<button
 									class="relative z-20 flex p-1 rounded-full bg-white/5 hover:bg-white/10 transition font-medium text-sm cursor-pointer"
-									on:click={() => {
+									onclick={() => {
 										continueHandler();
 									}}
 									in:fly={{ delay: 500, duration: 750, y: 10 }}
@@ -156,6 +168,16 @@
 										start.
 									</div>
 								{/if}
+							{/if}
+
+							{#if showLogs}
+								<div
+									class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse"
+								>
+									{#each $serverLogs.reverse() as log, idx}
+										<div class="text-xs font-mono">{log}</div>
+									{/each}
+								</div>
 							{/if}
 						</div>
 					</div>

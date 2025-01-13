@@ -169,13 +169,13 @@ if (!gotTheLock) {
 		menuTemplate.push({
 			label: 'Action',
 			submenu: [
-				{
-					label: 'Home',
-					accelerator: process.platform === 'darwin' ? 'Cmd+H' : 'Ctrl+H',
-					click: () => {
-						loadDefaultView();
-					}
-				},
+				// {
+				// 	label: 'Home',
+				// 	accelerator: process.platform === 'darwin' ? 'Cmd+H' : 'Ctrl+H',
+				// 	click: () => {
+				// 		loadDefaultView();
+				// 	}
+				// },
 				{
 					label: 'Uninstall',
 					click: () => {
@@ -194,7 +194,9 @@ if (!gotTheLock) {
 
 		const trayMenu = Menu.buildFromTemplate([
 			{
-				label: 'Show Application',
+				label: 'Show Open WebUI',
+				accelerator: 'CommandOrControl+Alt+O',
+
 				click: () => {
 					mainWindow.show(); // Show the main window when clicked
 				}

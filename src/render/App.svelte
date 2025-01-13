@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { installStatus, serverStatus, serverStartedAt } from './lib/stores';
+	import { installStatus, serverStatus, serverStartedAt, serverLogs } from './lib/stores';
 
 	import Main from './lib/components/Main.svelte';
+
+	let logs = [];
 
 	onMount(async () => {
 		window.addEventListener('message', (event) => {
@@ -49,6 +51,8 @@
 
 			window.electronAPI.onLog((log) => {
 				console.log('Electron log:', log);
+				logs.push(log);
+				serverLogs.set(logs);
 			});
 		}
 	});
