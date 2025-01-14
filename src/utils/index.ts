@@ -376,7 +376,7 @@ export async function validateInstallation(installationPath?: string): Promise<b
 	try {
 		const checkCommand =
 			process.platform === 'win32'
-				? `${installationPath}\\Scripts\\activate.bat && pip show open-webui`
+				? `"${installationPath}\\Scripts\\activate.bat" && pip show open-webui`
 				: `source "${installationPath}/bin/activate" && pip show open-webui`;
 		execSync(checkCommand, { stdio: 'ignore' });
 	} catch (error) {

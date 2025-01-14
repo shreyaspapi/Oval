@@ -101,7 +101,7 @@
 
 					{#if showLogs}
 						<div
-							class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse"
+							class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
 						>
 							{#each $serverLogs.reverse() as log, idx}
 								<div class="text-xs font-mono">{log}</div>
@@ -181,7 +181,7 @@
 
 							{#if showLogs}
 								<div
-									class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse"
+									class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
 								>
 									{#each $serverLogs.reverse() as log, idx}
 										<div class="text-xs font-mono">{log}</div>

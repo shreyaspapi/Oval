@@ -21,6 +21,10 @@
 	-webkit-app-region: no-drag;
 }
 
+.no-drag-region {
+	-webkit-app-region: no-drag;
+}
+
 .font-secondary {
 	font-family: 'InstrumentSerif', sans-serif;
 }
@@ -67,4 +71,18 @@ html {
 
 .tippy-box[data-theme~='dark'] {
 	@apply rounded-lg bg-gray-950 text-xs border border-gray-900 shadow-xl;
+}
+
+.scrollbar-hidden:active::-webkit-scrollbar-thumb,
+.scrollbar-hidden:focus::-webkit-scrollbar-thumb,
+.scrollbar-hidden:hover::-webkit-scrollbar-thumb {
+	visibility: visible;
+}
+
+.scrollbar-hidden::-webkit-scrollbar-thumb {
+	visibility: hidden;
+}
+
+.scrollbar-hidden::-webkit-scrollbar-corner {
+	display: none;
 }
