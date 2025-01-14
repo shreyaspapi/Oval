@@ -35,11 +35,11 @@ export function getAppPath(): string {
 		appPath = path.dirname(appPath);
 	}
 
-	return appPath;
+	return path.normalize(appPath);
 }
 
 export function getUserHomePath(): string {
-	return app.getPath('home');
+	return path.normalize(app.getPath('home'))
 }
 
 export function getUserDataPath(): string {
@@ -53,7 +53,7 @@ export function getUserDataPath(): string {
 		}
 	}
 
-	return userDataDir;
+	return path.normalize(userDataDir);
 }
 
 export function getOpenWebUIDataPath(): string {
@@ -67,7 +67,7 @@ export function getOpenWebUIDataPath(): string {
 		}
 	}
 
-	return openWebUIDataDir;
+	return path.normalize(openWebUIDataDir);
 }
 
 export function getSecretKey(keyPath?: string, key?: string): string {
@@ -120,7 +120,7 @@ export async function portInUse(port: number, host: string = '0.0.0.0'): Promise
 
 export function getBundledPythonTarPath(): string {
 	const appPath = getAppPath();
-	return path.join(appPath, 'resources', 'python.tar.gz');
+	return path.normalize(path.join(appPath, 'resources', 'python.tar.gz'));
 }
 
 export function getBundledPythonInstallationPath(): string {
@@ -133,7 +133,7 @@ export function getBundledPythonInstallationPath(): string {
 			log.error(error);
 		}
 	}
-	return installDir;
+	return path.normalize(installDir);
 }
 
 export function isCondaEnv(envPath: string): boolean {
@@ -142,16 +142,16 @@ export function isCondaEnv(envPath: string): boolean {
 
 export function getPythonPath(envPath: string, isConda?: boolean) {
 	if (process.platform === 'win32') {
-		return (isConda ?? isCondaEnv(envPath))
+		return path.normalize((isConda ?? isCondaEnv(envPath))
 			? path.join(envPath, 'python.exe')
-			: path.join(envPath, 'Scripts', 'python.exe');
+			: path.join(envPath, 'Scripts', 'python.exe'));
 	} else {
-		return path.join(envPath, 'bin', 'python');
+		return path.normalize(path.join(envPath, 'bin', 'python'));
 	}
 }
 
 export function getBundledPythonPath() {
-	return getPythonPath(getBundledPythonInstallationPath());
+	return path.normalize(getPythonPath(getBundledPythonInstallationPath()));
 }
 
 export function isBundledPythonInstalled() {
@@ -201,7 +201,7 @@ export async function installOpenWebUI(
 	// Build the appropriate unpack command based on the platform
 	let unpackCommand =
 		process.platform === 'win32'
-			? `${installationPath}\\Scripts\\activate.bat && pip install open-webui${version ? `==${version}` : ' -U'}`
+			? `"${installationPath}\\Scripts\\activate.bat" && pip install open-webui${version ? `==${version}` : ' -U'}`
 			: `source "${installationPath}/bin/activate" && pip install open-webui${version ? `==${version}` : ' -U'}`;
 
 	// only unsign when installing from bundled installer
@@ -403,14 +403,14 @@ export async function startServer(installationPath?: string, port?: number): Pro
 
 	let startCommand =
 		process.platform === 'win32'
-			? `${installationPath}\\Scripts\\activate.bat && set DATA_DIR="${path.join(
-					app.getPath('userData'),
-					'data'
-				)}" && set WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`
+			? `"${installationPath}\\Scripts\\activate.bat" && set DATA_DIR="${path.join(
+				app.getPath('userData'),
+				'data'
+			)}" && set WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`
 			: `source "${installationPath}/bin/activate" && export DATA_DIR="${path.join(
-					app.getPath('userData'),
-					'data'
-				)}" && export WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`;
+				app.getPath('userData'),
+				'data'
+			)}" && export WEBUI_SECRET_KEY=${getSecretKey()} && open-webui serve`;
 
 	port = port || 8080;
 	while (await portInUse(port)) {

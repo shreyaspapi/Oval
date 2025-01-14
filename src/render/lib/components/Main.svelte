@@ -56,7 +56,10 @@
 	<div class="flex flex-row w-full h-full relative dark:text-gray-100 p-1 drag-region">
 		<div class="fixed right-0 m-10 z-50">
 			<div class="flex space-x-2">
-				<button class=" self-center cursor-pointer" onclick={() => (showLogs = !showLogs)}>
+				<button
+					class=" self-center cursor-pointer outline-none"
+					onclick={() => (showLogs = !showLogs)}
+				>
 					<img
 						src="./assets/images/splash.png"
 						class=" w-6 rounded-full dark:invert"
