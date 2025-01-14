@@ -45,6 +45,7 @@ jobs:
           conda install -n base -c conda-forge conda-lock conda-pack
 
       - name: Create Packaged Python
+        shell: bash -l {0}
         run: npm run create:python-tar
 
       - name: Create Builds
