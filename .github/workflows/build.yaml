@@ -47,7 +47,9 @@ jobs:
 
       - name: Create Packaged Python
         shell: bash -l {0}
-        run: npm run create:python-tar
+        run: |
+          conda activate base
+          npm run create:python-tar
 
       - name: Create Builds
         run: npm run make
