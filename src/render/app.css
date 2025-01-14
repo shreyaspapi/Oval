@@ -12,6 +12,15 @@
 	font-display: swap;
 }
 
+.drag-region {
+	-webkit-app-region: drag;
+}
+
+.drag-region a,
+.drag-region button {
+	-webkit-app-region: no-drag;
+}
+
 .font-secondary {
 	font-family: 'InstrumentSerif', sans-serif;
 }

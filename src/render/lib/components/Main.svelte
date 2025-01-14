@@ -41,9 +41,7 @@
 </script>
 
 {#if $installStatus === null}
-	<div class="flex flex-row w-full h-full relative dark:text-gray-100">
-		<div class="absolute top-0 left-0 w-full h-7 bg-transparent draggable"></div>
-
+	<div class="flex flex-row w-full h-full relative dark:text-gray-100 drag-region">
 		<div class="flex-1 w-full flex justify-center relative">
 			<div class="m-auto">
 				<img
@@ -55,9 +53,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="flex flex-row w-full h-full relative dark:text-gray-100 p-1">
-		<div class="absolute top-0 left-0 w-full h-7 bg-transparent draggable"></div>
-
+	<div class="flex flex-row w-full h-full relative dark:text-gray-100 p-1 drag-region">
 		<div class="fixed right-0 m-10 z-50">
 			<div class="flex space-x-2">
 				<button class=" self-center cursor-pointer" onclick={() => (showLogs = !showLogs)}>
@@ -196,9 +192,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	.draggable {
-		-webkit-app-region: drag;
-	}
-</style>

@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 		ipcRenderer.on('main:log', (_, message: string) => callback(message));
 	},
 
+	send: async ({ type, data }: { type: string; data?: any }) => {
+		return await ipcRenderer.invoke('renderer:data', { type, data });
+	},
+
 	installPackage: async () => {
 		if (!isLocalSource()) {
 			throw new Error('Access restricted: This operation is only allowed in a local environment.');

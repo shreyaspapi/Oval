@@ -167,6 +167,8 @@ if (!gotTheLock) {
 
 		try {
 			SERVER_URL = await startServer();
+			// SERVER_URL = 'http://localhost:5050';
+
 			SERVER_STATUS = 'started';
 			mainWindow.webContents.send('main:data', {
 				type: 'server:status',
@@ -198,8 +200,10 @@ if (!gotTheLock) {
 		console.log(app.getPath('appData'));
 
 		mainWindow = new BrowserWindow({
-			width: 800,
+			width: 1000,
 			height: 600,
+			minWidth: 425,
+			minHeight: 600,
 			icon: path.join(__dirname, 'assets/icon.png'),
 			webPreferences: {
 				preload: path.join(__dirname, 'preload.js')
@@ -370,6 +374,24 @@ if (!gotTheLock) {
 		return SERVER_URL;
 	});
 
+	ipcMain.handle('renderer:data', async (event, { type, data }) => {
+		console.log('Received data from renderer:', type, data);
+
+		if (type === 'version') {
+			return {
+				version: app.getVersion()
+			};
+		}
+
+		if (type === 'window:isFocused') {
+			return {
+				isFocused: mainWindow?.isFocused()
+			};
+		}
+
+		return { type, data };
+	});
+
 	ipcMain.handle('notification', async (event, { title, body }) => {
 		console.log('Received notification:', title, body);
 		const notification = new Notification({
@@ -377,22 +399,6 @@ if (!gotTheLock) {
 			body: body
 		});
 		notification.show();
-	});
-
-	ipcMain.handle('load-webui', async (event, arg) => {
-		console.log(arg); // prints "ping"
-		mainWindow.loadURL('http://localhost:8080');
-
-		mainWindow.webContents.once('did-finish-load', () => {
-			mainWindow.webContents.send('main:data', {
-				type: 'ping' // This is the same type you're listening for in the renderer
-			});
-		});
-
-		ipcMain.on('send-ping', (event) => {
-			console.log('Received PING from renderer process');
-			mainWindow.webContents.send('ping-reply', 'PONG from Main Process!');
-		});
 	});
 
 	app.on('before-quit', () => {
