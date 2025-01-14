@@ -99,34 +99,34 @@ if (!gotTheLock) {
 
 			...(SERVER_STATUS === 'started'
 				? [
-						{
-							label: 'Stop Server',
-							click: async () => {
-								await stopAllServers();
-								SERVER_STATUS = 'stopped';
-								mainWindow.webContents.send('main:data', {
-									type: 'server:status',
-									data: SERVER_STATUS
-								});
-								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
-							}
+					{
+						label: 'Stop Server',
+						click: async () => {
+							await stopAllServers();
+							SERVER_STATUS = 'stopped';
+							mainWindow.webContents.send('main:data', {
+								type: 'server:status',
+								data: SERVER_STATUS
+							});
+							updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 						}
-					]
+					}
+				]
 				: SERVER_STATUS === 'starting'
 					? [
-							{
-								label: 'Starting Server...',
-								enabled: false
-							}
-						]
+						{
+							label: 'Starting Server...',
+							enabled: false
+						}
+					]
 					: [
-							{
-								label: 'Start Server',
-								click: async () => {
-									await startServerHandler();
-								}
+						{
+							label: 'Start Server',
+							click: async () => {
+								await startServerHandler();
 							}
-						]),
+						}
+					]),
 
 			{
 				type: 'separator'
@@ -180,6 +180,7 @@ if (!gotTheLock) {
 			}
 
 			mainWindow.loadURL(SERVER_URL);
+			mainWindow
 
 			const urlObj = new URL(SERVER_URL);
 			const port = urlObj.port || '8080'; // Fallback to port 8080 if not provided
@@ -212,6 +213,9 @@ if (!gotTheLock) {
 			webPreferences: {
 				preload: path.join(__dirname, 'preload.js')
 			},
+			...(process.platform === 'win32' ? {
+				frame: false
+			} : {}),
 			titleBarStyle: process.platform === 'win32' ? 'default' : 'hidden',
 			trafficLightPosition: { x: 10, y: 10 },
 			// expose window controlls in Windows/Linux
