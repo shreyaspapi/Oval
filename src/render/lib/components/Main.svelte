@@ -81,7 +81,7 @@
 		<div class="w-full h-full absolute top-0 left-0 backdrop-blur-sm bg-black/50"></div>
 
 		<div class=" absolute w-full top-0 left-0 right-0 z-10">
-			<div class="h-10 drag-region"></div>
+			<div class="h-6 drag-region"></div>
 		</div>
 
 		<div class="flex-1 w-full flex justify-center relative">

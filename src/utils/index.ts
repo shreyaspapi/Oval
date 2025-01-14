@@ -423,7 +423,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	const childProcess = spawn(startCommand, {
 		shell: true,
 		detached: false,
-		stdio: ['ignore', 'pipe'], // Let us capture logs via stdout/stderr
+		stdio: ['ignore', 'pipe', 'pipe'], // Let us capture logs via stdout/stderr
 		windowsHide: true
 	});
 

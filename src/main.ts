@@ -99,34 +99,34 @@ if (!gotTheLock) {
 
 			...(SERVER_STATUS === 'started'
 				? [
-						{
-							label: 'Stop Server',
-							click: async () => {
-								await stopAllServers();
-								SERVER_STATUS = 'stopped';
-								mainWindow.webContents.send('main:data', {
-									type: 'server:status',
-									data: SERVER_STATUS
-								});
-								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
-							}
+					{
+						label: 'Stop Server',
+						click: async () => {
+							await stopAllServers();
+							SERVER_STATUS = 'stopped';
+							mainWindow.webContents.send('main:data', {
+								type: 'server:status',
+								data: SERVER_STATUS
+							});
+							updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 						}
-					]
+					}
+				]
 				: SERVER_STATUS === 'starting'
 					? [
-							{
-								label: 'Starting Server...',
-								enabled: false
-							}
-						]
+						{
+							label: 'Starting Server...',
+							enabled: false
+						}
+					]
 					: [
-							{
-								label: 'Start Server',
-								click: async () => {
-									await startServerHandler();
-								}
+						{
+							label: 'Start Server',
+							click: async () => {
+								await startServerHandler();
 							}
-						]),
+						}
+					]),
 
 			{
 				type: 'separator'
@@ -196,6 +196,8 @@ if (!gotTheLock) {
 			updateTrayMenu('Open WebUI: Failed to Start', null); // Update tray menu with failure status
 		}
 	};
+
+
 
 	const onReady = async () => {
 		console.log(process.resourcesPath);
@@ -405,14 +407,15 @@ if (!gotTheLock) {
 		notification.show();
 	});
 
-	app.on('before-quit', () => {
+	app.on('before-quit', async () => {
 		app.isQuiting = true; // Ensure quit flag is set
-		stopAllServers();
+		await stopAllServers();
 	});
 
 	// Quit when all windows are closed, except on macOS
-	app.on('window-all-closed', () => {
+	app.on('window-all-closed', async () => {
 		if (process.platform !== 'darwin') {
+			await stopAllServers()
 			app.isQuitting = true;
 			app.quit();
 		}
