@@ -212,7 +212,7 @@ if (!gotTheLock) {
 			webPreferences: {
 				preload: path.join(__dirname, 'preload.js')
 			},
-			titleBarStyle: 'hidden',
+			titleBarStyle: process.platform === 'win32' ? 'default' : 'hidden',
 			trafficLightPosition: { x: 10, y: 10 },
 			// expose window controlls in Windows/Linux
 			...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {})
