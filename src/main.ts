@@ -99,34 +99,34 @@ if (!gotTheLock) {
 
 			...(SERVER_STATUS === 'started'
 				? [
-						{
-							label: 'Stop Server',
-							click: async () => {
-								await stopAllServers();
-								SERVER_STATUS = 'stopped';
-								mainWindow.webContents.send('main:data', {
-									type: 'server:status',
-									data: SERVER_STATUS
-								});
-								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
-							}
+					{
+						label: 'Stop Server',
+						click: async () => {
+							await stopAllServers();
+							SERVER_STATUS = 'stopped';
+							mainWindow.webContents.send('main:data', {
+								type: 'server:status',
+								data: SERVER_STATUS
+							});
+							updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 						}
-					]
+					}
+				]
 				: SERVER_STATUS === 'starting'
 					? [
-							{
-								label: 'Starting Server...',
-								enabled: false
-							}
-						]
+						{
+							label: 'Starting Server...',
+							enabled: false
+						}
+					]
 					: [
-							{
-								label: 'Start Server',
-								click: async () => {
-									await startServerHandler();
-								}
+						{
+							label: 'Start Server',
+							click: async () => {
+								await startServerHandler();
 							}
-						]),
+						}
+					]),
 
 			{
 				type: 'separator'
@@ -174,7 +174,6 @@ if (!gotTheLock) {
 				type: 'server:status',
 				data: SERVER_STATUS
 			});
-
 			mainWindow.loadURL(SERVER_URL);
 
 			const urlObj = new URL(SERVER_URL);
