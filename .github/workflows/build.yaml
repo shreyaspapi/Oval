@@ -39,6 +39,8 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: true
+
+      - name: Install conda-lock and conda-pack
         run: |
           conda install -n base -c conda-forge conda-lock conda-pack
 
