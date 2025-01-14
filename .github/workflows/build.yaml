@@ -1,5 +1,4 @@
 name: Build and Release Electron Forge App
-
 on:
   push:
     branches:
@@ -13,31 +12,26 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 22
           cache: 'npm'
-
       - name: Install Dependencies
         run: npm ci
-
+      - name: Create Packaged Python
+        run: npm run create:python-tar
       - name: Create Builds
         run: npm run make
-
       - name: Get Short SHA
         id: slug
-        run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
-
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
       - name: Zip Artifacts
         run: |
           7z a -tzip ${{ matrix.os }}-${{ steps.slug.outputs.sha8 }}.zip ./out/make/*
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -48,18 +42,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Get Short SHA
         id: slug
-        run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
-
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
       - name: Download Artifacts
         uses: actions/download-artifact@v3
-
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -71,4 +61,4 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./**/*.zip
+            **/*.zip
