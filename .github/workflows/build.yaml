@@ -38,8 +38,9 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          auto-update-conda: true
-          use-mamba: true
+          auto-activate-base: true
+        run: |
+          conda install -n base -c conda-forge conda-lock conda-pack
 
       - name: Create Packaged Python
         run: npm run create:python-tar
