@@ -3,6 +3,8 @@ import {
 	nativeImage,
 	desktopCapturer,
 	session,
+	clipboard,
+	shell,
 	Tray,
 	Menu,
 	MenuItem,
@@ -73,12 +75,95 @@ if (!gotTheLock) {
 		}
 	};
 
+	const updateTrayMenu = (status: string, url: string | null) => {
+		const trayMenuTemplate = [
+			{
+				label: 'Show Open WebUI',
+				accelerator: 'CommandOrControl+Alt+O',
+				click: () => {
+					mainWindow?.show(); // Show the main window when clicked
+				}
+			},
+			{
+				type: 'separator'
+			},
+			{
+				label: status, // Dynamic status message
+				enabled: !!url,
+				click: () => {
+					if (url) {
+						shell.openExternal(url); // Open the URL in the default browser
+					}
+				}
+			},
+
+			...(SERVER_STATUS === 'started'
+				? [
+						{
+							label: 'Stop Server',
+							click: async () => {
+								await stopAllServers();
+								SERVER_STATUS = 'stopped';
+								mainWindow.webContents.send('main:data', {
+									type: 'server:status',
+									data: SERVER_STATUS
+								});
+								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
+							}
+						}
+					]
+				: SERVER_STATUS === 'starting'
+					? [
+							{
+								label: 'Starting Server...',
+								enabled: false
+							}
+						]
+					: [
+							{
+								label: 'Start Server',
+								click: async () => {
+									await startServerHandler();
+								}
+							}
+						]),
+
+			{
+				type: 'separator'
+			},
+			{
+				label: 'Copy Server URL',
+				enabled: !!url, // Enable if URL exists
+				click: () => {
+					if (url) {
+						clipboard.writeText(url); // Copy the URL to clipboard
+					}
+				}
+			},
+			{
+				type: 'separator'
+			},
+			{
+				label: 'Quit Open WebUI',
+				accelerator: 'CommandOrControl+Q',
+				click: () => {
+					app.isQuiting = true; // Mark as quitting
+					app.quit(); // Quit the application
+				}
+			}
+		];
+
+		const trayMenu = Menu.buildFromTemplate(trayMenuTemplate);
+		tray?.setContextMenu(trayMenu);
+	};
+
 	const startServerHandler = async () => {
 		SERVER_STATUS = 'starting';
 		mainWindow.webContents.send('main:data', {
 			type: 'server:status',
 			data: SERVER_STATUS
 		});
+		updateTrayMenu('Open WebUI: Starting...', null);
 
 		try {
 			SERVER_URL = await startServer();
@@ -89,6 +174,10 @@ if (!gotTheLock) {
 			});
 
 			mainWindow.loadURL(SERVER_URL);
+
+			const urlObj = new URL(SERVER_URL);
+			const port = urlObj.port || '8080'; // Fallback to port 8080 if not provided
+			updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
 		} catch (error) {
 			console.error('Failed to start server:', error);
 			SERVER_STATUS = 'failed';
@@ -98,6 +187,7 @@ if (!gotTheLock) {
 			});
 
 			mainWindow.webContents.send('main:log', `Failed to start server: ${error}`);
+			updateTrayMenu('Open WebUI: Failed to Start', null); // Update tray menu with failure status
 		}
 	};
 
@@ -147,8 +237,6 @@ if (!gotTheLock) {
 					type: 'install:status',
 					data: true
 				});
-
-				await startServerHandler();
 			} else {
 				mainWindow.webContents.send('main:data', {
 					type: 'install:status',
@@ -200,6 +288,9 @@ if (!gotTheLock) {
 				click: () => {
 					mainWindow.show(); // Show the main window when clicked
 				}
+			},
+			{
+				type: 'separator'
 			},
 			{
 				label: 'Quit Open WebUI',
@@ -272,6 +363,7 @@ if (!gotTheLock) {
 			type: 'server:status',
 			data: SERVER_STATUS
 		});
+		updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 	});
 
 	ipcMain.handle('server:url', async (event) => {

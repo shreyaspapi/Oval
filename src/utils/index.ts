@@ -82,7 +82,7 @@ export function getSecretKey(keyPath?: string, key?: string): string {
 	return key;
 }
 
-export async function portInUse(port: number, host: string = '127.0.0.1'): Promise<boolean> {
+export async function portInUse(port: number, host: string = '0.0.0.0'): Promise<boolean> {
 	return new Promise((resolve) => {
 		const client = new net.Socket();
 
