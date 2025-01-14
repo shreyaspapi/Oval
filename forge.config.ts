@@ -9,6 +9,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
 	packagerConfig: {
+		executableName: 'open-webui',
 		asar: true,
 		icon: 'public/assets/icon.png',
 		extraResource: ['public/assets', 'resources']
