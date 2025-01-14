@@ -4,14 +4,23 @@ on:
     branches:
       - main
   pull_request:
-
 jobs:
   build:
     name: Build and Package
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-latest
+            arch: arm64
+          - os: windows-latest
+            arch: x64
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,6 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+          architecture: ${{ matrix.arch }}
       - name: Install Dependencies
         run: npm ci
       - name: Create Packaged Python
@@ -31,13 +41,12 @@ jobs:
         run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
       - name: Zip Artifacts
         run: |
-          7z a -tzip ${{ matrix.os }}-${{ steps.slug.outputs.sha8 }}.zip ./out/make/*
+          7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip ./out/make/*
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}-${{ steps.slug.outputs.sha8 }}
-          path: ${{ matrix.os }}-${{ steps.slug.outputs.sha8 }}.zip
-
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}
+          path: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip
   release:
     needs: build
     runs-on: ubuntu-latest
