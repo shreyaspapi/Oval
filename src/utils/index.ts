@@ -403,6 +403,21 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		return;
 	}
 
+	try {
+		const bundledPythonPath = getBundledPythonPath();
+
+		// Execute the Python binary to print the version
+		const pythonVersion = execFileSync(bundledPythonPath, ['--version'], {
+			encoding: 'utf-8'
+		});
+		console.log('Installed Python Version:', pythonVersion.trim());
+		logEmitter.emit('log', `Installed Python Version: ${pythonVersion.trim()}`); // Emit log
+
+	} catch (error) {
+		log.error('Failed to execute Python binary', error);
+
+	}
+
 	let startCommand =
 		process.platform === 'win32'
 			? `"${installationPath}\\Scripts\\activate.bat" && open-webui serve`
@@ -426,7 +441,6 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		shell: true,
 		detached: process.platform !== 'win32', // Detach the child process on Unix-like platforms
 		stdio: ['ignore', 'pipe', 'pipe'], // Let us capture logs via stdout/stderr
-		windowsHide: true
 	});
 
 	let serverCrashed = false;
