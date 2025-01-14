@@ -39,7 +39,7 @@ export function getAppPath(): string {
 }
 
 export function getUserHomePath(): string {
-	return path.normalize(app.getPath('home'))
+	return path.normalize(app.getPath('home'));
 }
 
 export function getUserDataPath(): string {
@@ -142,9 +142,11 @@ export function isCondaEnv(envPath: string): boolean {
 
 export function getPythonPath(envPath: string, isConda?: boolean) {
 	if (process.platform === 'win32') {
-		return path.normalize((isConda ?? isCondaEnv(envPath))
-			? path.join(envPath, 'python.exe')
-			: path.join(envPath, 'Scripts', 'python.exe'));
+		return path.normalize(
+			(isConda ?? isCondaEnv(envPath))
+				? path.join(envPath, 'python.exe')
+				: path.join(envPath, 'Scripts', 'python.exe')
+		);
 	} else {
 		return path.normalize(path.join(envPath, 'bin', 'python'));
 	}
@@ -401,14 +403,14 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		return;
 	}
 
-	let startCommand = process.platform === 'win32'
-		? `"${installationPath}\\Scripts\\activate.bat" && open-webui serve`
-		: `source "${installationPath}/bin/activate" && open-webui serve`;
+	let startCommand =
+		process.platform === 'win32'
+			? `"${installationPath}\\Scripts\\activate.bat" && open-webui serve`
+			: `source "${installationPath}/bin/activate" && open-webui serve`;
 
 	// Set environment variables in a platform-agnostic way
 	process.env.DATA_DIR = path.join(app.getPath('userData'), 'data');
 	process.env.WEBUI_SECRET_KEY = getSecretKey();
-
 
 	port = port || 8080;
 	while (await portInUse(port)) {
@@ -422,7 +424,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 
 	const childProcess = spawn(startCommand, {
 		shell: true,
-		detached: false,
+		detached: process.platform !== 'win32', // Detach the child process on Unix-like platforms
 		stdio: ['ignore', 'pipe', 'pipe'], // Let us capture logs via stdout/stderr
 		windowsHide: true
 	});

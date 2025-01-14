@@ -99,34 +99,34 @@ if (!gotTheLock) {
 
 			...(SERVER_STATUS === 'started'
 				? [
-					{
-						label: 'Stop Server',
-						click: async () => {
-							await stopAllServers();
-							SERVER_STATUS = 'stopped';
-							mainWindow.webContents.send('main:data', {
-								type: 'server:status',
-								data: SERVER_STATUS
-							});
-							updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
-						}
-					}
-				]
-				: SERVER_STATUS === 'starting'
-					? [
 						{
-							label: 'Starting Server...',
-							enabled: false
-						}
-					]
-					: [
-						{
-							label: 'Start Server',
+							label: 'Stop Server',
 							click: async () => {
-								await startServerHandler();
+								await stopAllServers();
+								SERVER_STATUS = 'stopped';
+								mainWindow.webContents.send('main:data', {
+									type: 'server:status',
+									data: SERVER_STATUS
+								});
+								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 							}
 						}
-					]),
+					]
+				: SERVER_STATUS === 'starting'
+					? [
+							{
+								label: 'Starting Server...',
+								enabled: false
+							}
+						]
+					: [
+							{
+								label: 'Start Server',
+								click: async () => {
+									await startServerHandler();
+								}
+							}
+						]),
 
 			{
 				type: 'separator'
@@ -196,8 +196,6 @@ if (!gotTheLock) {
 			updateTrayMenu('Open WebUI: Failed to Start', null); // Update tray menu with failure status
 		}
 	};
-
-
 
 	const onReady = async () => {
 		console.log(process.resourcesPath);
@@ -305,7 +303,8 @@ if (!gotTheLock) {
 			{
 				label: 'Quit Open WebUI',
 				accelerator: 'CommandOrControl+Q',
-				click: () => {
+				click: async () => {
+					await stopAllServers();
 					app.isQuiting = true; // Mark as quitting
 					app.quit(); // Quit the application
 				}
@@ -408,14 +407,14 @@ if (!gotTheLock) {
 	});
 
 	app.on('before-quit', async () => {
-		app.isQuiting = true; // Ensure quit flag is set
 		await stopAllServers();
+		app.isQuiting = true; // Ensure quit flag is set
 	});
 
 	// Quit when all windows are closed, except on macOS
 	app.on('window-all-closed', async () => {
 		if (process.platform !== 'darwin') {
-			await stopAllServers()
+			await stopAllServers();
 			app.isQuitting = true;
 			app.quit();
 		}
