@@ -418,11 +418,13 @@ export async function startServer(installationPath?: string, port?: number): Pro
 
 	let startCommand =
 		process.platform === 'win32'
-			? `"${installationPath}\\Scripts\\activate.bat" && open-webui serve`
+			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "0.0.0.0" --forwarded-allow-ips "*"`
 			: `source "${installationPath}/bin/activate" && open-webui serve`;
 
 
-
+	if (process.platform === 'win32') {
+		process.env.FROM_INIT_PY = 'true';
+	}
 
 	// Set environment variables in a platform-agnostic way
 	process.env.DATA_DIR = path.join(app.getPath('userData'), 'data');
