@@ -416,6 +416,9 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		log.error('Failed to execute Python binary', error);
 	}
 
+
+	// Windows HATES Typer-CLI used to create the CLI for Open-WebUI
+	// So we have to manually create the command to start the server
 	let startCommand =
 		process.platform === 'win32'
 			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "0.0.0.0" --forwarded-allow-ips '*'`
