@@ -418,7 +418,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 
 	let startCommand =
 		process.platform === 'win32'
-			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "0.0.0.0" --forwarded-allow-ips "*"`
+			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "0.0.0.0" --forwarded-allow-ips '*'`
 			: `source "${installationPath}/bin/activate" && open-webui serve`;
 
 
