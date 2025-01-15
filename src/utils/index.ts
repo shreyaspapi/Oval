@@ -421,6 +421,9 @@ export async function startServer(installationPath?: string, port?: number): Pro
 			? `"${installationPath}\\Scripts\\activate.bat" && open-webui serve`
 			: `source "${installationPath}/bin/activate" && open-webui serve`;
 
+
+
+
 	// Set environment variables in a platform-agnostic way
 	process.env.DATA_DIR = path.join(app.getPath('userData'), 'data');
 	process.env.WEBUI_SECRET_KEY = getSecretKey();
@@ -433,6 +436,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	startCommand += ` --port ${port}`;
 
 	console.log('Starting Open-WebUI server...', startCommand);
+	logEmitter.emit('log', `${startCommand}`); // Emit log
 	logEmitter.emit('log', 'Starting Open-WebUI server...'); // Emit log
 
 	const childProcess = spawn(startCommand, {
