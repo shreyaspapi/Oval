@@ -1,0 +1,97 @@
+name: Build and Release Electron Forge App
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  build:
+    name: Build and Package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # - os: ubuntu-latest
+          #   arch: x64
+          # - os: ubuntu-latest
+          #   arch: arm64
+          - os: windows-latest
+            arch: x64
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+          cache: 'npm'
+          architecture: ${{ matrix.arch }}
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: true
+
+      - name: Install conda-lock and conda-pack
+        shell: bash -l {0}
+        run: |
+          conda install -n base -c conda-forge conda-lock conda-pack
+
+      - name: Create Packaged Python
+        shell: bash -l {0}
+        run: |
+          conda activate base
+          npm run create:python-tar
+
+      - name: Create Builds
+        run: npm run make
+
+      - name: Get Short SHA
+        id: slug
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Zip Artifacts
+        run: |
+          7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip ./out/make/*
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}
+          path: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Short SHA
+        id: slug
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: build-${{ steps.slug.outputs.sha8 }}
+          name: Build ${{ steps.slug.outputs.sha8 }}
+          draft: false
+          prerelease: false
+          files: |
+            **/*.zip
