@@ -18,7 +18,7 @@ import { EventEmitter } from 'events';
 import * as tar from 'tar';
 import log from 'electron-log';
 
-import { app } from 'electron';
+import { process, app } from 'electron';
 
 // Create and export a global event emitter specifically for logs
 export const logEmitter = new EventEmitter();
