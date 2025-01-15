@@ -18,7 +18,7 @@ import { EventEmitter } from 'events';
 import * as tar from 'tar';
 import log from 'electron-log';
 
-import { process, app } from 'electron';
+import { app } from 'electron';
 
 // Create and export a global event emitter specifically for logs
 export const logEmitter = new EventEmitter();
@@ -412,10 +412,8 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		});
 		console.log('Installed Python Version:', pythonVersion.trim());
 		logEmitter.emit('log', `Installed Python Version: ${pythonVersion.trim()}`); // Emit log
-
 	} catch (error) {
 		log.error('Failed to execute Python binary', error);
-
 	}
 
 	let startCommand =
@@ -440,7 +438,7 @@ export async function startServer(installationPath?: string, port?: number): Pro
 	const childProcess = spawn(startCommand, {
 		shell: true,
 		detached: process.platform !== 'win32', // Detach the child process on Unix-like platforms
-		stdio: ['ignore', 'pipe', 'pipe'], // Let us capture logs via stdout/stderr
+		stdio: ['ignore', 'pipe', 'pipe'] // Let us capture logs via stdout/stderr
 	});
 
 	let serverCrashed = false;
