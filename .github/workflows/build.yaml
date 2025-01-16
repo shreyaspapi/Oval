@@ -54,7 +54,7 @@ jobs:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: open-webui
           certificate-profile-name: open-webui
           # Sign all .exe files in the output folder
