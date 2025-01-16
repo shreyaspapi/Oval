@@ -49,16 +49,19 @@ jobs:
         run: npm run make
       - name: Find and Rename Windows Executable
         if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
         run: |
-          # Dynamically find the generated `setup.exe` in the output folder
-          exe_path=$(find out/make -type f -name '*.exe' | head -n 1)
-          echo "The found executable is: $exe_path"
-          if [ -z "$exe_path" ]; then
-            echo "Error: No .exe file was found in generated output."
-            exit 1
-          fi
-          # Copy the executable with a specific naming format and store as an artifact
-          cp "$exe_path" ${{ matrix.os }}-${{ matrix.arch }}.exe
+          # Dynamically locate the `setup.exe` file within the `out/make` directory structure
+          $exePath = Get-ChildItem -Path out/make -Recurse -Filter "*.exe" | Select-Object -First 1
+          if (-not $exePath) {
+            throw "Error: No .exe file was found in the output directory."
+          }
+          Write-Host "The found executable is: $exePath"
+      
+          # Rename/move the file to a more descriptive name with architecture/OS information
+          $destinationPath = "${{ matrix.os }}-${{ matrix.arch }}.exe"
+          Copy-Item -Path $exePath.FullName -Destination $destinationPath
+          Write-Host "Copied executable to: $destinationPath"
       - name: Azure Trusted Signing (Windows Only)
         if: ${{ matrix.os == 'windows-latest' }}
         uses: azure/trusted-signing-action@v0.5.1
