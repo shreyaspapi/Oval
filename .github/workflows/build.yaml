@@ -100,8 +100,14 @@ jobs:
         uses: actions/download-artifact@v3
       - name: Rename Artifacts with SHA
         run: |
+          # Rename .zip files for Linux/macOS builds
           for file in *.zip; do
             mv "$file" "${file%.zip}-${{ steps.slug.outputs.sha8 }}.zip"
+          done
+          
+          # Rename .exe files for Windows builds
+          for file in *.exe; do
+            mv "$file" "${file%.exe}-${{ steps.slug.outputs.sha8 }}.exe"
           done
       - name: Create Release
         id: create_release
@@ -115,3 +121,4 @@ jobs:
           prerelease: false
           files: |
             **/*.zip
+            **/*.exe
