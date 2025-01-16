@@ -41,7 +41,7 @@
 </script>
 
 {#if $installStatus === null}
-	<div class="flex flex-row w-full h-full relative dark:text-gray-100 drag-region">
+	<div class="flex flex-row w-full h-full relative text-gray-850 dark:text-gray-100 drag-region">
 		<div class="flex-1 w-full flex justify-center relative">
 			<div class="m-auto">
 				<img
@@ -53,7 +53,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="flex flex-row w-full h-full relative dark:text-gray-100 p-1">
+	<div class="flex flex-row w-full h-full relative text-gray-850 dark:text-gray-100 p-1">
 		<div class="fixed right-0 m-10 z-50">
 			<div class="flex space-x-2">
 				<button
@@ -75,10 +75,12 @@
 		></div>
 
 		<div
-			class="w-full h-full absolute top-0 left-0 bg-gradient-to-t from-20% from-black to-transparent"
+			class="w-full h-full absolute top-0 left-0 bg-gradient-to-t from-20% from-white dark:from-black to-transparent"
 		></div>
 
-		<div class="w-full h-full absolute top-0 left-0 backdrop-blur-sm bg-black/50"></div>
+		<div
+			class="w-full h-full absolute top-0 left-0 backdrop-blur-sm bg-white/50 dark:bg-black/50"
+		></div>
 
 		<div class=" absolute w-full top-0 left-0 right-0 z-10">
 			<div class="h-6 drag-region"></div>
@@ -135,7 +137,7 @@
 								</div>
 							{:else if mounted}
 								<button
-									class="relative z-20 flex p-1 rounded-full bg-white/5 hover:bg-white/10 transition font-medium text-sm cursor-pointer"
+									class="relative z-20 flex p-1 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition font-medium text-sm cursor-pointer"
 									onclick={() => {
 										continueHandler();
 									}}
