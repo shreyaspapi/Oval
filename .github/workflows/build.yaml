@@ -56,7 +56,7 @@ jobs:
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           endpoint: ${{ secrets.AZURE_ENDPOINT }}
           trusted-signing-account-name: open-webui
-          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          certificate-profile-name: open-webui
           # Sign all .exe files in the output folder
           files-folder: ./out/make
           files-folder-filter: exe  
