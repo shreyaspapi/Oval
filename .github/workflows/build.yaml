@@ -87,38 +87,27 @@ jobs:
             ${{ matrix.os }}-${{ matrix.arch }}.exe
             ${{ matrix.os }}-${{ matrix.arch }}.zip
   release:
+    name: Finalize and Upload Release Artifacts
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Get Short SHA
-        id: slug
-        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
-      - name: Download Artifacts
+      - name: Download Build Artifacts
         uses: actions/download-artifact@v3
-      - name: Rename Artifacts with SHA
-        run: |
-          # Rename .zip files for Linux/macOS builds
-          for file in *.zip; do
-            mv "$file" "${file%.zip}-${{ steps.slug.outputs.sha8 }}.zip"
-          done
-          
-          # Rename .exe files for Windows builds
-          for file in *.exe; do
-            mv "$file" "${file%.exe}-${{ steps.slug.outputs.sha8 }}.exe"
-          done
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: build-${{ steps.slug.outputs.sha8 }}
-          name: Build ${{ steps.slug.outputs.sha8 }}
-          draft: false
-          prerelease: false
-          files: |
-            **/*.zip
-            **/*.exe
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: artifacts/
+      - name: Rename Artifacts with Short SHA
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          for file in artifacts/*; do
+            ext="${file##*.}"
+            base="$(basename "$file" ."$ext")"
+            mv "$file" "artifacts/$base-$SHORT_SHA.$ext"
+          done
+      - name: Upload Renamed Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-artifacts
+          path: artifacts/
