@@ -24,50 +24,68 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 22
           cache: 'npm'
           architecture: ${{ matrix.arch }}
-
       - name: Install Dependencies
         run: npm ci
-
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: true
-
       - name: Install conda-lock and conda-pack
         shell: bash -l {0}
         run: |
           conda install -n base -c conda-forge conda-lock conda-pack
-
       - name: Create Packaged Python
         shell: bash -l {0}
         run: |
           conda activate base
           npm run create:python-tar
-
       - name: Create Builds
         run: npm run make
-
-      - name: Get Short SHA
-        id: slug
-        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
-
-      - name: Zip Artifacts
+      - name: Find and Rename Windows Executable
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
         run: |
-          7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip ./out/make/*
-
+          # Dynamically locate the `setup.exe` file within the `out/make` directory structure
+          $exePath = Get-ChildItem -Path out/make -Recurse -Filter "*.exe" | Select-Object -First 1
+          if (-not $exePath) {
+            throw "Error: No .exe file was found in the output directory."
+          }
+          Write-Host "The found executable is: $exePath"
+      
+          # Rename/move the file to a more descriptive name with architecture/OS information
+          $destinationPath = "${{ matrix.os }}-${{ matrix.arch }}.exe"
+          Copy-Item -Path $exePath.FullName -Destination $destinationPath
+          Write-Host "Copied executable to: $destinationPath"
+      - name: Azure Trusted Signing (Windows Only)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          trusted-signing-account-name: open-webui
+          certificate-profile-name: open-webui
+          # Sign the generated .exe file
+          files-folder: .
+          files-folder-filter: exe  
+      - name: Zip Artifacts for macOS/Linux
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}.zip ./out/make/*
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}
-          path: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.slug.outputs.sha8 }}.zip
-
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            ${{ matrix.os }}-${{ matrix.arch }}.exe
+            ${{ matrix.os }}-${{ matrix.arch }}.zip
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -95,3 +113,4 @@ jobs:
           prerelease: false
           files: |
             **/*.zip
+            **/*.exe
