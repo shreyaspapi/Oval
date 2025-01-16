@@ -47,6 +47,18 @@ jobs:
           npm run create:python-tar
       - name: Create Builds
         run: npm run make
+      - name: Find and Rename Windows Executable
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          # Dynamically find the generated `setup.exe` in the output folder
+          exe_path=$(find out/make -type f -name '*.exe' | head -n 1)
+          echo "The found executable is: $exe_path"
+          if [ -z "$exe_path" ]; then
+            echo "Error: No .exe file was found in generated output."
+            exit 1
+          fi
+          # Copy the executable with a specific naming format and store as an artifact
+          cp "$exe_path" ${{ matrix.os }}-${{ matrix.arch }}.exe
       - name: Azure Trusted Signing (Windows Only)
         if: ${{ matrix.os == 'windows-latest' }}
         uses: azure/trusted-signing-action@v0.5.1
@@ -57,17 +69,20 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: open-webui
           certificate-profile-name: open-webui
-          # Sign all .exe files in the output folder
-          files-folder: ./out/make
+          # Sign the generated .exe file
+          files-folder: .
           files-folder-filter: exe  
-      - name: Zip Artifacts
+      - name: Zip Artifacts for macOS/Linux
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}.zip ./out/make/*
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ matrix.os }}-${{ matrix.arch }}.zip
+          path: |
+            ${{ matrix.os }}-${{ matrix.arch }}.exe
+            ${{ matrix.os }}-${{ matrix.arch }}.zip
   release:
     needs: build
     runs-on: ubuntu-latest
