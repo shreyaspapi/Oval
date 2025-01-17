@@ -1,11 +1,14 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+
+import os from 'os';
 
 const config: ForgeConfig = {
 	packagerConfig: {
@@ -19,17 +22,39 @@ const config: ForgeConfig = {
 					entitlements: 'entitlements.plist'
 				};
 			}
-		},
-		osxNotarize: {
-			appleId: process.env.APPLE_ID,
-			appleIdPassword: process.env.APPLE_PASSWORD,
-			teamId: process.env.APPLE_TEAM_ID
 		}
+		// osxNotarize: {
+		// 	appleId: process.env.APPLE_ID,
+		// 	appleIdPassword: process.env.APPLE_PASSWORD,
+		// 	teamId: process.env.APPLE_TEAM_ID
+		// }
 	},
 	rebuildConfig: {},
 	makers: [
 		new MakerSquirrel({}),
-		new MakerZIP({}, ['darwin']),
+		// new MakerZIP({}, ['darwin']),
+		new MakerDMG(
+			// @ts-expect-error Incorrect TS typings (https://github.com/electron/forge/issues/3712)
+			{
+				icon: 'public/assets/icon.icns',
+				background: 'public/assets/dmg-background.png',
+				format: 'ULFO',
+				contents: [
+					{
+						x: 225,
+						y: 250,
+						type: 'file',
+						path: `${process.cwd()}/out/Open WebUI-darwin-${os.arch()}/Open WebUI.app`
+					},
+					{
+						x: 400,
+						y: 240,
+						type: 'link',
+						path: '/Applications'
+					}
+				]
+			}
+		),
 		new MakerRpm({}),
 		new MakerDeb({})
 	],
