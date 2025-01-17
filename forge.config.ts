@@ -12,10 +12,27 @@ const config: ForgeConfig = {
 		executableName: 'open-webui',
 		asar: true,
 		icon: 'public/assets/icon.png',
-		extraResource: ['public/assets', 'resources']
+		extraResource: ['public/assets', 'resources'],
+		osxSign: {
+			optionsForFile: (filePath) => {
+				return {
+					entitlements: 'entitlements.plist'
+				};
+			}
+		},
+		osxNotarize: {
+			appleId: process.env.APPLE_ID,
+			appleIdPassword: process.env.APPLE_PASSWORD,
+			teamId: process.env.APPLE_TEAM_ID
+		}
 	},
 	rebuildConfig: {},
-	makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
+	makers: [
+		new MakerSquirrel({}),
+		new MakerZIP({}, ['darwin']),
+		new MakerRpm({}),
+		new MakerDeb({})
+	],
 	plugins: [
 		new VitePlugin({
 			// `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
