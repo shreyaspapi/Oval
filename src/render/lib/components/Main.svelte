@@ -89,7 +89,7 @@
 
 		<div class="flex-1 w-full flex justify-center relative">
 			{#if $installStatus === false}
-				<div class="m-auto flex flex-col justify-center text-center">
+				<div class="m-auto flex flex-col justify-center text-center max-w-2xl w-full">
 					{#if mounted}
 						<div
 							class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
@@ -168,7 +168,7 @@
 				</div>
 			{:else if $installStatus === true}
 				<div class="flex-1 w-full flex justify-center relative">
-					<div class="m-auto">
+					<div class="m-auto max-w-2xl w-full">
 						<div class="flex flex-col gap-3 text-center">
 							<Spinner className="size-5" />
 

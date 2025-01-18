@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { Toaster, toast } from 'svelte-sonner';
+
 	import { onMount } from 'svelte';
 	import { installStatus, serverStatus, serverStartedAt, serverLogs } from './lib/stores';
 
@@ -61,3 +63,9 @@
 <main class="w-screen h-screen bg-gray-900">
 	<Main />
 </main>
+
+<Toaster
+	theme={window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'}
+	richColors
+	position="top-center"
+/>

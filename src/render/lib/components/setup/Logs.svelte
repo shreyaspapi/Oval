@@ -1,16 +1,26 @@
 <script lang="ts">
+	import { toast } from 'svelte-sonner';
 	import Tooltip from '../common/Tooltip.svelte';
+	import { copyToClipboard } from '../../utils';
 
 	export let show;
 	export let logs = [];
 </script>
 
 {#if show}
-	<div class="relative max-w-full px-3">
+	<div class="relative max-w-full w-full px-3">
 		{#if logs.length > 0}
 			<div class="absolute top-0 right-0 p-1 bg-transparent text-xs font-mono">
 				<Tooltip content="Copy">
-					<button class="text-xs cursor-pointer" on:click={() => (logs = [])}>
+					<button
+						class="text-xs cursor-pointer"
+						type="button"
+						on:click={async () => {
+							await copyToClipboard(logs.join('\n'));
+
+							toast.success('Logs copied to clipboard');
+						}}
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							fill="none"
@@ -31,10 +41,12 @@
 		{/if}
 
 		<div
-			class="text-xs font-mono text-left max-h-40 overflow-y-auto max-w-2xl w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
+			class="text-xs font-mono text-left max-h-40 overflow-auto max-w-full w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
 		>
 			{#each logs.reverse() as log, idx}
-				<div class="text-xs font-mono">{log}</div>
+				<div class="text-xs font-mono whitespace-pre-wrap text-wrap max-w-full w-full">
+					{log}
+				</div>
 			{/each}
 		</div>
 	</div>
