@@ -4,6 +4,7 @@
 
 	import { installStatus, serverStatus, serverStartedAt, serverLogs } from '../stores';
 
+	import Logs from './setup/Logs.svelte';
 	import Spinner from './common/Spinner.svelte';
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
 
@@ -105,15 +106,7 @@
 						</div>
 					{/if}
 
-					{#if showLogs}
-						<div
-							class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
-						>
-							{#each $serverLogs.reverse() as log, idx}
-								<div class="text-xs font-mono">{log}</div>
-							{/each}
-						</div>
-					{/if}
+					<Logs show={showLogs} logs={$serverLogs} />
 				</div>
 
 				<div class="absolute bottom-0 pb-10">
@@ -134,6 +127,14 @@
 										This might take a few minutes, We’ll notify you when it’s
 										ready.
 									</div>
+
+									{#if $serverLogs.length > 0}
+										<div
+											class="text-[0.5rem] text-gray-500 font-mono text-center line-clamp-1 px-10"
+										>
+											{$serverLogs.at(-1)}
+										</div>
+									{/if}
 								</div>
 							{:else if mounted}
 								<button
@@ -185,15 +186,7 @@
 								{/if}
 							{/if}
 
-							{#if showLogs}
-								<div
-									class="text-xs font-mono text-left max-h-60 overflow-y-auto max-w-2xl w-full flex flex-col-reverse scrollbar-hidden no-drag-region"
-								>
-									{#each $serverLogs.reverse() as log, idx}
-										<div class="text-xs font-mono">{log}</div>
-									{/each}
-								</div>
-							{/if}
+							<Logs show={showLogs} logs={$serverLogs} />
 						</div>
 					</div>
 				</div>
