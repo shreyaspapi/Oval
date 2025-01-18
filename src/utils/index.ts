@@ -394,7 +394,11 @@ const serverPIDs: Set<number> = new Set();
 /**
  * Spawn the Open-WebUI server process.
  */
-export async function startServer(installationPath?: string, port?: number): Promise<string> {
+export async function startServer(
+	installationPath?: string,
+	expose = false,
+	port = 8080
+): Promise<string> {
 	installationPath = path.normalize(installationPath || getBundledPythonInstallationPath());
 
 	if (!(await validateInstallation(installationPath))) {
@@ -416,14 +420,14 @@ export async function startServer(installationPath?: string, port?: number): Pro
 		log.error('Failed to execute Python binary', error);
 	}
 
+	const host = expose ? '0.0.0.0' : '127.0.0.1';
 
 	// Windows HATES Typer-CLI used to create the CLI for Open-WebUI
 	// So we have to manually create the command to start the server
 	let startCommand =
 		process.platform === 'win32'
-			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "0.0.0.0" --forwarded-allow-ips '*'`
-			: `source "${installationPath}/bin/activate" && open-webui serve`;
-
+			? `"${installationPath}\\Scripts\\activate.bat" && uvicorn open_webui.main:app --host "${host}" --forwarded-allow-ips '*'`
+			: `source "${installationPath}/bin/activate" && open-webui serve --host "${host}"`;
 
 	if (process.platform === 'win32') {
 		process.env.FROM_INIT_PY = 'true';
@@ -479,7 +483,9 @@ export async function startServer(installationPath?: string, port?: number): Pro
 				serverCrashed = true;
 				if (!detectedURL) {
 					reject(
-						new Error(`Process exited unexpectedly with code ${code}. No server URL detected.`)
+						new Error(
+							`Process exited unexpectedly with code ${code}. No server URL detected.`
+						)
 					);
 				}
 			});

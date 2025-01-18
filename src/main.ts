@@ -71,7 +71,9 @@ if (!gotTheLock) {
 		if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
 			mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
 		} else {
-			mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+			mainWindow.loadFile(
+				path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
+			);
 		}
 	};
 
@@ -99,34 +101,34 @@ if (!gotTheLock) {
 
 			...(SERVER_STATUS === 'started'
 				? [
-					{
-						label: 'Stop Server',
-						click: async () => {
-							await stopAllServers();
-							SERVER_STATUS = 'stopped';
-							mainWindow.webContents.send('main:data', {
-								type: 'server:status',
-								data: SERVER_STATUS
-							});
-							updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
-						}
-					}
-				]
-				: SERVER_STATUS === 'starting'
-					? [
 						{
-							label: 'Starting Server...',
-							enabled: false
-						}
-					]
-					: [
-						{
-							label: 'Start Server',
+							label: 'Stop Server',
 							click: async () => {
-								await startServerHandler();
+								await stopAllServers();
+								SERVER_STATUS = 'stopped';
+								mainWindow.webContents.send('main:data', {
+									type: 'server:status',
+									data: SERVER_STATUS
+								});
+								updateTrayMenu('Open WebUI: Stopped', null); // Update tray menu with stopped status
 							}
 						}
-					]),
+					]
+				: SERVER_STATUS === 'starting'
+					? [
+							{
+								label: 'Starting Server...',
+								enabled: false
+							}
+						]
+					: [
+							{
+								label: 'Start Server',
+								click: async () => {
+									await startServerHandler();
+								}
+							}
+						]),
 
 			{
 				type: 'separator'
@@ -180,7 +182,7 @@ if (!gotTheLock) {
 			}
 
 			mainWindow.loadURL(SERVER_URL);
-			mainWindow
+			mainWindow;
 
 			const urlObj = new URL(SERVER_URL);
 			const port = urlObj.port || '8080'; // Fallback to port 8080 if not provided
@@ -213,9 +215,11 @@ if (!gotTheLock) {
 			webPreferences: {
 				preload: path.join(__dirname, 'preload.js')
 			},
-			...(process.platform === 'win32' ? {
-				frame: false
-			} : {}),
+			...(process.platform === 'win32'
+				? {
+						frame: false
+					}
+				: {}),
 			titleBarStyle: process.platform === 'win32' ? 'default' : 'hidden',
 			trafficLightPosition: { x: 10, y: 10 },
 			// expose window controlls in Windows/Linux
@@ -386,8 +390,9 @@ if (!gotTheLock) {
 	ipcMain.handle('renderer:data', async (event, { type, data }) => {
 		console.log('Received data from renderer:', type, data);
 
-		if (type === 'version') {
+		if (type === 'info') {
 			return {
+				platform: process.platform,
 				version: app.getVersion()
 			};
 		}
