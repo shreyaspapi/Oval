@@ -1,26 +1,68 @@
 <script lang="ts">
-  import Versions from './components/Versions.svelte'
-  import electronLogo from './assets/electron.svg'
+    import Spinner from "./lib/components/common/Spinner.svelte";
+    import Landing from "./lib/components/Landing.svelte";
+    import Versions from "./lib/components/Versions.svelte";
 
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+    import splashImage from "./lib/assets/images/splash.png";
+    import { Toaster } from "svelte-sonner";
+
+    const installed = $state(null);
+
+    const ipcHandle = (): void => window.electron.ipcRenderer.send("ping");
 </script>
 
-<img alt="logo" class="logo" src={electronLogo} />
-<div class="creator">Powered by electron-vite</div>
-<div class="text">
-  Build an Electron app with
-  <span class="svelte">Svelte</span>
-  and
-  <span class="ts">TypeScript</span>
-</div>
-<p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
-<div class="actions">
-  <div class="action">
-    <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">Documentation</a>
-  </div>
-  <div class="action">
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions a11y-missing-attribute-->
-    <a target="_blank" rel="noreferrer" on:click={ipcHandle}>Send IPC</a>
-  </div>
-</div>
-<Versions />
+<main class="w-screen h-screen bg-gray-900">
+    {#if installed === null}
+        <div
+            class="flex flex-row w-full h-full relative text-gray-850 dark:text-gray-100 drag-region"
+        >
+            <div class="flex-1 w-full flex justify-center relative">
+                <div class="m-auto">
+                    <img
+                        src={splashImage}
+                        class="size-18 rounded-full dark:invert"
+                        alt="logo"
+                    />
+                </div>
+            </div>
+        </div>
+    {:else if installed === false}
+        <Landing />
+    {:else}
+        <div class="flex-1 w-full flex justify-center relative">
+            <div class="m-auto max-w-2xl w-full">
+                <div class="flex flex-col gap-3 text-center">
+                    <Spinner className="size-5" />
+
+                    <div class=" font-secondary xl:text-lg">
+                        Launching Open WebUI...
+                    </div>
+
+                    <Versions />
+
+                    <!-- {#if $serverStartedAt}
+                    {#if currentTime - $serverStartedAt > 10000}
+                        <div
+                            class=" font-default text-xs"
+                            in:fly={{ duration: 500, y: 10 }}
+                        >
+                            If it's your first time, it might take a few minutes
+                            to start.
+                        </div>
+                    {/if}
+                {/if}
+
+                <Logs show={showLogs} logs={$serverLogs} /> -->
+                </div>
+            </div>
+        </div>
+    {/if}
+</main>
+
+<Toaster
+    theme={window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"}
+    richColors
+    position="top-center"
+/>
