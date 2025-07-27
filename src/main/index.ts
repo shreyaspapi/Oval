@@ -32,8 +32,8 @@ import {
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
-let SERVER_URL = null;
-let SERVER_STATUS = null;
+let SERVER_URL: string | null = null;
+let SERVER_STATUS: string | null = null;
 
 function createWindow(): void {
     // Create the browser window.
@@ -122,7 +122,7 @@ function createWindow(): void {
             label: "Quit Open WebUI",
             accelerator: "CommandOrControl+Q",
             click: async () => {
-                await stopAllServers();
+                await stopServerHandler(); // Stop the server before quitting
                 app.isQuiting = true; // Mark as quitting
                 app.quit(); // Quit the application
             },
@@ -176,13 +176,7 @@ const updateTrayMenu = (status: string, url: string | null) => {
                   {
                       label: "Stop Server",
                       click: async () => {
-                          await stopAllServers();
-                          SERVER_STATUS = "stopped";
-                          mainWindow?.webContents.send("main:data", {
-                              type: "server:status",
-                              data: SERVER_STATUS,
-                          });
-                          updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
+                          await stopServerHandler();
                       },
                   },
               ]
@@ -197,7 +191,7 @@ const updateTrayMenu = (status: string, url: string | null) => {
                     {
                         label: "Start Server",
                         click: async () => {
-                            await startServer();
+                            await startServerHandler();
                         },
                     },
                 ]),
@@ -229,6 +223,65 @@ const updateTrayMenu = (status: string, url: string | null) => {
 
     const trayMenu = Menu.buildFromTemplate(trayMenuTemplate);
     tray?.setContextMenu(trayMenu);
+};
+
+const startServerHandler = async () => {
+    SERVER_STATUS = "starting";
+    mainWindow?.webContents.send("main:data", {
+        type: "server:status",
+        data: SERVER_STATUS,
+    });
+    updateTrayMenu("Open WebUI: Starting...", null);
+
+    try {
+        SERVER_URL = await startServer();
+        // SERVER_URL = 'http://localhost:5050';
+
+        SERVER_STATUS = "started";
+        mainWindow?.webContents.send("main:data", {
+            type: "server:status",
+            data: SERVER_STATUS,
+        });
+
+        // // Load the server URL in the main window
+        // if (SERVER_URL.startsWith("http://0.0.0.0")) {
+        //     SERVER_URL = SERVER_URL.replace(
+        //         "http://0.0.0.0",
+        //         "http://localhost"
+        //     );
+        // }
+        // mainWindow.loadURL(SERVER_URL);
+
+        const urlObj = new URL(SERVER_URL);
+        const port = urlObj.port || "8080"; // Fallback to port 8080 if not provided
+        updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
+    } catch (error) {
+        console.error("Failed to start server:", error);
+        SERVER_STATUS = "failed";
+        mainWindow?.webContents.send("main:data", {
+            type: "server:status",
+            data: SERVER_STATUS,
+        });
+
+        mainWindow?.webContents.send(
+            "main:log",
+            `Failed to start server: ${error}`
+        );
+        updateTrayMenu("Open WebUI: Failed to Start", null); // Update tray menu with failure status
+    }
+};
+
+const stopServerHandler = async () => {
+    await stopAllServers();
+
+    SERVER_STATUS = "stopped";
+
+    mainWindow?.webContents.send("main:data", {
+        type: "status:server",
+        data: SERVER_STATUS,
+    });
+
+    updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
 };
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -315,11 +368,11 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("server:start", async (event) => {
-            await startServer();
+            await startServerHandler();
         });
 
         ipcMain.handle("server:stop", async (event) => {
-            await stopAllServers();
+            await stopServerHandler();
         });
 
         ipcMain.handle("status:server", async (event) => {
