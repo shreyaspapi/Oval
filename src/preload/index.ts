@@ -44,6 +44,16 @@ const api = {
         return await ipcRenderer.invoke("renderer:data", { type, data });
     },
 
+    installPython: async () => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        await ipcRenderer.invoke("install:python");
+    },
+
     installPackage: async () => {
         if (!isLocalSource()) {
             throw new Error(
@@ -51,21 +61,15 @@ const api = {
             );
         }
 
-        await ipcRenderer.invoke("install");
+        await ipcRenderer.invoke("install:package");
     },
 
-    getInstallStatus: async () => {
-        return await ipcRenderer.invoke("install:status");
+    getPythonStatus: async () => {
+        return await ipcRenderer.invoke("status:python");
     },
 
-    removePackage: async () => {
-        if (!isLocalSource()) {
-            throw new Error(
-                "Access restricted: This operation is only allowed in a local environment."
-            );
-        }
-
-        await ipcRenderer.invoke("remove");
+    getPackageStatus: async () => {
+        return await ipcRenderer.invoke("status:package");
     },
 
     getServerStatus: async () => {
@@ -75,7 +79,7 @@ const api = {
             );
         }
 
-        return await ipcRenderer.invoke("server:status");
+        return await ipcRenderer.invoke("status:server");
     },
 
     startServer: async () => {
@@ -101,10 +105,6 @@ const api = {
     getServerUrl: async () => {
         return await ipcRenderer.invoke("server:url");
     },
-
-    notification: async (title: string, body: string) => {
-        await ipcRenderer.invoke("notification", { title, body });
-    },
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -113,7 +113,7 @@ const api = {
 if (process.contextIsolated) {
     try {
         contextBridge.exposeInMainWorld("electron", electronAPI);
-        contextBridge.exposeInMainWorld("api", api);
+        contextBridge.exposeInMainWorld("electronAPI", api);
     } catch (error) {
         console.error(error);
     }
@@ -121,5 +121,5 @@ if (process.contextIsolated) {
     // @ts-ignore (define in dts)
     window.electron = electronAPI;
     // @ts-ignore (define in dts)
-    window.api = api;
+    window.electronAPI = api;
 }

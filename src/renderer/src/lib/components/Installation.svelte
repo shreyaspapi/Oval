@@ -17,8 +17,8 @@
 
     const continueHandler = async () => {
         if (window?.electronAPI) {
-            window.electronAPI.installPackage();
-            installing = true;
+            console.log(await window.electronAPI.getPythonStatus());
+            // installing = true;
         }
     };
 
@@ -37,7 +37,7 @@
 <div
     class="flex flex-row w-full h-full relative text-gray-850 dark:text-gray-100 p-1"
 >
-    <div class="fixed right-0 m-10 z-50">
+    <div class="fixed right-0 my-5 mx-6 z-50">
         <div class="flex space-x-2">
             <button
                 class=" self-center cursor-pointer outline-none"
