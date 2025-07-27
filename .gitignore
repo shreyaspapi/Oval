@@ -98,3 +98,6 @@ resources/python.tar.gz
 
 .webui_secret_key
 _old
+
+build
+dist

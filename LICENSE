@@ -1,0 +1,50 @@
+# Open WebUI Sustainable Use License 1.0
+
+Copyright (c) 2025 Timothy Jaeryang Baek (Open WebUI)
+All rights reserved.
+
+1. Definitions
+
+For purposes of this License, "Software" refers to all code, documentation, interfaces, assets, and materials provided in this repository, in whole or in part, whether in source code or object code form, and any modified versions or derivative works thereof. “Licensor” means the entity that provides this License for the Software, as identified in the copyright notice, documentation, or otherwise designated in connection with the Software. "You" refers to any individual or entity exercising rights under this License.
+
+2. Acceptance
+
+By using, copying, modifying, or distributing the Software, you agree to all terms of this license.
+
+3. Grant of Rights
+
+Subject to the terms and conditions set forth herein, you are hereby granted a non-exclusive, non-transferable, worldwide, royalty-free right to use and modify the Software exclusively for your own personal, non-commercial use, or for activities undertaken solely for your own internal business operations. You may prepare derivative works based upon the Software, provided your use remains strictly within the intended bounds of internal, non-commercial, or personal application.
+
+Any distribution of the Software or any part thereof, including derivative works, is permitted only if made accessible to others without charge and solely for non-commercial purposes. If you distribute the Software or any derivative works, you must do so only under the terms of this License. You are not permitted to sublicense or relicense the Software or any derivative work under any other license or terms, whether open source or otherwise, except with the prior written authorization of the Licensor.
+
+Any use, reproduction, modification, distribution, or making available of the Software or derivative works for commercial advantage or monetary compensation, including but not limited to business-to-business sales, resale, sublicensing, or inclusion in paid services, requires the prior written authorization of the Licensor. If you are uncertain whether your use qualifies as non-commercial or internal business use, you must contact the Licensor.
+
+4. Branding and Attribution
+
+You shall not alter, remove, obscure, replace, or otherwise modify any branding or attribution identifying "Open WebUI," including but not limited to names, logos, graphical marks, or textual identifiers, present in the Software or its interfaces, whether in original or modified form. All such branding and attribution must be retained and presented exactly as included in the Software and in every instance and manner originally provided by the Licensor.
+
+Any copy, deployment, distribution, derivative work, or integration of the Software must preserve all original "Open WebUI" branding and attribution, unless prior written permission has been obtained from the Licensor, or where an express waiver or enterprise agreement has been executed by both parties.
+
+5. Contributions
+
+If you submit or propose any contributions (including code, documentation, or other materials) for inclusion in the Software, you hereby agree to and are bound by the Contributor License Agreement as presented in this repository’s documentation at the time of your contribution.
+
+6. Termination
+
+Any violation of the terms and conditions of this License, including but not limited to unauthorized commercial use or modification of branding or attribution, results in the automatic termination of all rights granted to you under this License, effective immediately upon such violation.
+
+However, if you cure the violation within thirty (30) days of becoming aware of such violation, or within thirty (30) days of receiving written notice from the Licensor describing the breach (whichever is earlier), your license rights under this License will be automatically reinstated as of the cure date. If you fail to cure the violation within that period, your license remains terminated, and you must immediately cease all use, reproduction, modification, and distribution of the Software and any derivative works.
+
+For the avoidance of doubt, no rights of use, distribution, or modification exist during any period of breach until cured in accordance with this section.
+
+7. No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE Licensor(S), AUTHOR(S), OR CONTRIBUTOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE, DISTRIBUTION, OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. Patent Grant  
+
+The Licensor grants you a license, under any patent claims they can license or become able to license, to make, use, modify, and distribute the Software as permitted under this License. This grant is strictly subject to the limitations and conditions stated herein, and does not extend to any patent claims infringed by your modifications or additions to the Software. If you or your organization make any written claim that the Software infringes or contributes to the infringement of any patent, your rights under this patent license terminate immediately. If your organization makes such a claim, your patent license terminates immediately for all use or work on its behalf.
+
+9. Miscellaneous
+
+This License constitutes the entire agreement between you and the Licensor concerning the Software. Any waiver or amendment of any term or condition of this License shall be effective only if made in writing and signed by the Licensor. If any provision of this License is held to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.
