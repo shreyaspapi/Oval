@@ -6,13 +6,14 @@
     import Spinner from "./common/Spinner.svelte";
     import ArrowRightCircle from "./icons/ArrowRightCircle.svelte";
 
-    import backgroundImage from "../assets/images/green.jpg";
+    import logoImage from "../assets/images/splash.png";
+    import backgroundImage from "../assets/images/galaxy.jpg";
 
-    let mounted = false;
+    let mounted = $state(false);
     let currentTime = Date.now();
 
-    let showLogs = false;
-    let installing = false;
+    let showLogs = $state(false);
+    let installing = $state(false);
 
     const continueHandler = async () => {
         if (window?.electronAPI) {
@@ -22,6 +23,7 @@
     };
 
     onMount(() => {
+        mounted = true;
         const interval = setInterval(() => {
             currentTime = Date.now();
         }, 1000); // Update every second
@@ -42,7 +44,7 @@
                 onclick={() => (showLogs = !showLogs)}
             >
                 <img
-                    src="./lib/assets/images/splash.png"
+                    src={logoImage}
                     class=" w-6 rounded-full dark:invert"
                     alt="logo"
                 />
@@ -60,7 +62,7 @@
     ></div>
 
     <div
-        class="w-full h-full absolute top-0 left-0 backdrop-blur-sm bg-white/50 dark:bg-black/50"
+        class="w-full h-full absolute top-0 left-0 backdrop-blur-sm bg-white dark:bg-black opacity-50"
     ></div>
 
     <div class=" absolute w-full top-0 left-0 right-0 z-10">
@@ -73,21 +75,23 @@
         >
             {#if mounted}
                 <div
-                    class=" font-medium text-5xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
+                    class=" font-medium text-5xl md:text-6xl xl:text-7xl text-center mb-4 xl:mb-5 font-secondary"
                     in:fly={{ duration: 750, y: 20 }}
                 >
                     Open WebUI
                 </div>
 
                 <div
-                    class=" text-sm xl:text-lg text-center mb-3"
+                    class=" text-sm xl:text-base text-center mb-3"
                     in:fly={{ delay: 250, duration: 750, y: 10 }}
                 >
-                    To install Open WebUI, click Continue.
+                    To get started with Open WebUI, click Continue.
                 </div>
             {/if}
 
-            <Logs show={showLogs} />
+            {#if showLogs}
+                <Logs />
+            {/if}
         </div>
 
         <div class="absolute bottom-0 pb-10">
@@ -146,19 +150,16 @@
                             {`Continue`}
                         </div>
 
-                        <button
+                        <!-- <button
                             class="text-xs mt-3 text-gray-500 cursor-pointer"
                             in:fly={{
                                 delay: 500,
                                 duration: 750,
                                 y: 10,
                             }}
-                            onclick={() => {
-                                console.log("hi");
-                            }}
                         >
                             To connect to an existing server, click here.
-                        </button>
+                        </button> -->
                     {/if}
                 </div>
             </div>

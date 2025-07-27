@@ -5,6 +5,7 @@ import eslintPluginSvelte from 'eslint-plugin-svelte'
 export default tseslint.config(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
   tseslint.configs.recommended,
+  indent: "off",
   eslintPluginSvelte.configs['flat/recommended'],
   {
     files: ['**/*.svelte'],

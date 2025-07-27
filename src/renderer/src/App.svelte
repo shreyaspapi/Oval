@@ -6,7 +6,7 @@
     import splashImage from "./lib/assets/images/splash.png";
     import { Toaster } from "svelte-sonner";
 
-    const installed = $state(null);
+    const installed = $state(false);
 
     const ipcHandle = (): void => window.electron.ipcRenderer.send("ping");
 </script>

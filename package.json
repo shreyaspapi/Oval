@@ -26,10 +26,12 @@
         "@tailwindcss/vite": "^4.1.11",
         "bits-ui": "^2.8.13",
         "dompurify": "^3.2.6",
+        "electron-log": "^5.4.1",
         "electron-updater": "^6.3.9",
         "marked": "^16.1.1",
         "svelte-sonner": "^1.0.5",
         "tailwindcss": "^4.1.11",
+        "tar": "^7.4.3",
         "tippy.js": "^6.3.7"
     },
     "devDependencies": {
