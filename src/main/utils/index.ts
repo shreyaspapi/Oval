@@ -340,16 +340,15 @@ export const installPython = async (
 
     // Get the path to the installed Python binary
     if (isPythonInstalled(installationPath)) {
-        // const pythonPath = getPythonPath(installationPath);
-        // // install uv using pip
+        const pythonPath = getPythonPath(installationPath);
 
-        // execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
-        //     encoding: "utf-8",
-        //     env: {
-        //         ...process.env,
-        //     },
-        // });
-        // console.log("Successfully installed uv package");
+        execFileSync(pythonPath, ["-m", "uv", "pip", "install", "uv"], {
+            encoding: "utf-8",
+            env: {
+                ...process.env,
+            },
+        });
+        console.log("Successfully installed uv package");
 
         return true; // Return true to indicate success
     } else {
@@ -504,6 +503,7 @@ export const installPackage = (
             pythonPath,
             [
                 "-m",
+                "uv",
                 "pip",
                 "install",
                 ...(version
@@ -558,7 +558,7 @@ export const isPackageInstalled = (packageName: string): boolean => {
         // Execute the Python binary to print the version
         const info = execFileSync(
             pythonPath,
-            ["-m", "pip", "show", packageName],
+            ["-m", "uv", "pip", "show", packageName],
             {
                 encoding: "utf-8",
                 env: {
@@ -607,24 +607,9 @@ export const startServer = async (
 
     const openWebUIPath = path.join(path.dirname(pythonPath), "open-webui");
 
-    let commandPath;
     let commandArgs: string[];
-    if (process.platform === "win32") {
-        commandPath = pythonPath;
-        commandArgs = [
-            "-m",
-            "uvicorn",
-            "open_webui.main:app",
-            "--host",
-            host,
-            "--forwarded-allow-ips",
-            "*",
-        ];
-        process.env.FROM_INIT_PY = "true";
-    } else {
-        commandPath = openWebUIPath;
-        commandArgs = ["serve", "--host", host];
-    }
+    commandArgs = ["-m", "uv", "run", "open-webui", "serve", "--host", host];
+
     const dataDir = path.join(app.getPath("userData"), "data");
     const secretKey = getSecretKey();
     if (!fs.existsSync(dataDir)) {
@@ -652,7 +637,7 @@ export const startServer = async (
         pythonPath,
         commandArgs.join(" ")
     );
-    const childProcess = spawn(commandPath, commandArgs, {
+    const childProcess = spawn(pythonPath, commandArgs, {
         detached: process.platform !== "win32",
         stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env },

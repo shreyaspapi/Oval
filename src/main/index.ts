@@ -443,7 +443,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("status:python", async (event) => {
-            return await isPythonInstalled();
+            return (await isPythonInstalled()) && (await isUvInstalled());
         });
 
         ipcMain.handle("status:package", async (event) => {

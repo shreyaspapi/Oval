@@ -28,24 +28,10 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: 22
-                  cache: 'npm'
+                  cache: "npm"
                   architecture: ${{ matrix.arch }}
             - name: Install Dependencies
               run: npm ci
-            - name: Setup Miniconda
-              uses: conda-incubator/setup-miniconda@v3
-              with:
-                  auto-activate-base: true
-            - name: Install conda-lock and conda-pack
-              shell: bash -l {0}
-              run: |
-                  conda install -n base -c conda-forge conda-lock conda-pack
-            - name: Create Packaged Python
-              shell: bash -l {0}
-              run: |
-                  conda activate base
-                  npm run create:python-tar
-
             - name: Install Apple codesigning certificate
               if: ${{ matrix.os == 'macos-latest' }}
               env:
@@ -67,12 +53,20 @@ jobs:
                   # import certificate to keychain
                   security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
                   security list-keychain -d user -s $KEYCHAIN_PATH
+
             - name: Create Builds
+              if: ${{ matrix.os == 'windows-latest' }}
+              run: npm run build:win
+            - name: Create Builds
+              if: ${{ matrix.os == 'macos-latest' }}
               env:
                   APPLE_ID: ${{ secrets.APPLE_ID }}
                   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-              run: npm run make
+              run: npm run build:mac
+            - name: Create Builds
+              if: ${{ matrix.os == 'ubuntu-latest' }}
+              run: npm run build:linux
             - name: Find and Rename Windows Executable
               if: ${{ matrix.os == 'windows-latest' }}
               shell: pwsh
