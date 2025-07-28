@@ -46,10 +46,6 @@
                 </div>
             </div>
 
-            <div class="text-xs">
-                <Versions />
-            </div>
-
             <hr class=" border-gray-100 dark:border-gray-850" />
 
             <div class="flex space-x-1">
@@ -99,6 +95,10 @@
                     >
                     All rights reserved.
                 </div>
+            </div>
+
+            <div class="text-xs text-transparent">
+                <Versions />
             </div>
         </div>
     </div>
