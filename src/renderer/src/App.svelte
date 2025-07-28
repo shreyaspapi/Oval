@@ -5,6 +5,7 @@
     import Controls from "./lib/components/Controls.svelte";
     import Installation from "./lib/components/Installation.svelte";
     import Loading from "./lib/components/Loading.svelte";
+    import { info } from "./lib/stores";
 
     let installed = $state(false);
 
@@ -19,7 +20,7 @@
             }
         }
 
-        window.addEventListener("message", (event) => {
+        window.addEventListener("message", async (event) => {
             console.log("Received message from main process:", event);
             if (event.data?.type === "electron:notification") {
                 if (event.data?.data?.type) {
@@ -33,6 +34,10 @@
 
             if (event.data?.type === "electron:reload") {
                 window.location.reload();
+            }
+
+            if (event.data?.type === "electron:server") {
+                info.set(await window.electronAPI.getServerInfo());
             }
         });
     });

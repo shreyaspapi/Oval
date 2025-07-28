@@ -289,11 +289,7 @@ const startServerHandler = async () => {
             updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
 
             mainWindow?.webContents.send("main:data", {
-                type: "notification",
-                data: {
-                    type: "info",
-                    message: `Open WebUI is running at ${SERVER_URL}`,
-                },
+                type: "server",
             });
         });
 

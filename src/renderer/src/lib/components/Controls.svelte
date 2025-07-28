@@ -5,8 +5,7 @@
     import logoImage from "../assets/images/splash.png";
     import General from "./Controls/General.svelte";
     import About from "./Controls/About.svelte";
-
-    let info = $state(null);
+    import { info } from "../stores";
 
     let startTime = $state(null);
     let currentTime = $state(null);
@@ -14,18 +13,18 @@
     let selectedTab = $state("general");
 
     onMount(async () => {
-        info = await window.electronAPI.getServerInfo();
-        console.log("Server started successfully:", info);
+        info.set(await window.electronAPI.getServerInfo());
 
         startTime = Date.now();
         currentTime = Date.now();
+
         setInterval(() => {
             currentTime = Date.now();
         }, 1000);
     });
 </script>
 
-{#if info?.reachable ?? false}
+{#if $info?.reachable ?? false}
     <div
         class="flex flex-col w-full h-full relative text-gray-850 dark:text-gray-100"
     >
@@ -117,7 +116,7 @@
                 class="flex-1 pt-1 sm:mt-0 overflow-y-scroll pr-1 scrollbar-hidden"
             >
                 {#if selectedTab === "general"}
-                    <General {info} />
+                    <General info={$info} />
                 {:else if selectedTab === "about"}
                     <About />
                 {/if}
