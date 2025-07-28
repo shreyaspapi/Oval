@@ -93,13 +93,13 @@ function createWindow(show = true): void {
     }
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
-        shell.openExternal(details.url);
+        openUrl(details.url);
         return { action: "deny" };
     });
 
     globalShortcut.register("Alt+CommandOrControl+O", () => {
         if (SERVER_URL) {
-            shell.openExternal(SERVER_URL);
+            openUrl(SERVER_URL);
         } else {
             mainWindow?.show();
 
@@ -169,6 +169,19 @@ function createWindow(show = true): void {
     });
 }
 
+const openUrl = (url: string) => {
+    if (!url) {
+        throw new Error("No URL provided to open in browser.");
+    }
+
+    console.log("Opening URL in browser:", url);
+    if (url.startsWith("http://0.0.0.0")) {
+        url = url.replace("http://0.0.0.0", "http://localhost");
+    }
+
+    shell.openExternal(url);
+};
+
 const updateTrayMenu = (status: string, url: string | null) => {
     const trayMenuTemplate = [
         {
@@ -185,7 +198,7 @@ const updateTrayMenu = (status: string, url: string | null) => {
             enabled: !!url,
             click: () => {
                 if (url) {
-                    shell.openExternal(url); // Open the URL in the default browser
+                    openUrl(url); // Open the URL in the default browser
                 }
             },
         },
@@ -498,7 +511,7 @@ if (!gotTheLock) {
                 url = url.replace("http://0.0.0.0", "http://localhost");
             }
 
-            await shell.openExternal(url);
+            await openUrl(url);
         });
 
         ipcMain.handle("notification", async (event, { title, body }) => {
