@@ -770,3 +770,30 @@ export const checkUrlAndOpen = async (
         console.error("Error in URL polling:", error);
     });
 };
+
+export const getConfig = async (): Promise<Record<string, any>> => {
+    const configPath = path.join(getUserDataPath(), "config.json");
+    try {
+        if (fs.existsSync(configPath)) {
+            const data = await fs.promises.readFile(configPath, "utf8");
+            return JSON.parse(data);
+        }
+        return {};
+    } catch (error) {
+        console.error("Error reading config:", error);
+        throw error;
+    }
+};
+
+export const setConfig = async (config: Record<string, any>): Promise<void> => {
+    const configPath = path.join(getUserDataPath(), "config.json");
+    try {
+        await fs.promises.writeFile(
+            configPath,
+            JSON.stringify(config, null, 2)
+        );
+    } catch (error) {
+        console.error("Error writing config:", error);
+        throw error;
+    }
+};

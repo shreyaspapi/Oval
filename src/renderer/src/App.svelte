@@ -6,11 +6,13 @@
     import Installation from "./lib/components/Installation.svelte";
     import Loading from "./lib/components/Loading.svelte";
 
-    import { info } from "./lib/stores";
+    import { info, config } from "./lib/stores";
 
     let installed = $state(false);
 
     onMount(async () => {
+        config.set(await window?.electronAPI?.getConfig());
+
         const pythonStatus = await window?.electronAPI?.getPythonStatus();
         if (pythonStatus) {
             const packageStatus = await window?.electronAPI?.getPackageStatus();

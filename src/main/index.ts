@@ -22,12 +22,14 @@ import trayIconImage from "../../resources/assets/tray.png?asset";
 
 import {
     checkUrlAndOpen,
+    getConfig,
     getServerLog,
     installPackage,
     installPython,
     isPackageInstalled,
     isPythonInstalled,
     isUvInstalled,
+    setConfig,
     startServer,
     stopAllServers,
     uninstallPython,
@@ -460,6 +462,14 @@ if (!gotTheLock) {
 
         ipcMain.handle("status:server", async (event) => {
             return SERVER_STATUS;
+        });
+
+        ipcMain.handle("get:config", async (event) => {
+            return await getConfig();
+        });
+
+        ipcMain.handle("set:config", async (event, config) => {
+            return await setConfig(config);
         });
 
         ipcMain.handle("open:browser", async (event, { url }) => {
