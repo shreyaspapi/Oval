@@ -334,12 +334,6 @@ export const installPython = async (
             encoding: "utf-8",
             env: {
                 ...process.env,
-                ...(os.platform() === "darwin"
-                    ? {
-                          CC: "gcc",
-                          CXX: "g++",
-                      }
-                    : {}),
             },
         });
         console.log("Successfully installed uv package");
@@ -381,12 +375,6 @@ export const isPythonInstalled = (installationPath?: string) => {
             encoding: "utf-8",
             env: {
                 ...process.env,
-                ...(os.platform() === "darwin"
-                    ? {
-                          CC: "gcc",
-                          CXX: "g++",
-                      }
-                    : {}),
             },
         });
         console.log("Installed Python Version:", pythonVersion.trim());
@@ -406,12 +394,6 @@ export const isUvInstalled = (installationPath?: string) => {
             encoding: "utf-8",
             env: {
                 ...process.env,
-                ...(os.platform() === "darwin"
-                    ? {
-                          CC: "gcc",
-                          CXX: "g++",
-                      }
-                    : {}),
             },
         });
 
@@ -519,12 +501,6 @@ export const installPackage = (
             {
                 env: {
                     ...process.env,
-                    ...(os.platform() === "darwin"
-                        ? {
-                              CC: "gcc",
-                              CXX: "g++",
-                          }
-                        : {}),
                 },
             }
         );
@@ -575,12 +551,6 @@ export const isPackageInstalled = (packageName: string): boolean => {
                 encoding: "utf-8",
                 env: {
                     ...process.env,
-                    ...(os.platform() === "darwin"
-                        ? {
-                              CC: "gcc",
-                              CXX: "g++",
-                          }
-                        : {}),
                 },
             }
         );
