@@ -482,9 +482,10 @@ if (!gotTheLock) {
         (async () => {
             if (isPackageInstalled("open-webui")) {
                 try {
+                    updateTrayMenu("Open WebUI: Checking for updates...", null);
                     await installPackage("open-webui");
                 } catch (error) {
-                    console.error("Failed to install package:", error);
+                    console.error("Failed to update package:", error);
                 }
 
                 startServerHandler();
