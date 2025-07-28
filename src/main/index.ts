@@ -455,7 +455,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("status:python", async (event) => {
-            return (await isPythonInstalled()) && (await isUvInstalled());
+            return await isPythonInstalled();
         });
 
         ipcMain.handle("status:package", async (event) => {

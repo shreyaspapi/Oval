@@ -327,16 +327,16 @@ export const installPython = async (
 
     // Get the path to the installed Python binary
     if (isPythonInstalled(installationPath)) {
-        const pythonPath = getPythonPath(installationPath);
-        // install uv using pip
+        // const pythonPath = getPythonPath(installationPath);
+        // // install uv using pip
 
-        execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
-            encoding: "utf-8",
-            env: {
-                ...process.env,
-            },
-        });
-        console.log("Successfully installed uv package");
+        // execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
+        //     encoding: "utf-8",
+        //     env: {
+        //         ...process.env,
+        //     },
+        // });
+        // console.log("Successfully installed uv package");
 
         return true; // Return true to indicate success
     } else {
@@ -491,7 +491,6 @@ export const installPackage = (
             pythonPath,
             [
                 "-m",
-                "uv",
                 "pip",
                 "install",
                 ...(version
@@ -546,7 +545,7 @@ export const isPackageInstalled = (packageName: string): boolean => {
         // Execute the Python binary to print the version
         const info = execFileSync(
             pythonPath,
-            ["-m", "uv", "pip", "show", packageName],
+            ["-m", "pip", "show", packageName],
             {
                 encoding: "utf-8",
                 env: {
@@ -592,30 +591,17 @@ export const startServer = async (
     const pythonPath = getPythonPath();
 
     let commandArgs: string[];
-    if (process.platform === "win32") {
-        commandArgs = [
-            "-m",
-            "uv",
-            "run",
-            "uvicorn",
-            "open_webui.main:app",
-            "--host",
-            host,
-            "--forwarded-allow-ips",
-            "*",
-        ];
-        process.env.FROM_INIT_PY = "true";
-    } else {
-        commandArgs = [
-            "-m",
-            "uv",
-            "run",
-            "open-webui",
-            "serve",
-            "--host",
-            host,
-        ];
-    }
+    commandArgs = [
+        "-m",
+        "uvicorn",
+        "open_webui.main:app",
+        "--host",
+        host,
+        "--forwarded-allow-ips",
+        "*",
+    ];
+    process.env.FROM_INIT_PY = "true";
+
     const dataDir = path.join(app.getPath("userData"), "data");
     const secretKey = getSecretKey();
     if (!fs.existsSync(dataDir)) {
