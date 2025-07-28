@@ -8,7 +8,9 @@
     let { running = $bindable() } = $props();
 
     let info = null;
-    let currentTime = null;
+
+    let startTime = $state(null);
+    let currentTime = $state(null);
 
     onMount(async () => {
         const status = await window.electronAPI.startServer();
@@ -20,6 +22,7 @@
             info = false;
         }
 
+        startTime = Date.now();
         currentTime = Date.now();
         setInterval(() => {
             currentTime = Date.now();
@@ -68,5 +71,5 @@
         </div>
     </div>
 {:else}
-    <Launching {info} {currentTime} />
+    <Launching timeElapsed={currentTime - startTime} />
 {/if}

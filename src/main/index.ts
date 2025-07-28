@@ -349,12 +349,26 @@ if (!gotTheLock) {
                         type: "status:python",
                         data: true,
                     });
+
+                    return true;
                 }
+
+                return false;
             } catch (error) {
                 mainWindow?.webContents.send("main:data", {
                     type: "status:python",
                     data: false,
                 });
+
+                mainWindow?.webContents.send("main:data", {
+                    type: "notification",
+                    data: {
+                        type: "error",
+                        message: error?.message ?? "Something went wrong :/",
+                    },
+                });
+
+                return false;
             }
         });
 

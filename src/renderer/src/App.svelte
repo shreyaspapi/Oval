@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Toaster } from "svelte-sonner";
+    import { toast, Toaster } from "svelte-sonner";
     import { onMount } from "svelte";
 
     import Controls from "./lib/components/Controls.svelte";
@@ -22,6 +22,15 @@
 
         window.addEventListener("message", (event) => {
             console.log("Received message from main process:", event);
+            if (event.data?.type === "electron:notification") {
+                if (event.data?.data?.type) {
+                    toast(event.data.data.message, {
+                        type: event.data?.data?.type,
+                    });
+                } else {
+                    toast(event.data?.data.message);
+                }
+            }
         });
     });
 </script>

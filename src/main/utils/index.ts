@@ -271,11 +271,29 @@ const isPythonDownloaded = () => {
     return fs.existsSync(downloadPath);
 };
 
+const checkInternet = async () => {
+    try {
+        const response = await fetch("https://api.openwebui.com", {
+            method: "GET",
+        });
+        return true;
+    } catch (error) {
+        return false;
+    }
+};
+
 export const installPython = async (
     installationPath?: string
 ): Promise<boolean> => {
     let pythonDownloadPath = getPythonDownloadPath();
     if (!isPythonDownloaded()) {
+        // check if connection is available
+        if (!(await checkInternet())) {
+            throw new Error(
+                "An active internet connection is required to start the installation. Please connect to the internet and try again."
+            );
+        }
+
         await downloadPython((progress, downloaded, total) => {
             console.log(
                 `Downloading Python: ${progress.toFixed(2)}% (${downloaded} of ${total} bytes)`

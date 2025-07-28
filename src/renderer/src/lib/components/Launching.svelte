@@ -12,7 +12,7 @@
     import neomImage from "../assets/images/neom.jpg";
     import { fly } from "svelte/transition";
 
-    let { currentTime, info } = $props();
+    let { timeElapsed } = $props();
 
     let images = [
         galaxyImage,
@@ -81,7 +81,7 @@
                             Launching Open WebUI...
                         </div>
 
-                        {#if currentTime - info?.SERVER_STARTED_AT > 10000}
+                        {#if timeElapsed > 10000}
                             <div
                                 class=" font-default text-xs"
                                 in:fly={{ duration: 500, y: 10 }}
