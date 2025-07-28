@@ -317,6 +317,7 @@ const stopServerHandler = async () => {
         await stopAllServers();
 
         SERVER_STATUS = "stopped";
+        SERVER_REACHABLE = false;
         SERVER_URL = null; // Clear the server URL
 
         mainWindow?.webContents.send("main:data", {
