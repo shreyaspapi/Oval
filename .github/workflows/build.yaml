@@ -97,8 +97,7 @@ jobs:
                   files-folder-filter: exe
             - name: Zip Artifacts for macOS/Linux
               if: ${{ matrix.os != 'windows-latest' }}
-              run: |
-                  7z a -tzip ${{ matrix.os }}-${{ matrix.arch }}.zip ./out/make/*
+              run: zip -r ${{ matrix.os }}-${{ matrix.arch }}.zip ./out/make/
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
               with:
