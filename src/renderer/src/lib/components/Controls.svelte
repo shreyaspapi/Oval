@@ -2,31 +2,20 @@
     import { onMount } from "svelte";
 
     import Launching from "./Launching.svelte";
-    import Versions from "./Versions.svelte";
-
     import logoImage from "../assets/images/splash.png";
     import General from "./Controls/General.svelte";
     import About from "./Controls/About.svelte";
-    import Logs from "./setup/Logs.svelte";
 
     let info = $state(null);
 
     let startTime = $state(null);
     let currentTime = $state(null);
 
-    let visibleTabs = $state(["general", "about"]);
-
     let selectedTab = $state("general");
 
     onMount(async () => {
-        const status = await window.electronAPI.startServer();
-
-        if (status) {
-            info = await window.electronAPI.getServerInfo();
-            console.log("Server started successfully:", info);
-        } else {
-            info = false;
-        }
+        info = await window.electronAPI.getServerInfo();
+        console.log("Server started successfully:", info);
 
         startTime = Date.now();
         currentTime = Date.now();
@@ -36,7 +25,7 @@
     });
 </script>
 
-{#if info}
+{#if info?.reachable ?? false}
     <div
         class="flex flex-col w-full h-full relative text-gray-850 dark:text-gray-100"
     >

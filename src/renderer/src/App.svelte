@@ -30,6 +30,10 @@
                     toast(event.data?.data.message);
                 }
             }
+
+            if (event.data?.type === "electron:reload") {
+                window.location.reload();
+            }
         });
     });
 </script>

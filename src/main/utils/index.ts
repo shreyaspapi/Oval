@@ -8,9 +8,10 @@ import crypto from "crypto";
 
 import * as tar from "tar";
 
-import { app } from "electron";
-import log from "electron-log";
+import { app, shell, Notification } from "electron";
 import { execFileSync, exec, spawn, execSync, execFile } from "child_process";
+
+import log from "electron-log";
 
 export const getAppPath = (): string => {
     let appPath = app.getAppPath();
@@ -713,3 +714,59 @@ function terminateProcessTree(pid: number): void {
 export function getServerLog(pid: number): string[] {
     return serverLogs.get(pid) || [];
 }
+
+// Helper function to check URL availability and auto-open
+export const checkUrlAndOpen = async (
+    url: string,
+    callback: Function = async () => {}
+) => {
+    const maxAttempts = 150; // 5 minutes with 2-second intervals
+    const interval = 2000; // 2 seconds
+    let attempts = 0;
+
+    const checkUrl = async (): Promise<boolean> => {
+        try {
+            const response = await fetch(url, {
+                method: "HEAD",
+                timeout: 5000, // 5 second timeout per request
+            });
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const pollUrl = async () => {
+        while (attempts < maxAttempts) {
+            attempts++;
+            console.log(
+                `Checking URL availability (attempt ${attempts}/${maxAttempts}): ${url}`
+            );
+
+            try {
+                const isAvailable = await checkUrl();
+                if (isAvailable) {
+                    console.log("URL is now available, opening browser...");
+                    await shell.openExternal(url);
+                    await callback(); // Call the provided callback function
+                    return; // Exit the polling loop
+                }
+            } catch (error) {
+                console.log(`Error checking URL: ${error}`);
+            }
+
+            // Wait before next attempt
+            await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+
+        // If we exit the loop without success
+        if (attempts >= maxAttempts) {
+            console.log("URL check timed out after 5 minutes");
+        }
+    };
+
+    // Start polling in the background (don't await)
+    pollUrl().catch((error) => {
+        console.error("Error in URL polling:", error);
+    });
+};

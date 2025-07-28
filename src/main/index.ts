@@ -21,6 +21,7 @@ import icon from "../../resources/icon.png?asset";
 import trayIconImage from "../../resources/assets/tray.png?asset";
 
 import {
+    checkUrlAndOpen,
     getServerLog,
     installPackage,
     installPython,
@@ -39,9 +40,10 @@ let isQuiting = false; // Flag to track if the app is quitting
 
 let SERVER_URL: string | null = null;
 let SERVER_STATUS: string | null = null;
+let SERVER_REACHABLE = false;
 let SERVER_PID: number | null = null;
 
-function createWindow(): void {
+function createWindow(show = true): void {
     // Create the browser window.
     mainWindow = new BrowserWindow({
         width: 700,
@@ -81,9 +83,11 @@ function createWindow(): void {
         mainWindow.webContents.openDevTools();
     }
 
-    mainWindow.on("ready-to-show", () => {
-        mainWindow?.show();
-    });
+    if (show) {
+        mainWindow.on("ready-to-show", () => {
+            mainWindow?.show();
+        });
+    }
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
         shell.openExternal(details.url);
@@ -109,7 +113,7 @@ function createWindow(): void {
             {
                 label: "Uninstall",
                 click: () => {
-                    uninstallPython();
+                    uninstallHandler();
                 },
             },
         ],
@@ -123,14 +127,9 @@ function createWindow(): void {
     const trayMenu = Menu.buildFromTemplate([
         {
             label: "Show Controls",
-            accelerator: "CommandOrControl+Alt+O",
 
             click: () => {
-                if (SERVER_URL) {
-                    shell.openExternal(SERVER_URL);
-                } else {
-                    mainWindow?.show();
-                }
+                mainWindow?.show();
             },
         },
         {
@@ -171,13 +170,8 @@ const updateTrayMenu = (status: string, url: string | null) => {
     const trayMenuTemplate = [
         {
             label: "Show Controls",
-            accelerator: "CommandOrControl+Alt+O",
             click: () => {
-                if (SERVER_URL) {
-                    shell.openExternal(SERVER_URL);
-                } else {
-                    mainWindow?.show();
-                }
+                mainWindow?.show();
             },
         },
         {
@@ -238,16 +232,43 @@ const updateTrayMenu = (status: string, url: string | null) => {
     tray?.setContextMenu(trayMenu);
 };
 
+const uninstallHandler = async () => {
+    try {
+        await uninstallPython();
+
+        // reload the main window to reflect the changes
+        if (mainWindow) {
+            mainWindow.webContents.send("main:data", {
+                type: "reload",
+            });
+        }
+        // Show success notification
+        const notification = new Notification({
+            title: "Open WebUI",
+            body: "Uninstallation successful.",
+        });
+        notification.show();
+    } catch (error) {
+        console.error("Uninstallation failed:", error);
+        // Show error notification
+        const notification = new Notification({
+            title: "Open WebUI",
+            body: `Uninstallation failed: ${error.message}`,
+        });
+        notification.show();
+    }
+};
+
 const startServerHandler = async () => {
     SERVER_STATUS = "starting";
     mainWindow?.webContents.send("main:data", {
         type: "status:server",
         data: SERVER_STATUS,
     });
-    updateTrayMenu("Open WebUI: Starting...", null);
 
     try {
         ({ url: SERVER_URL, pid: SERVER_PID } = await startServer());
+        updateTrayMenu("Open WebUI: Starting...", SERVER_URL);
 
         console.log("Server started successfully:", SERVER_URL, SERVER_PID);
         SERVER_STATUS = "started";
@@ -268,7 +289,27 @@ const startServerHandler = async () => {
 
         const urlObj = new URL(SERVER_URL);
         const port = urlObj.port || "8080"; // Fallback to port 8080 if not provided
-        updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
+
+        checkUrlAndOpen(SERVER_URL, async () => {
+            SERVER_REACHABLE = true;
+
+            // Show system notification
+            const notification = new Notification({
+                title: "Open WebUI",
+                body: "Server is now available and opened in your browser",
+            });
+            notification.show();
+
+            updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
+
+            mainWindow?.webContents.send("main:data", {
+                type: "notification",
+                data: {
+                    type: "info",
+                    message: `Open WebUI is running at ${SERVER_URL}`,
+                },
+            });
+        });
 
         return true; // Indicate success
     } catch (error) {
@@ -430,6 +471,7 @@ if (!gotTheLock) {
                 url: SERVER_URL,
                 status: SERVER_STATUS,
                 pid: SERVER_PID,
+                reachable: SERVER_REACHABLE,
             };
         });
 
@@ -454,7 +496,12 @@ if (!gotTheLock) {
             notification.show();
         });
 
-        createWindow();
+        if (isPackageInstalled("open-webui")) {
+            startServerHandler();
+            createWindow(false);
+        } else {
+            createWindow();
+        }
 
         app.on("activate", function () {
             // On macOS it's common to re-create a window in the app when the

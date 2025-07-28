@@ -58,6 +58,7 @@
                 (await window.electronAPI.getPackageStatus())
             ) {
                 // Notify the user that the installation is complete
+                await window.electronAPI.startServer();
                 await window.electronAPI.notification(
                     "Installation Complete",
                     "Open WebUI is now ready to use."
