@@ -494,6 +494,10 @@ if (!gotTheLock) {
                 throw new Error("No URL provided to open in browser.");
             }
             console.log("Opening URL in browser:", url);
+            if (url.startsWith("http://0.0.0.0")) {
+                url = url.replace("http://0.0.0.0", "http://localhost");
+            }
+
             await shell.openExternal(url);
         });
 

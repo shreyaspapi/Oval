@@ -332,6 +332,15 @@ export const installPython = async (
 
         execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
             encoding: "utf-8",
+            env: {
+                ...process.env,
+                ...(os.platform() === "darwin"
+                    ? {
+                          CC: "gcc",
+                          CXX: "g++",
+                      }
+                    : {}),
+            },
         });
         console.log("Successfully installed uv package");
 
@@ -370,6 +379,15 @@ export const isPythonInstalled = (installationPath?: string) => {
         // Execute the Python binary to print the version
         const pythonVersion = execFileSync(pythonPath, ["--version"], {
             encoding: "utf-8",
+            env: {
+                ...process.env,
+                ...(os.platform() === "darwin"
+                    ? {
+                          CC: "gcc",
+                          CXX: "g++",
+                      }
+                    : {}),
+            },
         });
         console.log("Installed Python Version:", pythonVersion.trim());
 
@@ -386,6 +404,15 @@ export const isUvInstalled = (installationPath?: string) => {
         // Check if uv is installed by running the command
         const result = execFileSync(pythonPath, ["-m", "uv", "--version"], {
             encoding: "utf-8",
+            env: {
+                ...process.env,
+                ...(os.platform() === "darwin"
+                    ? {
+                          CC: "gcc",
+                          CXX: "g++",
+                      }
+                    : {}),
+            },
         });
 
         console.log("Installed uv Version:", result.trim());
@@ -478,13 +505,29 @@ export const installPackage = (
         // if (platform === "darwin") {
         //     unpackCommand = `${createAdHocSignCommand()}\n${unpackCommand}`;
         // }
-        const commandProcess = execFile(pythonPath, [
-            "-m",
-            "uv",
-            "pip",
-            "install",
-            ...(version ? [`${packageName}==${version}`] : [packageName, "-U"]),
-        ]);
+        const commandProcess = execFile(
+            pythonPath,
+            [
+                "-m",
+                "uv",
+                "pip",
+                "install",
+                ...(version
+                    ? [`${packageName}==${version}`]
+                    : [packageName, "-U"]),
+            ],
+            {
+                env: {
+                    ...process.env,
+                    ...(os.platform() === "darwin"
+                        ? {
+                              CC: "gcc",
+                              CXX: "g++",
+                          }
+                        : {}),
+                },
+            }
+        );
 
         // Function to handle logging output
         const onLog = (data: any) => {
@@ -530,6 +573,15 @@ export const isPackageInstalled = (packageName: string): boolean => {
             ["-m", "uv", "pip", "show", packageName],
             {
                 encoding: "utf-8",
+                env: {
+                    ...process.env,
+                    ...(os.platform() === "darwin"
+                        ? {
+                              CC: "gcc",
+                              CXX: "g++",
+                          }
+                        : {}),
+                },
             }
         );
 
