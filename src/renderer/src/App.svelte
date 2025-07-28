@@ -43,6 +43,11 @@
                 info.set(await window.electronAPI.getServerInfo());
             }
         });
+
+        info.set(await window.electronAPI.getServerInfo());
+        setInterval(async () => {
+            info.set(await window.electronAPI.getServerInfo());
+        }, 1000);
     });
 </script>
 

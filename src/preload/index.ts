@@ -152,6 +152,16 @@ const api = {
         return await ipcRenderer.invoke("server:stop");
     },
 
+    restartServer: async () => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        return await ipcRenderer.invoke("server:restart");
+    },
+
     getServerUrl: async () => {
         return await ipcRenderer.invoke("server:url");
     },

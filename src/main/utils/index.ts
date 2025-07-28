@@ -560,7 +560,7 @@ export const getServerPIDs = (): number[] => {
  */
 export const startServer = async (
     expose = false,
-    port = 8080
+    port = null
 ): Promise<{ url: string; pid: number }> => {
     await stopAllServers(); // Stop any existing servers before starting a new one
     const host = expose ? "0.0.0.0" : "127.0.0.1";
@@ -603,10 +603,15 @@ export const startServer = async (
     process.env.WEBUI_SECRET_KEY = secretKey;
 
     // Find available port
-    let availablePort = port || 8080;
+    let desiredPort = port || 8080;
+    let availablePort = desiredPort;
+
+    console.log(`Checking port availability starting from ${availablePort}...`);
     while (await portInUse(availablePort, host)) {
         availablePort++;
-        if (availablePort > port + 100) {
+
+        console.log(`Port ${availablePort} is in use, trying next port...`);
+        if (availablePort > desiredPort + 100) {
             throw new Error("No available ports found");
         }
     }

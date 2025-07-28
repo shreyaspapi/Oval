@@ -33,7 +33,7 @@
                         </div>
 
                         <button
-                            class=" underline flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-500"
+                            class=" underline flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-500 cursor-pointer"
                             onclick={() => {
                                 window.electronAPI.openInBrowser(
                                     "https://desktop.openwebui.com"

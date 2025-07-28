@@ -7,21 +7,9 @@
     import About from "./Controls/About.svelte";
     import { info } from "../stores";
 
-    let startTime = $state(null);
-    let currentTime = $state(null);
-
     let selectedTab = $state("general");
 
-    onMount(async () => {
-        info.set(await window.electronAPI.getServerInfo());
-
-        startTime = Date.now();
-        currentTime = Date.now();
-
-        setInterval(() => {
-            currentTime = Date.now();
-        }, 1000);
-    });
+    onMount(async () => {});
 </script>
 
 {#if $info?.reachable ?? false}
@@ -124,5 +112,5 @@
         </div>
     </div>
 {:else}
-    <Launching timeElapsed={currentTime - startTime} />
+    <Launching />
 {/if}

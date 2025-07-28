@@ -12,8 +12,6 @@
     import neomImage from "../assets/images/neom.jpg";
     import { fly } from "svelte/transition";
 
-    let { timeElapsed } = $props();
-
     let images = [
         galaxyImage,
         greenImage,
@@ -23,9 +21,19 @@
         neomImage,
     ];
 
+    let startTime = $state(null);
+    let currentTime = $state(null);
+
     let selectedImageIdx = $state(0);
 
     onMount(() => {
+        startTime = Date.now();
+        currentTime = Date.now();
+
+        setInterval(async () => {
+            currentTime = Date.now();
+        }, 1000);
+
         const imageInterval = setInterval(() => {
             selectedImageIdx = (selectedImageIdx + 1) % 5;
         }, 10000);
@@ -81,7 +89,7 @@
                             Launching Open WebUI...
                         </div>
 
-                        {#if timeElapsed > 10000}
+                        {#if currentTime - startTime > 10000}
                             <div
                                 class=" font-default text-xs"
                                 in:fly={{ duration: 500, y: 10 }}

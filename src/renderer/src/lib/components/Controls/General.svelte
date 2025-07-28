@@ -162,7 +162,10 @@
                         <Switch
                             id="network"
                             bind:state={serveOnLocalNetwork}
-                            onChange={onUpdate}
+                            onChange={async () => {
+                                await onUpdate();
+                                await window.electronAPI.restartServer();
+                            }}
                         />
                     </div>
                 </div>
@@ -191,7 +194,9 @@
                         <Switch
                             id="auto-updates"
                             bind:state={autoUpdate}
-                            onChange={onUpdate}
+                            onChange={() => {
+                                onUpdate();
+                            }}
                         />
                     </div>
                 </div>

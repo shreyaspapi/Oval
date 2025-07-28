@@ -40,6 +40,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuiting = false; // Flag to track if the app is quitting
 
+let CONFIG: object | null = null;
 let SERVER_URL: string | null = null;
 let SERVER_STATUS: string | null = null;
 let SERVER_REACHABLE = false;
@@ -248,6 +249,7 @@ const uninstallHandler = async () => {
 };
 
 const startServerHandler = async () => {
+    await stopServerHandler();
     SERVER_STATUS = "starting";
     mainWindow?.webContents.send("main:data", {
         type: "status:server",
@@ -255,7 +257,13 @@ const startServerHandler = async () => {
     });
 
     try {
-        ({ url: SERVER_URL, pid: SERVER_PID } = await startServer());
+        CONFIG = await getConfig();
+
+        ({ url: SERVER_URL, pid: SERVER_PID } = await startServer(
+            CONFIG?.serveOnLocalNetwork ?? false,
+            CONFIG?.port ?? null
+        ));
+
         updateTrayMenu("Open WebUI: Starting...", null);
 
         console.log("Server started successfully:", SERVER_URL, SERVER_PID);
@@ -288,8 +296,7 @@ const startServerHandler = async () => {
             });
             notification.show();
 
-            updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
-
+            updateTrayMenu(`Open WebUI: ${SERVER_URL}`, SERVER_URL); // Update tray menu with running status
             mainWindow?.webContents.send("main:data", {
                 type: "server",
             });
@@ -318,7 +325,11 @@ const stopServerHandler = async () => {
     try {
         await stopAllServers();
 
-        SERVER_STATUS = "stopped";
+        if (SERVER_STATUS) {
+            // Only when the server was started
+            SERVER_STATUS = "stopped";
+            updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
+        }
         SERVER_REACHABLE = false;
         SERVER_URL = null; // Clear the server URL
 
@@ -327,7 +338,6 @@ const stopServerHandler = async () => {
             data: SERVER_STATUS,
         });
 
-        updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
         return true; // Indicate success
     } catch (error) {
         console.error("Failed to stop server:", error);
@@ -361,7 +371,10 @@ if (!gotTheLock) {
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
-    app.whenReady().then(() => {
+    app.whenReady().then(async () => {
+        CONFIG = await getConfig(); // Load initial config
+        console.log("Initial Config:", CONFIG);
+
         // Set app user model id for windows
         electronApp.setAppUserModelId("com.openwebui.desktop");
 
@@ -447,6 +460,10 @@ if (!gotTheLock) {
             return await stopServerHandler();
         });
 
+        ipcMain.handle("server:restart", async (event) => {
+            return await startServerHandler();
+        });
+
         ipcMain.handle("server:logs", async (event) => {
             return SERVER_PID ? await getServerLog(SERVER_PID) : [];
         });
@@ -491,12 +508,17 @@ if (!gotTheLock) {
 
         (async () => {
             if (isPackageInstalled("open-webui")) {
-                try {
-                    console.log("Checking for updates...");
-                    updateTrayMenu("Open WebUI: Checking for updates...", null);
-                    await installPackage("open-webui");
-                } catch (error) {
-                    console.error("Failed to update package:", error);
+                if (CONFIG?.autoUpdate ?? true) {
+                    try {
+                        console.log("Checking for updates...");
+                        updateTrayMenu(
+                            "Open WebUI: Checking for updates...",
+                            null
+                        );
+                        await installPackage("open-webui");
+                    } catch (error) {
+                        console.error("Failed to update package:", error);
+                    }
                 }
 
                 startServerHandler();
