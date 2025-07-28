@@ -54,6 +54,19 @@ export const getOpenWebUIDataPath = (): string => {
     return path.normalize(openWebUIDataDir);
 };
 
+export const openUrl = (url: string) => {
+    if (!url) {
+        throw new Error("No URL provided to open in browser.");
+    }
+
+    console.log("Opening URL in browser:", url);
+    if (url.startsWith("http://0.0.0.0")) {
+        url = url.replace("http://0.0.0.0", "http://localhost");
+    }
+
+    shell.openExternal(url);
+};
+
 export const getSystemInfo = () => {
     const currentPlatform = os.platform();
     const currentArch = os.arch();
@@ -588,20 +601,30 @@ export const startServer = async (
     if (!isPythonInstalled()) throw new Error("Python is not installed");
     if (!isPackageInstalled("open-webui"))
         throw new Error("open-webui package is not installed");
+
     const pythonPath = getPythonPath();
+    console.log(`Using Python at: ${pythonPath}`);
 
+    const openWebUIPath = path.join(path.dirname(pythonPath), "open-webui");
+
+    let commandPath;
     let commandArgs: string[];
-    commandArgs = [
-        "-m",
-        "uvicorn",
-        "open_webui.main:app",
-        "--host",
-        host,
-        "--forwarded-allow-ips",
-        "*",
-    ];
-    process.env.FROM_INIT_PY = "true";
-
+    if (process.platform === "win32") {
+        commandPath = pythonPath;
+        commandArgs = [
+            "-m",
+            "uvicorn",
+            "open_webui.main:app",
+            "--host",
+            host,
+            "--forwarded-allow-ips",
+            "*",
+        ];
+        process.env.FROM_INIT_PY = "true";
+    } else {
+        commandPath = openWebUIPath;
+        commandArgs = ["serve", "--host", host];
+    }
     const dataDir = path.join(app.getPath("userData"), "data");
     const secretKey = getSecretKey();
     if (!fs.existsSync(dataDir)) {
@@ -629,7 +652,7 @@ export const startServer = async (
         pythonPath,
         commandArgs.join(" ")
     );
-    const childProcess = spawn(pythonPath, commandArgs, {
+    const childProcess = spawn(commandPath, commandArgs, {
         detached: process.platform !== "win32",
         stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env },
@@ -760,7 +783,7 @@ export const checkUrlAndOpen = async (
                 const isAvailable = await checkUrl();
                 if (isAvailable) {
                     console.log("URL is now available, opening browser...");
-                    await shell.openExternal(url);
+                    await openUrl(url);
                     await callback(); // Call the provided callback function
                     return; // Exit the polling loop
                 }

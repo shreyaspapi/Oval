@@ -29,6 +29,7 @@ import {
     isPackageInstalled,
     isPythonInstalled,
     isUvInstalled,
+    openUrl,
     setConfig,
     startServer,
     stopAllServers,
@@ -168,19 +169,6 @@ function createWindow(show = true): void {
         }
     });
 }
-
-const openUrl = (url: string) => {
-    if (!url) {
-        throw new Error("No URL provided to open in browser.");
-    }
-
-    console.log("Opening URL in browser:", url);
-    if (url.startsWith("http://0.0.0.0")) {
-        url = url.replace("http://0.0.0.0", "http://localhost");
-    }
-
-    shell.openExternal(url);
-};
 
 const updateTrayMenu = (status: string, url: string | null) => {
     const trayMenuTemplate = [
