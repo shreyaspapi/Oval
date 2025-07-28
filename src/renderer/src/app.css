@@ -51,8 +51,6 @@ html {
 }
 
 @theme {
-    --color-*: initial;
-
     --color-white: #fff;
     --color-black: #000;
     --color-gray-50: #f9f9f9;
@@ -71,6 +69,10 @@ html {
 
 .tippy-box[data-theme~="dark"] {
     @apply rounded-lg bg-gray-950 text-xs border border-gray-900 shadow-xl;
+}
+
+.tippy-box[data-theme~="transparent"] {
+    @apply bg-transparent p-0 m-0;
 }
 
 .scrollbar-hidden:active::-webkit-scrollbar-thumb,

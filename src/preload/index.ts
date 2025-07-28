@@ -40,6 +40,26 @@ const api = {
         ipcRenderer.on("main:log", (_, message: string) => callback(message));
     },
 
+    getVersion: async () => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        return await ipcRenderer.invoke("get:version");
+    },
+
+    openInBrowser: async (url: string) => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        await ipcRenderer.invoke("open:browser", { url });
+    },
+
     send: async ({ type, data }: { type: string; data?: any }) => {
         return await ipcRenderer.invoke("renderer:data", { type, data });
     },

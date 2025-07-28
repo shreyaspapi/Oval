@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import {
     app,
     shell,
@@ -19,6 +21,7 @@ import icon from "../../resources/icon.png?asset";
 import trayIconImage from "../../resources/assets/tray.png?asset";
 
 import {
+    getServerLog,
     installPackage,
     installPython,
     isPackageInstalled,
@@ -32,10 +35,11 @@ import {
 // Main application logic
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let isQuiting = false; // Flag to track if the app is quitting
 
 let SERVER_URL: string | null = null;
 let SERVER_STATUS: string | null = null;
-let SERVER_STARTED_AT: number | null = null;
+let SERVER_PID: number | null = null;
 
 function createWindow(): void {
     // Create the browser window.
@@ -53,7 +57,7 @@ function createWindow(): void {
             : {}),
         ...(process.platform === "linux" ? { icon } : {}),
         titleBarStyle: process.platform === "win32" ? "default" : "hidden",
-        trafficLightPosition: { x: 20, y: 20 },
+        trafficLightPosition: { x: 16, y: 16 },
         webPreferences: {
             preload: join(__dirname, "../preload/index.js"),
             sandbox: false,
@@ -87,10 +91,14 @@ function createWindow(): void {
     });
 
     globalShortcut.register("Alt+CommandOrControl+O", () => {
-        mainWindow?.show();
+        if (SERVER_URL) {
+            shell.openExternal(SERVER_URL);
+        } else {
+            mainWindow?.show();
 
-        if (mainWindow?.isMinimized()) mainWindow?.restore();
-        mainWindow?.focus();
+            if (mainWindow?.isMinimized()) mainWindow?.restore();
+            mainWindow?.focus();
+        }
     });
 
     const defaultMenu = Menu.getApplicationMenu();
@@ -114,11 +122,15 @@ function createWindow(): void {
     tray = new Tray(image.resize({ width: 16, height: 16 }));
     const trayMenu = Menu.buildFromTemplate([
         {
-            label: "Show Open WebUI",
+            label: "Show Controls",
             accelerator: "CommandOrControl+Alt+O",
 
             click: () => {
-                mainWindow?.show(); // Show the main window when clicked
+                if (SERVER_URL) {
+                    shell.openExternal(SERVER_URL);
+                } else {
+                    mainWindow?.show();
+                }
             },
         },
         {
@@ -129,7 +141,7 @@ function createWindow(): void {
             accelerator: "CommandOrControl+Q",
             click: async () => {
                 await stopServerHandler(); // Stop the server before quitting
-                app.isQuiting = true; // Mark as quitting
+                isQuiting = true; // Mark as quitting
                 app.quit(); // Quit the application
             },
         },
@@ -148,7 +160,7 @@ function createWindow(): void {
 
     // Handle the close event
     mainWindow.on("close", (event) => {
-        if (!(app?.isQuiting ?? false)) {
+        if (!(isQuiting ?? false)) {
             event.preventDefault(); // Prevent the default close behavior
             mainWindow?.hide(); // Hide the window instead of closing it
         }
@@ -158,10 +170,14 @@ function createWindow(): void {
 const updateTrayMenu = (status: string, url: string | null) => {
     const trayMenuTemplate = [
         {
-            label: "Show Open WebUI",
+            label: "Show Controls",
             accelerator: "CommandOrControl+Alt+O",
             click: () => {
-                mainWindow?.show(); // Show the main window when clicked
+                if (SERVER_URL) {
+                    shell.openExternal(SERVER_URL);
+                } else {
+                    mainWindow?.show();
+                }
             },
         },
         {
@@ -180,9 +196,12 @@ const updateTrayMenu = (status: string, url: string | null) => {
         ...(SERVER_STATUS === "started"
             ? [
                   {
-                      label: "Stop Server",
-                      click: async () => {
-                          await stopServerHandler();
+                      label: "Copy Server URL",
+                      enabled: !!url, // Enable if URL exists
+                      click: () => {
+                          if (url) {
+                              clipboard.writeText(url); // Copy the URL to clipboard
+                          }
                       },
                   },
               ]
@@ -206,22 +225,10 @@ const updateTrayMenu = (status: string, url: string | null) => {
             type: "separator",
         },
         {
-            label: "Copy Server URL",
-            enabled: !!url, // Enable if URL exists
-            click: () => {
-                if (url) {
-                    clipboard.writeText(url); // Copy the URL to clipboard
-                }
-            },
-        },
-        {
-            type: "separator",
-        },
-        {
             label: "Quit Open WebUI",
             accelerator: "CommandOrControl+Q",
             click: () => {
-                app.isQuiting = true; // Mark as quitting
+                isQuiting = true; // Mark as quitting
                 app.quit(); // Quit the application
             },
         },
@@ -240,9 +247,11 @@ const startServerHandler = async () => {
     updateTrayMenu("Open WebUI: Starting...", null);
 
     try {
-        SERVER_URL = await startServer();
+        ({ url: SERVER_URL, pid: SERVER_PID } = await startServer());
+
+        console.log("Server started successfully:", SERVER_URL, SERVER_PID);
         SERVER_STATUS = "started";
-        SERVER_STARTED_AT = Date.now(); // Store the start time
+
         mainWindow?.webContents.send("main:data", {
             type: "status:server",
             data: SERVER_STATUS,
@@ -286,7 +295,6 @@ const stopServerHandler = async () => {
 
         SERVER_STATUS = "stopped";
         SERVER_URL = null; // Clear the server URL
-        SERVER_STARTED_AT = null; // Reset the start time
 
         mainWindow?.webContents.send("main:data", {
             type: "status:server",
@@ -339,6 +347,10 @@ if (!gotTheLock) {
 
         // IPC test
         ipcMain.on("ping", () => console.log("pong"));
+
+        ipcMain.handle("get:version", async () => {
+            return app.getVersion();
+        });
 
         ipcMain.handle("install:python", async (event) => {
             console.log("Installing package...");
@@ -409,15 +421,28 @@ if (!gotTheLock) {
             return await stopServerHandler();
         });
 
+        ipcMain.handle("server:logs", async (event) => {
+            return SERVER_PID ? await getServerLog(SERVER_PID) : [];
+        });
+
         ipcMain.handle("server:info", async (event) => {
             return {
                 url: SERVER_URL,
                 status: SERVER_STATUS,
+                pid: SERVER_PID,
             };
         });
 
         ipcMain.handle("status:server", async (event) => {
             return SERVER_STATUS;
+        });
+
+        ipcMain.handle("open:browser", async (event, { url }) => {
+            if (!url) {
+                throw new Error("No URL provided to open in browser.");
+            }
+            console.log("Opening URL in browser:", url);
+            await shell.openExternal(url);
         });
 
         ipcMain.handle("notification", async (event, { title, body }) => {
@@ -448,7 +473,7 @@ if (!gotTheLock) {
     });
 
     app.on("before-quit", async () => {
-        app.isQuiting = true; // Mark as quitting
+        isQuiting = true; // Mark as quitting
         await stopServerHandler(); // Stop the server before quitting
         globalShortcut.unregisterAll(); // Unregister all shortcuts
         mainWindow = null; // Clear the main window reference
