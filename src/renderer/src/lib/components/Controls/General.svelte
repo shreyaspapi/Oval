@@ -132,12 +132,32 @@
                 </div>
 
                 <div>
-                    <Switch id="hi" state={true} />
+                    <Switch id="network" state={false} />
                 </div>
             </div>
 
             <div class="text-xs text-gray-500 mt-0.5">
                 Allow other devices on your local network to access the server.
+            </div>
+        </div>
+
+        <hr class="my-2 border-gray-300 dark:border-gray-850" />
+
+        <div>
+            <div class="flex flex-row items-center justify-between">
+                <div
+                    class="flex flex-row items-center space-x-1.5 text-green-100"
+                >
+                    <div>Automatic updates</div>
+                </div>
+
+                <div>
+                    <Switch id="auto-updates" state={true} />
+                </div>
+            </div>
+
+            <div class="text-xs text-gray-500 mt-0.5">
+                Turn off to disable automatic updates on startup.
             </div>
         </div>
     </div>

@@ -479,12 +479,20 @@ if (!gotTheLock) {
             notification.show();
         });
 
-        if (isPackageInstalled("open-webui")) {
-            startServerHandler();
-            createWindow(false);
-        } else {
-            createWindow();
-        }
+        (async () => {
+            if (isPackageInstalled("open-webui")) {
+                try {
+                    await installPackage("open-webui");
+                } catch (error) {
+                    console.error("Failed to install package:", error);
+                }
+
+                startServerHandler();
+                createWindow(false);
+            } else {
+                createWindow();
+            }
+        })();
 
         app.on("activate", function () {
             // On macOS it's common to re-create a window in the app when the
