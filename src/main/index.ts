@@ -199,21 +199,7 @@ const updateTrayMenu = (status: string, url: string | null) => {
                       },
                   },
               ]
-            : SERVER_STATUS === "starting"
-              ? [
-                    {
-                        label: "Starting Server...",
-                        enabled: false,
-                    },
-                ]
-              : [
-                    {
-                        label: "Start Server",
-                        click: async () => {
-                            await startServerHandler();
-                        },
-                    },
-                ]),
+            : []),
 
         {
             type: "separator",
@@ -268,7 +254,7 @@ const startServerHandler = async () => {
 
     try {
         ({ url: SERVER_URL, pid: SERVER_PID } = await startServer());
-        updateTrayMenu("Open WebUI: Starting...", SERVER_URL);
+        updateTrayMenu("Open WebUI: Starting...", null);
 
         console.log("Server started successfully:", SERVER_URL, SERVER_PID);
         SERVER_STATUS = "started";
