@@ -7,7 +7,24 @@
     import ArrowRightCircle from "./icons/ArrowRightCircle.svelte";
 
     import logoImage from "../assets/images/splash.png";
-    import backgroundImage from "../assets/images/galaxy.jpg";
+
+    import galaxyImage from "../assets/images/galaxy.jpg";
+    import greenImage from "../assets/images/green.jpg";
+    import adamImage from "../assets/images/adam.jpg";
+    import earthImage from "../assets/images/earth.jpg";
+    import nasaImage from "../assets/images/nasa.jpg";
+    import neomImage from "../assets/images/neom.jpg";
+
+    let { installed = $bindable() } = $props();
+
+    let images = [
+        galaxyImage,
+        greenImage,
+        adamImage,
+        earthImage,
+        nasaImage,
+        neomImage,
+    ];
 
     let mounted = $state(false);
     let currentTime = Date.now();
@@ -17,13 +34,57 @@
 
     const continueHandler = async () => {
         if (window?.electronAPI) {
-            console.log(await window.electronAPI.getPythonStatus());
-            // installing = true;
+            installing = true;
+
+            const pythonStatus = await window.electronAPI.getPythonStatus();
+            console.log("Python Status:", pythonStatus);
+
+            if (!pythonStatus) {
+                await window.electronAPI.installPython();
+            }
+
+            const packageStatus = await window.electronAPI.getPackageStatus();
+            console.log("Package Status:", packageStatus);
+
+            if (!packageStatus) {
+                await window.electronAPI.installPackage();
+            }
+
+            // Wait for the installation to complete
+            await tick();
+
+            if (
+                (await window.electronAPI.getPythonStatus()) &&
+                (await window.electronAPI.getPackageStatus())
+            ) {
+                // Notify the user that the installation is complete
+                await window.electronAPI.notification(
+                    "Installation Complete",
+                    "Open WebUI is now ready to use."
+                );
+
+                installed = true; // Update the installed state
+            } else {
+                // Handle the case where installation failed
+                await window.electronAPI.notification(
+                    "Installation Failed",
+                    "There was an error during the installation process."
+                );
+            }
+
+            installing = false;
         }
     };
 
+    let selectedImageIdx = $state(0);
+
     onMount(() => {
         mounted = true;
+
+        const imageInterval = setInterval(() => {
+            selectedImageIdx = (selectedImageIdx + 1) % 5;
+        }, 10000);
+
         const interval = setInterval(() => {
             currentTime = Date.now();
         }, 1000); // Update every second
@@ -52,10 +113,14 @@
         </div>
     </div>
 
-    <div
-        class="image w-full h-full absolute top-0 left-0 bg-cover bg-center transition-opacity duration-1000"
-        style="opacity: 1; background-image: url({backgroundImage})"
-    ></div>
+    {#each images as image, index (index)}
+        <div
+            class="image w-full h-full absolute top-0 left-0 bg-cover bg-center transition-opacity duration-1000"
+            style="opacity: {selectedImageIdx === index
+                ? 1
+                : 0}; background-image: url({image})"
+        ></div>
+    {/each}
 
     <div
         class="w-full h-full absolute top-0 left-0 bg-gradient-to-t from-20% from-white dark:from-black to-transparent"

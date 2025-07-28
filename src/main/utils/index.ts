@@ -8,7 +8,7 @@ import * as tar from "tar";
 
 import { app } from "electron";
 import log from "electron-log";
-import { execFileSync, exec, spawn, execSync } from "child_process";
+import { execFileSync, exec, spawn, execSync, execFile } from "child_process";
 
 export const getAppPath = (): string => {
     let appPath = app.getAppPath();
@@ -138,8 +138,11 @@ const getArchString = () => {
  * Generates the download URL based on system architecture and platform
  */
 const generateDownloadUrl = () => {
+    // const baseUrl =
+    //     "https://desktop.openwebui.com/astral-sh/python-build-standalone/releases/download";
     const baseUrl =
-        "https://desktop.openwebui.com/astral-sh/python-build-standalone/releases/download";
+        "https://github.com/astral-sh/python-build-standalone/releases/download";
+
     const releaseDate = "20250723";
     const pythonVersion = "3.11.13";
 
@@ -271,8 +274,6 @@ const isPythonDownloaded = () => {
 export const installPython = async (
     installationPath?: string
 ): Promise<boolean> => {
-    installationPath = installationPath || getPythonInstallationPath();
-
     let pythonDownloadPath = getPythonDownloadPath();
     if (!isPythonDownloaded()) {
         await downloadPython((progress, downloaded, total) => {
@@ -284,17 +285,18 @@ export const installPython = async (
             );
         });
     }
-    console.log(installationPath, pythonDownloadPath);
-
     if (!fs.existsSync(pythonDownloadPath)) {
         log.error("Python download not found");
         return false;
     }
 
+    installationPath = installationPath || getPythonInstallationPath();
+    console.log(installationPath, pythonDownloadPath);
+
     try {
-        fs.mkdirSync(installationPath, { recursive: true });
+        const userDataPath = getUserDataPath();
         await tar.x({
-            cwd: installationPath,
+            cwd: userDataPath,
             file: pythonDownloadPath,
         });
     } catch (error) {
@@ -391,6 +393,14 @@ export const uninstallPython = (installationPath?: string): boolean => {
         return false;
     }
 
+    try {
+        const pythonDownloadPath = getPythonDownloadPath();
+        fs.rmSync(pythonDownloadPath, { recursive: true });
+    } catch (error) {
+        log.error("Failed to remove Python download", error);
+        return false;
+    }
+
     return true;
 };
 
@@ -440,21 +450,20 @@ export const installPackage = (
             );
             return reject(false); // Return false to indicate failure
         }
-
         // Build the appropriate unpack command based on the platform
         let pythonPath = getPythonPath();
-        let unpackCommand = `${pythonPath} -m uv pip install ${packageName}${
-            version ? `==${version}` : " -U"
-        }`;
 
         // only unsign when installing from bundled installer
         // if (platform === "darwin") {
         //     unpackCommand = `${createAdHocSignCommand()}\n${unpackCommand}`;
         // }
-
-        const commandProcess = exec(unpackCommand, {
-            shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
-        });
+        const commandProcess = execFile(pythonPath, [
+            "-m",
+            "uv",
+            "pip",
+            "install",
+            ...(version ? [`${packageName}==${version}`] : [packageName, "-U"]),
+        ]);
 
         // Function to handle logging output
         const onLog = (data: any) => {
@@ -511,7 +520,7 @@ export const isPackageInstalled = (packageName: string): boolean => {
             return false; // Return false to indicate failure
         }
     } catch (error) {
-        log.error("Failed to execute Python binary", error);
+        console.log("Failed to execute Python binary");
         return false; // Return false to indicate failure
     }
 };
@@ -522,104 +531,231 @@ const serverPIDs: Set<number> = new Set();
 /**
  * Spawn the Open-WebUI server process.
  */
-export async function startServer(
+/**
+ * Spawn the Open-WebUI server process.
+ */
+export const startServer = async (
     expose = false,
     port = 8080
-): Promise<string> {
+): Promise<string> => {
     const host = expose ? "0.0.0.0" : "127.0.0.1";
+
+    // Verify Python and package installation first
+    if (!isPythonInstalled()) {
+        throw new Error("Python is not installed");
+    }
+
+    if (!isPackageInstalled("open-webui")) {
+        throw new Error("open-webui package is not installed");
+    }
+
+    const pythonPath = getPythonPath();
 
     // Windows HATES Typer-CLI used to create the CLI for Open-WebUI
     // So we have to manually create the command to start the server
-    let startCommand =
-        process.platform === "win32"
-            ? `uvicorn open_webui.main:app --host "${host}" --forwarded-allow-ips '*'`
-            : `open-webui serve --host "${host}"`;
+    let startCommand: string;
+    let commandArgs: string[];
 
     if (process.platform === "win32") {
+        // Use Python path directly with uvicorn module
+        startCommand = pythonPath;
+        commandArgs = [
+            "-m",
+            "uv",
+            "run",
+            "uvicorn",
+            "open_webui.main:app",
+            "--host",
+            host,
+            "--forwarded-allow-ips",
+            "*",
+        ];
         process.env.FROM_INIT_PY = "true";
+    } else {
+        // Use open-webui CLI on Unix-like systems
+        startCommand = pythonPath;
+        commandArgs = [
+            "-m",
+            "uv",
+            "run",
+            "open-webui",
+            "serve",
+            "--host",
+            host,
+        ];
     }
 
     // Set environment variables in a platform-agnostic way
-    process.env.DATA_DIR = path.join(app.getPath("userData"), "data");
-    process.env.WEBUI_SECRET_KEY = getSecretKey();
+    const dataDir = path.join(app.getPath("userData"), "data");
+    const secretKey = getSecretKey();
 
-    port = port || 8080;
-    while (await portInUse(port)) {
-        port++;
+    // Ensure data directory exists
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
     }
 
-    startCommand += ` --port ${port}`;
-    console.log("Starting Open-WebUI server...", startCommand);
+    process.env.DATA_DIR = dataDir;
+    process.env.WEBUI_SECRET_KEY = secretKey;
 
-    const childProcess = spawn(startCommand, {
-        shell: true,
-        detached: process.platform !== "win32", // Detach the child process on Unix-like platforms
-        stdio: ["ignore", "pipe", "pipe"], // Let us capture logs via stdout/stderr
+    // Find available port
+    let availablePort = port || 8080;
+    while (await portInUse(availablePort, host)) {
+        availablePort++;
+        if (availablePort > port + 100) {
+            // Prevent infinite loop
+            throw new Error("No available ports found");
+        }
+    }
+
+    // Add port to command arguments
+    commandArgs.push("--port", availablePort.toString());
+
+    console.log(
+        "Starting Open-WebUI server...",
+        startCommand,
+        commandArgs.join(" ")
+    );
+
+    // Use execFile instead of spawn with shell for better control
+    const childProcess = spawn(startCommand, commandArgs, {
+        detached: process.platform !== "win32",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env }, // Ensure all environment variables are passed
     });
 
     let serverCrashed = false;
     let detectedURL: string | null = null;
+    let startupTimeout: NodeJS.Timeout;
 
     // Wait for log output to confirm the server has started
-    async function monitorServerLogs(): Promise<void> {
+    function monitorServerLogs(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             const handleLog = (data: Buffer) => {
                 const logLine = data.toString().trim();
-                console.log(`[Open-WebUI Log]: ${logLine}`);
+                console.log(`[OI]: ${logLine}`);
 
-                // Look for "Uvicorn running on http://<hostname>:<port>"
-                const match = logLine.match(
-                    /Uvicorn running on (http:\/\/[^\s]+) \(Press CTRL\+C to quit\)/
-                );
-                if (match) {
-                    detectedURL = match[1]; // e.g., "http://0.0.0.0:8081"
+                // Look for various Uvicorn startup patterns
+                const uvicornPatterns = [
+                    /Uvicorn running on (http:\/\/[^\s]+)/,
+                    /Application startup complete\./,
+                    /Started server process/,
+                ];
+
+                // Check for Uvicorn running message
+                const urlMatch = logLine.match(uvicornPatterns[0]);
+                if (urlMatch) {
+                    detectedURL = urlMatch[1];
+                    // Convert 0.0.0.0 to localhost for local access
+                    if (detectedURL.includes("0.0.0.0") && !expose) {
+                        detectedURL = detectedURL.replace(
+                            "0.0.0.0",
+                            "127.0.0.1"
+                        );
+                    }
+                    clearTimeout(startupTimeout);
                     resolve();
+                    return;
+                }
+
+                // Alternative: look for startup complete message and construct URL
+                if (
+                    logLine.includes("Application startup complete") &&
+                    !detectedURL
+                ) {
+                    detectedURL = `http://${host === "0.0.0.0" && !expose ? "127.0.0.1" : host}:${availablePort}`;
+
+                    resolve();
+                    return;
+                }
+
+                // Check for common error patterns
+                const errorPatterns = [
+                    /Error/i,
+                    /Exception/i,
+                    /Failed/i,
+                    /ModuleNotFoundError/i,
+                    /ImportError/i,
+                ];
+
+                if (errorPatterns.some((pattern) => pattern.test(logLine))) {
+                    console.error(`[Open-WebUI Error]: ${logLine}`);
                 }
             };
 
-            // Combine stdout and stderr streams as a unified log source
+            // Handle both stdout and stderr
             childProcess.stdout?.on("data", handleLog);
             childProcess.stderr?.on("data", handleLog);
 
-            childProcess.on("close", (code) => {
+            // Handle process exit
+            childProcess.on("close", (code, signal) => {
                 serverCrashed = true;
+                clearTimeout(startupTimeout);
+
                 if (!detectedURL) {
                     reject(
                         new Error(
-                            `Process exited unexpectedly with code ${code}. No server URL detected.`
+                            `Process exited unexpectedly with code ${code} and signal ${signal}. No server URL detected.`
                         )
                     );
                 }
             });
+
+            // Handle process errors
+            childProcess.on("error", (error) => {
+                serverCrashed = true;
+                clearTimeout(startupTimeout);
+                reject(
+                    new Error(
+                        `Failed to start server process: ${error.message}`
+                    )
+                );
+            });
         });
     }
 
-    // Track the child process PID
-    if (childProcess.pid) {
-        serverPIDs.add(childProcess.pid);
-        console.log(`Server started with PID: ${childProcess.pid}`);
-    } else {
+    // Verify the child process started successfully
+    if (!childProcess.pid) {
         throw new Error("Failed to start server: No PID available");
     }
 
-    // Wait until the server log confirms it's started
+    // Track the child process PID
+    serverPIDs.add(childProcess.pid);
+    console.log(`Server started with PID: ${childProcess.pid}`);
+
     try {
+        // Wait until the server log confirms it's started
         await monitorServerLogs();
+
+        if (!detectedURL) {
+            throw new Error("Failed to detect server URL from logs.");
+        }
+
+        // Verify the server is actually responding
+        const isResponding = await portInUse(availablePort, host);
+        if (!isResponding) {
+            throw new Error(
+                "Server started but is not responding on the expected port"
+            );
+        }
+
+        console.log(`Server is now running at ${detectedURL}`);
+        return detectedURL;
     } catch (error) {
-        if (serverCrashed) {
-            throw new Error("Server crashed unexpectedly.");
+        // Clean up on failure
+        if (childProcess.pid) {
+            try {
+                terminateProcessTree(childProcess.pid);
+                serverPIDs.delete(childProcess.pid);
+            } catch (cleanupError) {
+                console.error(
+                    "Error cleaning up failed server process:",
+                    cleanupError
+                );
+            }
         }
         throw error;
     }
-
-    if (!detectedURL) {
-        throw new Error("Failed to detect server URL from logs.");
-    }
-
-    console.log(`Server is now running at ${detectedURL}`);
-    return detectedURL; // Return the detected URL
-}
-
+};
 /**
  * Terminates all server processes.
  */

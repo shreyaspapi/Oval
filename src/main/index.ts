@@ -7,6 +7,7 @@ import {
     desktopCapturer,
     BrowserWindow,
     globalShortcut,
+    Notification,
     Menu,
     ipcMain,
     Tray,
@@ -34,6 +35,7 @@ let tray: Tray | null = null;
 
 let SERVER_URL: string | null = null;
 let SERVER_STATUS: string | null = null;
+let SERVER_STARTED_AT: number | null = null;
 
 function createWindow(): void {
     // Create the browser window.
@@ -70,6 +72,10 @@ function createWindow(): void {
         },
         { useSystemPicker: true }
     );
+
+    if (!app.isPackaged) {
+        mainWindow.webContents.openDevTools();
+    }
 
     mainWindow.on("ready-to-show", () => {
         mainWindow?.show();
@@ -228,18 +234,17 @@ const updateTrayMenu = (status: string, url: string | null) => {
 const startServerHandler = async () => {
     SERVER_STATUS = "starting";
     mainWindow?.webContents.send("main:data", {
-        type: "server:status",
+        type: "status:server",
         data: SERVER_STATUS,
     });
     updateTrayMenu("Open WebUI: Starting...", null);
 
     try {
         SERVER_URL = await startServer();
-        // SERVER_URL = 'http://localhost:5050';
-
         SERVER_STATUS = "started";
+        SERVER_STARTED_AT = Date.now(); // Store the start time
         mainWindow?.webContents.send("main:data", {
-            type: "server:status",
+            type: "status:server",
             data: SERVER_STATUS,
         });
 
@@ -255,11 +260,13 @@ const startServerHandler = async () => {
         const urlObj = new URL(SERVER_URL);
         const port = urlObj.port || "8080"; // Fallback to port 8080 if not provided
         updateTrayMenu(`Open WebUI: Running on port ${port}`, SERVER_URL); // Update tray menu with running status
+
+        return true; // Indicate success
     } catch (error) {
         console.error("Failed to start server:", error);
         SERVER_STATUS = "failed";
         mainWindow?.webContents.send("main:data", {
-            type: "server:status",
+            type: "status:server",
             data: SERVER_STATUS,
         });
 
@@ -268,20 +275,30 @@ const startServerHandler = async () => {
             `Failed to start server: ${error}`
         );
         updateTrayMenu("Open WebUI: Failed to Start", null); // Update tray menu with failure status
+
+        return false; // Indicate failure
     }
 };
 
 const stopServerHandler = async () => {
-    await stopAllServers();
+    try {
+        await stopAllServers();
 
-    SERVER_STATUS = "stopped";
+        SERVER_STATUS = "stopped";
+        SERVER_URL = null; // Clear the server URL
+        SERVER_STARTED_AT = null; // Reset the start time
 
-    mainWindow?.webContents.send("main:data", {
-        type: "status:server",
-        data: SERVER_STATUS,
-    });
+        mainWindow?.webContents.send("main:data", {
+            type: "status:server",
+            data: SERVER_STATUS,
+        });
 
-    updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
+        updateTrayMenu("Open WebUI: Stopped", null); // Update tray menu with stopped status
+        return true; // Indicate success
+    } catch (error) {
+        console.error("Failed to stop server:", error);
+        return false; // Indicate failure
+    }
 };
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -364,19 +381,38 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("status:package", async (event) => {
-            return await isPackageInstalled("open-webui");
+            const packageStatus = await isPackageInstalled("open-webui");
+
+            console.log("Package Status:", packageStatus);
+            return packageStatus;
         });
 
         ipcMain.handle("server:start", async (event) => {
-            await startServerHandler();
+            return await startServerHandler();
         });
 
         ipcMain.handle("server:stop", async (event) => {
-            await stopServerHandler();
+            return await stopServerHandler();
+        });
+
+        ipcMain.handle("server:info", async (event) => {
+            return {
+                url: SERVER_URL,
+                status: SERVER_STATUS,
+            };
         });
 
         ipcMain.handle("status:server", async (event) => {
             return SERVER_STATUS;
+        });
+
+        ipcMain.handle("notification", async (event, { title, body }) => {
+            console.log("Received notification:", title, body);
+            const notification = new Notification({
+                title: title,
+                body: body,
+            });
+            notification.show();
         });
 
         createWindow();
@@ -395,5 +431,14 @@ if (!gotTheLock) {
         if (process.platform !== "darwin") {
             app.quit();
         }
+    });
+
+    app.on("before-quit", async () => {
+        app.isQuiting = true; // Mark as quitting
+        await stopServerHandler(); // Stop the server before quitting
+        globalShortcut.unregisterAll(); // Unregister all shortcuts
+        mainWindow = null; // Clear the main window reference
+        tray?.destroy(); // Destroy the tray icon
+        tray = null; // Clear the tray reference
     });
 }

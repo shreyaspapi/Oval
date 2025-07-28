@@ -7,6 +7,7 @@
     import Loading from "./lib/components/Loading.svelte";
 
     let installed = $state(false);
+    let running = $state(false);
 
     onMount(async () => {
         const pythonStatus = await window?.electronAPI?.getPythonStatus();
@@ -18,6 +19,10 @@
                 installed = false;
             }
         }
+
+        window.addEventListener("message", (event) => {
+            console.log("Received message from main process:", event);
+        });
     });
 </script>
 
@@ -25,9 +30,9 @@
     {#if installed === null}
         <Loading />
     {:else if installed === false}
-        <Installation />
+        <Installation bind:installed />
     {:else}
-        <Controls />
+        <Controls bind:running />
     {/if}
 </main>
 

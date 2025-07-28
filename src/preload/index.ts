@@ -51,7 +51,7 @@ const api = {
             );
         }
 
-        await ipcRenderer.invoke("install:python");
+        return await ipcRenderer.invoke("install:python");
     },
 
     installPackage: async () => {
@@ -61,7 +61,7 @@ const api = {
             );
         }
 
-        await ipcRenderer.invoke("install:package");
+        return await ipcRenderer.invoke("install:package");
     },
 
     getPythonStatus: async () => {
@@ -82,6 +82,16 @@ const api = {
         return await ipcRenderer.invoke("status:server");
     },
 
+    getServerInfo: async () => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        return await ipcRenderer.invoke("server:info");
+    },
+
     startServer: async () => {
         if (!isLocalSource()) {
             throw new Error(
@@ -89,7 +99,7 @@ const api = {
             );
         }
 
-        await ipcRenderer.invoke("server:start");
+        return await ipcRenderer.invoke("server:start");
     },
 
     stopServer: async () => {
@@ -99,11 +109,21 @@ const api = {
             );
         }
 
-        await ipcRenderer.invoke("server:stop");
+        return await ipcRenderer.invoke("server:stop");
     },
 
     getServerUrl: async () => {
         return await ipcRenderer.invoke("server:url");
+    },
+
+    notification: async (title: string, body: string) => {
+        if (!isLocalSource()) {
+            throw new Error(
+                "Access restricted: This operation is only allowed in a local environment."
+            );
+        }
+
+        return await ipcRenderer.invoke("notification", { title, body });
     },
 };
 
