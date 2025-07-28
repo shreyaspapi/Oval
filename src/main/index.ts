@@ -482,6 +482,7 @@ if (!gotTheLock) {
         (async () => {
             if (isPackageInstalled("open-webui")) {
                 try {
+                    console.log("Checking for updates...");
                     updateTrayMenu("Open WebUI: Checking for updates...", null);
                     await installPackage("open-webui");
                 } catch (error) {

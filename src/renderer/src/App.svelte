@@ -5,6 +5,7 @@
     import Controls from "./lib/components/Controls.svelte";
     import Installation from "./lib/components/Installation.svelte";
     import Loading from "./lib/components/Loading.svelte";
+
     import { info } from "./lib/stores";
 
     let installed = $state(false);
