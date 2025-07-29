@@ -429,6 +429,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("install:python", async (event) => {
+            SERVER_STATUS = null;
             log.info("Installing package...");
             try {
                 const res = await installPython();
@@ -461,6 +462,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("install:package", async (event) => {
+            SERVER_STATUS = null;
             log.info("Installing package...");
             try {
                 const res = await installPackage("open-webui");

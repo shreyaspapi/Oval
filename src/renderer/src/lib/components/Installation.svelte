@@ -49,10 +49,12 @@
                 (await window.electronAPI.getPythonStatus()) &&
                 (await window.electronAPI.getPackageStatus())
             ) {
-                // Notify the user that the installation is complete
+                // Start the server if it's not already running
                 if (!(await window.electronAPI.getServerStatus())) {
                     await window.electronAPI.startServer();
                 }
+
+                // Notify the user that the installation is complete
                 await window.electronAPI.notification(
                     "Installation Complete",
                     "Open WebUI is now ready to use."
