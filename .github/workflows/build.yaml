@@ -109,12 +109,7 @@ jobs:
                       if [[ "$filename" == *.tar.gz ]]; then
                         extension="tar.gz"
                       fi
-                      # Use original base name (without extension) as suffix to avoid collisions
-                      base="${filename%.*}"
-                      if [[ "$filename" == *.tar.gz ]]; then
-                        base="${filename%.tar.gz}"
-                      fi
-                      dest="${{ matrix.os }}-${{ matrix.arch }}-${base}.${extension}"
+                      dest="${{ matrix.os }}-${{ matrix.arch }}.${extension}"
                       cp "$package_file" "$dest"
                       echo "Copied $package_file to $dest"
                     done
