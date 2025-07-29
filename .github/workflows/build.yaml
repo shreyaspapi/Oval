@@ -17,10 +17,10 @@ jobs:
                     #   arch: x64
                     # - os: ubuntu-latest
                     #   arch: arm64
-                    # - os: windows-latest
-                    #   arch: x64
-                    # - os: macos-latest
-                    #   arch: x64
+                    - os: windows-latest
+                      arch: x64
+                    - os: macos-latest
+                      arch: x64
                     - os: macos-latest
                       arch: arm64
         steps:
