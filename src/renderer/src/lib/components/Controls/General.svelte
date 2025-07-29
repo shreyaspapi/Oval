@@ -48,16 +48,15 @@
 </script>
 
 <ConfirmDialog
-    bind:showConfirm
+    bind:show={showConfirm}
     title="Factory Reset"
     message="Are you sure you want to reset the app? This will remove all configurations, user data, and the bundled Python environment, restoring the app to its original state."
     confirmLabel="Reset"
     onConfirm={async () => {
         try {
             await window.electronAPI.resetApp();
-            toast.success(
-                "App has been reset successfully. Please restart the app."
-            );
+            config = null;
+            toast.success("App has been reset successfully.");
         } catch (error) {
             toast.error("Failed to reset the app");
         }

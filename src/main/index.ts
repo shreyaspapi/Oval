@@ -30,6 +30,7 @@ import {
     isPythonInstalled,
     isUvInstalled,
     openUrl,
+    resetApp,
     setConfig,
     startServer,
     stopAllServers,
@@ -480,6 +481,10 @@ if (!gotTheLock) {
 
         ipcMain.handle("status:server", async (event) => {
             return SERVER_STATUS;
+        });
+
+        ipcMain.handle("app:reset", async (event) => {
+            return await resetApp();
         });
 
         ipcMain.handle("get:config", async (event) => {

@@ -8,23 +8,43 @@
     import { flyAndScale } from "../../utils/transitions";
     import { marked } from "marked";
 
-    export let title = "";
-    export let message = "";
+    let {
+        title,
+        message,
+        cancelLabel = "Cancel",
+        confirmLabel = "Confirm",
+        onConfirm = () => {},
+        input,
+        inputPlaceholder,
+        inputValue,
+        show = $bindable(false),
+    } = $props();
 
-    export let cancelLabel = "Cancel";
-    export let confirmLabel = "Confirm";
+    $effect(() => {
+        if (show) {
+            init();
+        }
+    });
 
-    export let onConfirm = () => {};
+    $effect(() => {
+        if (mounted) {
+            if (show && modalElement) {
+                document.body.appendChild(modalElement);
+                focusTrap = FocusTrap.createFocusTrap(modalElement);
+                focusTrap.activate();
 
-    export let input = false;
-    export let inputPlaceholder = "";
-    export let inputValue = "";
+                window.addEventListener("keydown", handleKeyDown);
+                document.body.style.overflow = "hidden";
+            } else if (modalElement) {
+                focusTrap.deactivate();
 
-    export let show = false;
+                window.removeEventListener("keydown", handleKeyDown);
+                document.body.removeChild(modalElement);
 
-    $: if (show) {
-        init();
-    }
+                document.body.style.overflow = "unset";
+            }
+        }
+    });
 
     let modalElement = null;
     let mounted = false;
@@ -56,24 +76,6 @@
     onMount(() => {
         mounted = true;
     });
-
-    $: if (mounted) {
-        if (show && modalElement) {
-            document.body.appendChild(modalElement);
-            focusTrap = FocusTrap.createFocusTrap(modalElement);
-            focusTrap.activate();
-
-            window.addEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "hidden";
-        } else if (modalElement) {
-            focusTrap.deactivate();
-
-            window.removeEventListener("keydown", handleKeyDown);
-            document.body.removeChild(modalElement);
-
-            document.body.style.overflow = "unset";
-        }
-    }
 
     onDestroy(() => {
         show = false;

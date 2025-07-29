@@ -446,6 +446,11 @@ export const uninstallPython = (installationPath?: string): boolean => {
     return true;
 };
 
+export const resetApp = async (): Promise<void> => {
+    await uninstallPython();
+    log.info("Uninstalled Python environment");
+};
+
 ////////////////////////////////////////////////
 //
 // Fixes code-signing issues in macOS by applying ad-hoc signatures to extracted environment files.
