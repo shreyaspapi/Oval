@@ -59,7 +59,7 @@ export const openUrl = (url: string) => {
         throw new Error("No URL provided to open in browser.");
     }
 
-    console.log("Opening URL in browser:", url);
+    log.info("Opening URL in browser:", url);
     if (url.startsWith("http://0.0.0.0")) {
         url = url.replace("http://0.0.0.0", "http://localhost");
     }
@@ -215,7 +215,7 @@ export const downloadFileWithProgress = async (
             // Write to file
             fs.writeFileSync(downloadPath, buffer);
 
-            console.log("File downloaded successfully:", downloadPath);
+            log.info("File downloaded successfully:", downloadPath);
             return downloadPath;
         }
     } catch (error) {
@@ -257,13 +257,13 @@ const downloadPython = async (onProgress = null) => {
     const url = generateDownloadUrl();
     const downloadPath = getPythonDownloadPath();
 
-    console.log(`🔍 Detected system: ${os.platform()} ${os.arch()}`);
-    console.log(`📁 Download path: ${downloadPath}`);
-    console.log(`🔗 URL: ${url}`);
+    log.info(`🔍 Detected system: ${os.platform()} ${os.arch()}`);
+    log.info(`📁 Download path: ${downloadPath}`);
+    log.info(`🔗 URL: ${url}`);
 
     // Check if file already exists
     if (fs.existsSync(downloadPath)) {
-        console.log(`✅ File already exists: ${downloadPath}`);
+        log.info(`✅ File already exists: ${downloadPath}`);
         return downloadPath;
     }
 
@@ -273,7 +273,7 @@ const downloadPython = async (onProgress = null) => {
             downloadPath,
             onProgress
         );
-        console.log(`✅ Python downloaded successfully to: ${result}`);
+        log.info(`✅ Python downloaded successfully to: ${result}`);
         return result;
     } catch (error) {
         console.error(`❌ Download failed: ${error?.message}`);
@@ -311,7 +311,7 @@ export const installPython = async (
         }
 
         await downloadPython((progress, downloaded, total) => {
-            console.log(
+            log.info(
                 `Downloading Python: ${progress.toFixed(2)}% (${downloaded} of ${total} bytes)`
             );
             log.info(
@@ -325,7 +325,7 @@ export const installPython = async (
     }
 
     installationPath = installationPath || getPythonInstallationPath();
-    console.log(installationPath, pythonDownloadPath);
+    log.info(installationPath, pythonDownloadPath);
 
     try {
         const userDataPath = getUserDataPath();
@@ -348,7 +348,7 @@ export const installPython = async (
                 ...process.env,
             },
         });
-        console.log("Successfully installed uv package");
+        log.info("Successfully installed uv package");
 
         return true; // Return true to indicate success
     } else {
@@ -389,7 +389,7 @@ export const isPythonInstalled = (installationPath?: string) => {
                 ...process.env,
             },
         });
-        console.log("Installed Python Version:", pythonVersion.trim());
+        log.info("Installed Python Version:", pythonVersion.trim());
 
         return true; // Return true to indicate success
     } catch (error) {
@@ -409,7 +409,7 @@ export const isUvInstalled = (installationPath?: string) => {
             },
         });
 
-        console.log("Installed uv Version:", result.trim());
+        log.info("Installed uv Version:", result.trim());
         return true; // Return true if uv is installed
     } catch (error) {
         log.error(
@@ -524,7 +524,7 @@ export const installPackage = (
 
         // Function to handle logging output
         const onLog = (data: any) => {
-            console.log(data);
+            log.info(data);
         };
 
         // Listen to stdout and stderr for logging
@@ -533,7 +533,7 @@ export const installPackage = (
 
         // Handle the exit event
         commandProcess.on("exit", (code) => {
-            console.log(`Child exited with code ${code}`);
+            log.info(`Child exited with code ${code}`);
 
             if (code !== 0) {
                 log.error(`Failed to install open-webui: ${code}`);
@@ -573,14 +573,14 @@ export const isPackageInstalled = (packageName: string): boolean => {
         );
 
         if (info.includes(`Name: ${packageName}`)) {
-            console.log(`Package ${packageName} is installed.`);
+            log.info(`Package ${packageName} is installed.`);
             return true; // Return true to indicate success
         } else {
-            console.log(`Package ${packageName} is not installed.`);
+            log.info(`Package ${packageName} is not installed.`);
             return false; // Return false to indicate failure
         }
     } catch (error) {
-        console.log("Failed to execute Python binary");
+        log.info("Failed to execute Python binary");
         return false; // Return false to indicate failure
     }
 };
@@ -608,7 +608,7 @@ export const startServer = async (
         throw new Error("open-webui package is not installed");
 
     const pythonPath = getPythonPath();
-    console.log(`Using Python at: ${pythonPath}`);
+    log.info(`Using Python at: ${pythonPath}`);
 
     const openWebUIPath = path.join(path.dirname(pythonPath), "open-webui");
 
@@ -627,17 +627,17 @@ export const startServer = async (
     let desiredPort = port || 8080;
     let availablePort = desiredPort;
 
-    console.log(`Checking port availability starting from ${availablePort}...`);
+    log.info(`Checking port availability starting from ${availablePort}...`);
     while (await portInUse(availablePort, host)) {
         availablePort++;
 
-        console.log(`Port ${availablePort} is in use, trying next port...`);
+        log.info(`Port ${availablePort} is in use, trying next port...`);
         if (availablePort > desiredPort + 100) {
             throw new Error("No available ports found");
         }
     }
     commandArgs.push("--port", availablePort.toString());
-    console.log(
+    log.info(
         "Starting Open-WebUI server...",
         pythonPath,
         commandArgs.join(" ")
@@ -661,7 +661,7 @@ export const startServer = async (
         const tag = `[${source}][PID:${childProcess.pid}]:`;
         logLines.push(`${tag} ${logLine}`);
         // (Optional) also log to main process console
-        // console.log(`${tag} ${logLine}`);
+        // log.info(`${tag} ${logLine}`);
     };
     childProcess.stdout?.on("data", appendLog("stdout"));
     childProcess.stderr?.on("data", appendLog("stderr"));
@@ -682,7 +682,7 @@ export const startServer = async (
     let effectiveHost = host;
     if (!expose && host === "0.0.0.0") effectiveHost = "127.0.0.1";
     const url = `http://${effectiveHost}:${availablePort}`;
-    console.log(`Server started with PID: ${childProcess.pid}, URL: ${url}`);
+    log.info(`Server started with PID: ${childProcess.pid}, URL: ${url}`);
 
     return { url, pid: childProcess.pid };
 };
@@ -691,7 +691,7 @@ export const startServer = async (
  * Terminates all server processes.
  */
 export async function stopAllServers(): Promise<void> {
-    console.log("Stopping all servers...");
+    log.info("Stopping all servers...");
     for (const pid of Array.from(serverPIDs)) {
         try {
             terminateProcessTree(pid);
@@ -701,7 +701,7 @@ export async function stopAllServers(): Promise<void> {
             console.error(`Error stopping server with PID ${pid}:`, error);
         }
     }
-    console.log("All servers stopped successfully.");
+    log.info("All servers stopped successfully.");
 }
 /**
  * Kills a process tree by PID.
@@ -710,7 +710,7 @@ function terminateProcessTree(pid: number): void {
     if (process.platform === "win32") {
         try {
             execSync(`taskkill /PID ${pid} /T /F`);
-            console.log(
+            log.info(
                 `Terminated server process tree (PID: ${pid}) on Windows.`
             );
         } catch (error) {
@@ -722,7 +722,7 @@ function terminateProcessTree(pid: number): void {
     } else {
         try {
             process.kill(-pid, "SIGKILL");
-            console.log(
+            log.info(
                 `Terminated server process tree (PID: ${pid}) on Unix-like OS.`
             );
         } catch (error) {
@@ -765,20 +765,20 @@ export const checkUrlAndOpen = async (
     const pollUrl = async () => {
         while (attempts < maxAttempts) {
             attempts++;
-            console.log(
+            log.info(
                 `Checking URL availability (attempt ${attempts}/${maxAttempts}): ${url}`
             );
 
             try {
                 const isAvailable = await checkUrl();
                 if (isAvailable) {
-                    console.log("URL is now available, opening browser...");
+                    log.info("URL is now available, opening browser...");
                     await openUrl(url);
                     await callback(); // Call the provided callback function
                     return; // Exit the polling loop
                 }
             } catch (error) {
-                console.log(`Error checking URL: ${error}`);
+                log.info(`Error checking URL: ${error}`);
             }
 
             // Wait before next attempt
@@ -787,7 +787,7 @@ export const checkUrlAndOpen = async (
 
         // If we exit the loop without success
         if (attempts >= maxAttempts) {
-            console.log("URL check timed out after 5 minutes");
+            log.info("URL check timed out after 5 minutes");
         }
     };
 
