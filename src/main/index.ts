@@ -16,12 +16,9 @@ import {
 } from "electron";
 import path, { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
-import log from "electron-log";
-
-import icon from "../../resources/icon.png?asset";
-import trayIconImage from "../../resources/assets/tray.png?asset";
 
 import {
+    getLogFilePath,
     checkUrlAndOpen,
     getConfig,
     getServerLog,
@@ -37,6 +34,12 @@ import {
     stopAllServers,
     uninstallPython,
 } from "./utils";
+
+import log from "electron-log";
+log.transports.file.resolvePathFn = () => getLogFilePath("main");
+
+import icon from "../../resources/icon.png?asset";
+import trayIconImage from "../../resources/assets/tray.png?asset";
 
 // Main application logic
 let mainWindow: BrowserWindow | null = null;

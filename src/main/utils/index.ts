@@ -12,6 +12,18 @@ import { app, shell, Notification } from "electron";
 import { execFileSync, exec, spawn, execSync, execFile } from "child_process";
 
 import log from "electron-log";
+log.transports.file.resolvePathFn = () => getLogFilePath("main");
+
+const serverLogger = log.create({ logId: "server" });
+serverLogger.transports.file.resolvePath = () => getLogFilePath(`server`);
+
+export const getLogFilePath = (name: string = "main"): string => {
+    const logDir = path.join(getUserDataPath(), "logs");
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+    }
+    return path.join(logDir, `${name}.log`);
+};
 
 export const getAppPath = (): string => {
     let appPath = app.getAppPath();
@@ -691,24 +703,23 @@ export const startServer = async (
 
     const appendLog = (source: string) => (data: Buffer) => {
         const logLine = data.toString().trim();
-        const tag = `[${source}][PID:${childProcess.pid}]:`;
-        logLines.push(`${tag} ${logLine}`);
-        // (Optional) also log to main process console
-        // log.info(`${tag} ${logLine}`);
+        const line = `[${source}][PID:${childProcess.pid}]: ${logLine}`;
+        logLines.push(line);
+        serverLogger.info(line); // Log to console
     };
     childProcess.stdout?.on("data", appendLog("stdout"));
     childProcess.stderr?.on("data", appendLog("stderr"));
     childProcess.on("close", (code, signal) => {
-        logLines.push(
-            `[process][PID:${childProcess.pid}] Exited with code ${code} signal ${signal}`
-        );
+        const line = `[process][PID:${childProcess.pid}] Exited with code ${code} signal ${signal}`;
+        serverLogger.info(line);
+        logLines.push(line);
         serverPIDs.delete(childProcess.pid);
         // Note: we keep the logs available until manually cleared
     });
     childProcess.on("error", (err) => {
-        logLines.push(
-            `[process][PID:${childProcess.pid}] Error: ${err.message}`
-        );
+        const line = `[process][PID:${childProcess.pid}] Error: ${err.message}`;
+        serverLogger.error(line);
+        logLines.push(line);
     });
 
     // Compute URL directly, do not try to parse logs
