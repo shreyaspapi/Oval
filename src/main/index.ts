@@ -16,6 +16,7 @@ import {
 } from "electron";
 import path, { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
+import log from "electron-log";
 
 import icon from "../../resources/icon.png?asset";
 import trayIconImage from "../../resources/assets/tray.png?asset";
@@ -268,7 +269,7 @@ const startServerHandler = async () => {
 
         updateTrayMenu("Open WebUI: Starting...", null);
 
-        console.log("Server started successfully:", SERVER_URL, SERVER_PID);
+        log.info("Server started successfully:", SERVER_URL, SERVER_PID);
         SERVER_STATUS = "started";
 
         mainWindow?.webContents.send("main:data", {
@@ -375,7 +376,7 @@ if (!gotTheLock) {
     // Some APIs can only be used after this event occurs.
     app.whenReady().then(async () => {
         CONFIG = await getConfig(); // Load initial config
-        console.log("Initial Config:", CONFIG);
+        log.info("Initial Config:", CONFIG);
 
         // Set app user model id for windows
         electronApp.setAppUserModelId("com.openwebui.desktop");
@@ -387,14 +388,14 @@ if (!gotTheLock) {
         });
 
         // IPC test
-        ipcMain.on("ping", () => console.log("pong"));
+        ipcMain.on("ping", () => log.info("pong"));
 
         ipcMain.handle("get:version", async () => {
             return app.getVersion();
         });
 
         ipcMain.handle("install:python", async (event) => {
-            console.log("Installing package...");
+            log.info("Installing package...");
             try {
                 const res = await installPython();
                 if (res) {
@@ -426,7 +427,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("install:package", async (event) => {
-            console.log("Installing package...");
+            log.info("Installing package...");
             try {
                 const res = await installPackage("open-webui");
                 if (res) {
@@ -450,7 +451,7 @@ if (!gotTheLock) {
         ipcMain.handle("status:package", async (event) => {
             const packageStatus = await isPackageInstalled("open-webui");
 
-            console.log("Package Status:", packageStatus);
+            log.info("Package Status:", packageStatus);
             return packageStatus;
         });
 
@@ -499,7 +500,7 @@ if (!gotTheLock) {
             if (!url) {
                 throw new Error("No URL provided to open in browser.");
             }
-            console.log("Opening URL in browser:", url);
+            log.info("Opening URL in browser:", url);
             if (url.startsWith("http://0.0.0.0")) {
                 url = url.replace("http://0.0.0.0", "http://localhost");
             }
@@ -508,7 +509,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("notification", async (event, { title, body }) => {
-            console.log("Received notification:", title, body);
+            log.info("Received notification:", title, body);
             const notification = new Notification({
                 title: title,
                 body: body,
@@ -520,7 +521,7 @@ if (!gotTheLock) {
             if (isPackageInstalled("open-webui")) {
                 if (CONFIG?.autoUpdate ?? true) {
                     try {
-                        console.log("Checking for updates...");
+                        log.info("Checking for updates...");
                         updateTrayMenu(
                             "Open WebUI: Checking for updates...",
                             null
