@@ -488,6 +488,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("app:reset", async (event) => {
+            await stopServerHandler();
             return await resetApp();
         });
 
