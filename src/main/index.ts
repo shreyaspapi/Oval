@@ -129,8 +129,7 @@ function createWindow(show = true): void {
             {
                 label: "Reset",
                 click: async () => {
-                    await stopServerHandler();
-                    await resetApp();
+                    await resetAppHandler();
                 },
             },
         ],
@@ -429,7 +428,6 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("install:python", async (event) => {
-            SERVER_STATUS = null;
             log.info("Installing package...");
             try {
                 const res = await installPython();
@@ -462,7 +460,6 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("install:package", async (event) => {
-            SERVER_STATUS = null;
             log.info("Installing package...");
             try {
                 const res = await installPackage("open-webui");
@@ -521,8 +518,7 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle("app:reset", async (event) => {
-            await stopServerHandler();
-            return await resetApp();
+            return await resetAppHandler();
         });
 
         ipcMain.handle("get:config", async (event) => {
