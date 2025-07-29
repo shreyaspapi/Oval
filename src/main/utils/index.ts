@@ -779,7 +779,7 @@ export const checkUrlAndOpen = async (
     url: string,
     callback: Function = async () => {}
 ) => {
-    const maxAttempts = 150; // 5 minutes with 2-second intervals
+    const maxAttempts = 1800; // 60 minutes with 2-second intervals
     const interval = 2000; // 2 seconds
     let attempts = 0;
 
