@@ -63,6 +63,7 @@ function createWindow(show = true): void {
         show: false,
         titleBarStyle: process.platform === "win32" ? "default" : "hidden",
         trafficLightPosition: { x: 16, y: 16 },
+        autoHideMenuBar: true,
         ...(process.platform === "win32"
             ? {
                   frame: true,
