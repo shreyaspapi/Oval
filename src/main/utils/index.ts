@@ -668,16 +668,15 @@ export const startServer = async (
     const pythonPath = getPythonPath();
     log.info(`Using Python at: ${pythonPath}`);
 
-    const openWebUIPath = path.join(path.dirname(pythonPath), "open-webui");
-
     let commandArgs: string[];
     commandArgs = ["-m", "uv", "run", "open-webui", "serve", "--host", host];
 
-    const dataDir = path.join(app.getPath("userData"), "data");
+    const dataDir = getOpenWebUIDataPath();
     const secretKey = getSecretKey();
     if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
     }
+
     process.env.DATA_DIR = dataDir;
     process.env.WEBUI_SECRET_KEY = secretKey;
 
