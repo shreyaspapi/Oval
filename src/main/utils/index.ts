@@ -358,6 +358,9 @@ export const installPython = async (
             encoding: "utf-8",
             env: {
                 ...process.env,
+                ...(process.platform === "win32"
+                    ? { PYTHONIOENCODING: "utf-8" }
+                    : {}),
             },
         });
         log.info("Successfully installed uv package");
@@ -399,6 +402,9 @@ export const isPythonInstalled = (installationPath?: string) => {
             encoding: "utf-8",
             env: {
                 ...process.env,
+                ...(process.platform === "win32"
+                    ? { PYTHONIOENCODING: "utf-8" }
+                    : {}),
             },
         });
         log.info("Installed Python Version:", pythonVersion.trim());
@@ -418,6 +424,9 @@ export const isUvInstalled = (installationPath?: string) => {
             encoding: "utf-8",
             env: {
                 ...process.env,
+                ...(process.platform === "win32"
+                    ? { PYTHONIOENCODING: "utf-8" }
+                    : {}),
             },
         });
 
@@ -563,6 +572,9 @@ export const installPackage = (
             {
                 env: {
                     ...process.env,
+                    ...(process.platform === "win32"
+                        ? { PYTHONIOENCODING: "utf-8" }
+                        : {}),
                 },
             }
         );
@@ -613,6 +625,9 @@ export const isPackageInstalled = (packageName: string): boolean => {
                 encoding: "utf-8",
                 env: {
                     ...process.env,
+                    ...(process.platform === "win32"
+                        ? { PYTHONIOENCODING: "utf-8" }
+                        : {}),
                 },
             }
         );
@@ -690,7 +705,12 @@ export const startServer = async (
     const childProcess = spawn(pythonPath, commandArgs, {
         detached: process.platform !== "win32",
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env },
+        env: {
+            ...process.env,
+            ...(process.platform === "win32"
+                ? { PYTHONIOENCODING: "utf-8" }
+                : {}),
+        },
     });
 
     if (!childProcess.pid) {
