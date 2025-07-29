@@ -307,7 +307,7 @@ const startServerHandler = async () => {
             // Show system notification
             const notification = new Notification({
                 title: "Open WebUI",
-                body: "Server is now available and opened in your browser",
+                body: "Open WebUI is now available and opened in your browser",
             });
             notification.show();
 
