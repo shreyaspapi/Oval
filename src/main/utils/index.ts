@@ -361,7 +361,7 @@ export const installPython = async (
 
 export const getPythonExecutablePath = (envPath: string) => {
     if (process.platform === "win32") {
-        return path.normalize(path.join(envPath, "Scripts", "python.exe"));
+        return path.normalize(path.join(envPath, "python.exe"));
     } else {
         return path.normalize(path.join(envPath, "bin", "python"));
     }
