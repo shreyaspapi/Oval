@@ -449,6 +449,39 @@ export const uninstallPython = (installationPath?: string): boolean => {
 export const resetApp = async (): Promise<void> => {
     await uninstallPython();
     log.info("Uninstalled Python environment");
+
+    // remove /data folder
+    const dataPath = getOpenWebUIDataPath();
+    if (fs.existsSync(dataPath)) {
+        try {
+            fs.rmSync(dataPath, { recursive: true });
+            log.info("Removed data directory:", dataPath);
+        } catch (error) {
+            log.error("Failed to remove data directory:", error);
+        }
+    }
+
+    // remove config file
+    const configPath = path.join(getUserDataPath(), "config.json");
+    if (fs.existsSync(configPath)) {
+        try {
+            fs.unlinkSync(configPath);
+            log.info("Removed config file:", configPath);
+        } catch (error) {
+            log.error("Failed to remove config file:", error);
+        }
+    }
+
+    // remove secret key file
+    const secretKeyPath = path.join(getOpenWebUIDataPath(), ".key");
+    if (fs.existsSync(secretKeyPath)) {
+        try {
+            fs.unlinkSync(secretKeyPath);
+            log.info("Removed secret key file:", secretKeyPath);
+        } catch (error) {
+            log.error("Failed to remove secret key file:", error);
+        }
+    }
 };
 
 ////////////////////////////////////////////////
