@@ -359,6 +359,29 @@ const stopServerHandler = async () => {
     }
 };
 
+const resetAppHandler = async () => {
+    try {
+        await stopServerHandler(); // Stop the server if running
+        SERVER_STATUS = null;
+        await resetApp(); // Reset the application state
+
+        // Show success notification
+        const notification = new Notification({
+            title: "Open WebUI",
+            body: "Application has been reset successfully.",
+        });
+        notification.show();
+    } catch (error) {
+        log.error("Failed to reset application:", error);
+        // Show error notification
+        const notification = new Notification({
+            title: "Open WebUI",
+            body: `Failed to reset application: ${error.message}`,
+        });
+        notification.show();
+    }
+};
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit(); // Quit if another instance is already running
