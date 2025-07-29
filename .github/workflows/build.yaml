@@ -132,6 +132,7 @@ jobs:
                   files-folder-filter: exe
 
             - name: List files for debugging
+              shell: bash
               run: |
                   echo "Files in current directory:"
                   ls -la
