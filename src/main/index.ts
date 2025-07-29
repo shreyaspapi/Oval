@@ -65,7 +65,7 @@ function createWindow(show = true): void {
         trafficLightPosition: { x: 16, y: 16 },
         ...(process.platform === "win32"
             ? {
-                  frame: false,
+                  frame: true,
               }
             : {}),
         ...(process.platform === "linux" ? { icon } : {}),
