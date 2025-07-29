@@ -58,6 +58,10 @@
             config = null;
             await window.electronAPI.resetApp();
             toast.success("App has been reset successfully.");
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (error) {
             toast.error("Failed to reset the app");
         }
