@@ -7,7 +7,7 @@
     import Spinner from "../common/Spinner.svelte";
     import ConfirmDialog from "../common/ConfirmDialog.svelte";
 
-    let { info } = $props();
+    let { info, installed = $bindable(false) } = $props();
 
     let config = $state(null);
 
@@ -54,6 +54,7 @@
     confirmLabel="Reset"
     onConfirm={async () => {
         try {
+            installed = null;
             config = null;
             await window.electronAPI.resetApp();
             toast.success("App has been reset successfully.");

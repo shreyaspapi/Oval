@@ -7,6 +7,8 @@
     import About from "./Controls/About.svelte";
     import { info } from "../stores";
 
+    let { installed = $bindable(false) } = $props();
+
     let selectedTab = $state("general");
 
     onMount(async () => {});
@@ -104,7 +106,7 @@
                 class="flex-1 pt-1 sm:mt-0 overflow-y-scroll pr-1 scrollbar-hidden"
             >
                 {#if selectedTab === "general"}
-                    <General info={$info} />
+                    <General bind:installed info={$info} />
                 {:else if selectedTab === "about"}
                     <About />
                 {/if}

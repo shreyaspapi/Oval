@@ -57,7 +57,7 @@
     {:else if installed === false}
         <Installation bind:installed />
     {:else}
-        <Controls />
+        <Controls bind:installed />
     {/if}
 </main>
 
