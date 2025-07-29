@@ -231,7 +231,7 @@ export const downloadFileWithProgress = async (
             return downloadPath;
         }
     } catch (error) {
-        console.error("Download failed:", error);
+        log.error("Download failed:", error);
         throw error;
     }
 };
@@ -288,7 +288,7 @@ const downloadPython = async (onProgress = null) => {
         log.info(`✅ Python downloaded successfully to: ${result}`);
         return result;
     } catch (error) {
-        console.error(`❌ Download failed: ${error?.message}`);
+        log.error(`❌ Download failed: ${error?.message}`);
         throw error;
     }
 };
@@ -759,7 +759,7 @@ export async function stopAllServers(): Promise<void> {
             serverPIDs.delete(pid); // Remove from tracking set after termination
             serverLogs.delete(pid);
         } catch (error) {
-            console.error(`Error stopping server with PID ${pid}:`, error);
+            log.error(`Error stopping server with PID ${pid}:`, error);
         }
     }
     log.info("All servers stopped successfully.");
@@ -775,10 +775,7 @@ function terminateProcessTree(pid: number): void {
                 `Terminated server process tree (PID: ${pid}) on Windows.`
             );
         } catch (error) {
-            console.error(
-                `Failed to terminate process tree (PID: ${pid}):`,
-                error
-            );
+            log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
         }
     } else {
         try {
@@ -787,10 +784,7 @@ function terminateProcessTree(pid: number): void {
                 `Terminated server process tree (PID: ${pid}) on Unix-like OS.`
             );
         } catch (error) {
-            console.error(
-                `Failed to terminate process tree (PID: ${pid}):`,
-                error
-            );
+            log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
         }
     }
 }
@@ -854,7 +848,7 @@ export const checkUrlAndOpen = async (
 
     // Start polling in the background (don't await)
     pollUrl().catch((error) => {
-        console.error("Error in URL polling:", error);
+        log.error("Error in URL polling:", error);
     });
 };
 
@@ -867,7 +861,7 @@ export const getConfig = async (): Promise<Record<string, any>> => {
         }
         return {};
     } catch (error) {
-        console.error("Error reading config:", error);
+        log.error("Error reading config:", error);
         throw error;
     }
 };
@@ -880,7 +874,7 @@ export const setConfig = async (config: Record<string, any>): Promise<void> => {
             JSON.stringify(config, null, 2)
         );
     } catch (error) {
-        console.error("Error writing config:", error);
+        log.error("Error writing config:", error);
         throw error;
     }
 };

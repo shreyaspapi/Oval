@@ -251,7 +251,7 @@ const uninstallHandler = async () => {
         });
         notification.show();
     } catch (error) {
-        console.error("Uninstallation failed:", error);
+        log.error("Uninstallation failed:", error);
         // Show error notification
         const notification = new Notification({
             title: "Open WebUI",
@@ -317,7 +317,7 @@ const startServerHandler = async () => {
 
         return true; // Indicate success
     } catch (error) {
-        console.error("Failed to start server:", error);
+        log.error("Failed to start server:", error);
         SERVER_STATUS = "failed";
         mainWindow?.webContents.send("main:data", {
             type: "status:server",
@@ -353,7 +353,7 @@ const stopServerHandler = async () => {
 
         return true; // Indicate success
     } catch (error) {
-        console.error("Failed to stop server:", error);
+        log.error("Failed to stop server:", error);
         return false; // Indicate failure
     }
 };
@@ -362,6 +362,10 @@ const resetAppHandler = async () => {
     try {
         await stopServerHandler(); // Stop the server if running
         SERVER_STATUS = null;
+
+        // make sure all the subprocesses are killed
+        await stopAllServers();
+
         await resetApp(); // Reset the application state
 
         // Show success notification
@@ -561,7 +565,7 @@ if (!gotTheLock) {
                         );
                         await installPackage("open-webui");
                     } catch (error) {
-                        console.error("Failed to update package:", error);
+                        log.error("Failed to update package:", error);
                     }
                 }
 
