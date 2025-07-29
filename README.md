@@ -4,7 +4,8 @@
 
 **Open WebUI Desktop** is a cross-platform desktop application for [Open WebUI](https://github.com/open-webui/open-webui). It brings the _full-featured Open WebUI experience_ directly to your device, effectively transforming it into a powerful server—without the complexities of manual setup.
 
-This project is currently in **alpha** and under active development. 🛠️ Expect frequent updates and potential changes as we refine the application.
+> [!WARNING]
+> This project is currently in **alpha** and under active development. 🛠️ Expect frequent updates and potential changes as we refine the application.
 
 ## Download 📥
 
