@@ -97,22 +97,27 @@ jobs:
                     echo "dist directory not found"
                   fi
 
-            - name: Find and Rename Linux Package
+            - name: Find and Rename Linux Packages
               if: ${{ matrix.os == 'ubuntu-latest' }}
               run: |
                   if [ -d "dist" ]; then
-                    package_file=$(find dist -maxdepth 1 -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.tar.gz" | head -1)
-                    if [ -n "$package_file" ]; then
-                      extension="${package_file##*.}"
-                      if [[ "$package_file" == *.tar.gz ]]; then
+                    shopt -s nullglob
+                    for package_file in dist/*.deb dist/*.rpm dist/*.AppImage dist/*.tar.gz; do
+                      [ -e "$package_file" ] || continue
+                      filename=$(basename "$package_file")
+                      extension="${filename##*.}"
+                      if [[ "$filename" == *.tar.gz ]]; then
                         extension="tar.gz"
                       fi
-                      cp "$package_file" "${{ matrix.os }}-${{ matrix.arch }}.$extension"
-                      echo "Copied package to: ${{ matrix.os }}-${{ matrix.arch }}.$extension"
-                    else
-                      echo "No Linux package found in dist"
-                      ls -la dist/ || echo "dist directory not found or empty"
-                    fi
+                      # Use original base name (without extension) as suffix to avoid collisions
+                      base="${filename%.*}"
+                      if [[ "$filename" == *.tar.gz ]]; then
+                        base="${filename%.tar.gz}"
+                      fi
+                      dest="${{ matrix.os }}-${{ matrix.arch }}-${base}.${extension}"
+                      cp "$package_file" "$dest"
+                      echo "Copied $package_file to $dest"
+                    done
                   else
                     echo "dist directory not found"
                   fi
