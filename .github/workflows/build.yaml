@@ -150,7 +150,7 @@ jobs:
     release:
         needs: build
         runs-on: ubuntu-latest
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/release'
         steps:
             - name: Checkout Repository
               uses: actions/checkout@v4
