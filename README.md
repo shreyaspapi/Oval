@@ -6,13 +6,9 @@
 
 This project is still in an **experimental phase** and under active development. 🛠️ Expect frequent updates and potential changes as we refine the application.
 
----
-
 ## Features
 - **One-Click Installation**: Quickly and effortlessly install and set up Open WebUI with all its dependencies. This feature is fully functional and ready to make your setup a breeze.
 - **Cross-Platform Support**: Compatible with Windows, macOS, and Linux to ensure broad accessibility.
-
----
 
 ## Project Setup
 
@@ -41,12 +37,8 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
----
-
 ## License 📜
 This project is licensed under the **Open WebUI Sustainable Use License**. For details, see [LICENSE](LICENSE).
-
----
 
 ## Stay Tuned! 🌟
 
