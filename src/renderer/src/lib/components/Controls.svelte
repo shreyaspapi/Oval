@@ -1,11 +1,11 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { appInfo, info } from "../stores";
 
     import Launching from "./Launching.svelte";
     import logoImage from "../assets/images/splash.png";
     import General from "./Controls/General.svelte";
     import About from "./Controls/About.svelte";
-    import { info } from "../stores";
 
     let { installed = $bindable(false) } = $props();
 
@@ -19,7 +19,9 @@
         class="flex flex-col w-full h-full relative text-gray-850 dark:text-gray-100"
     >
         <div
-            class="pt-3 pb-1.5 pl-22 pr-4 w-full drag-region flex flex-row gap-3 items-center justify-between"
+            class="pt-3 pb-1.5 {$appInfo?.platform === 'darwin'
+                ? 'pl-22 pr-4'
+                : 'px-4'} w-full drag-region flex flex-row gap-3 items-center justify-between"
         >
             <div class=" font-medium">Controls</div>
 

@@ -61,14 +61,15 @@ function createWindow(show = true): void {
         minHeight: 400,
         icon: path.join(__dirname, "assets/icon.png"),
         show: false,
+        titleBarStyle: process.platform === "win32" ? "default" : "hidden",
+        trafficLightPosition: { x: 16, y: 16 },
         ...(process.platform === "win32"
             ? {
                   frame: false,
               }
             : {}),
         ...(process.platform === "linux" ? { icon } : {}),
-        titleBarStyle: process.platform === "win32" ? "default" : "hidden",
-        trafficLightPosition: { x: 16, y: 16 },
+        ...(process.platform !== "darwin" ? { titleBarOverlay: true } : {}),
         webPreferences: {
             preload: join(__dirname, "../preload/index.js"),
             sandbox: false,
@@ -519,6 +520,14 @@ if (!gotTheLock) {
 
         ipcMain.handle("status:server", async (event) => {
             return SERVER_STATUS;
+        });
+
+        ipcMain.handle("app:info", async (event) => {
+            return {
+                version: app.getVersion(),
+                platform: process.platform,
+                arch: process.arch,
+            };
         });
 
         ipcMain.handle("app:reset", async (event) => {
