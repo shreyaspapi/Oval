@@ -7,19 +7,11 @@
     import galaxyImage from "../assets/images/galaxy.jpg";
     import greenImage from "../assets/images/green.jpg";
     import adamImage from "../assets/images/adam.jpg";
-    import earthImage from "../assets/images/earth.jpg";
     import nasaImage from "../assets/images/nasa.jpg";
     import neomImage from "../assets/images/neom.jpg";
     import { fly } from "svelte/transition";
 
-    let images = [
-        galaxyImage,
-        greenImage,
-        adamImage,
-        earthImage,
-        nasaImage,
-        neomImage,
-    ];
+    let images = [galaxyImage, greenImage, adamImage, nasaImage, neomImage];
 
     let startTime = $state(null);
     let currentTime = $state(null);
