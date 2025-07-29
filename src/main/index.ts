@@ -125,6 +125,14 @@ function createWindow(show = true): void {
                     uninstallHandler();
                 },
             },
+
+            {
+                label: "Reset",
+                click: async () => {
+                    await stopServerHandler();
+                    await resetApp();
+                },
+            },
         ],
     });
     const updatedMenu = Menu.buildFromTemplate(menuTemplate);

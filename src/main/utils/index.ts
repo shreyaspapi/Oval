@@ -249,7 +249,7 @@ export const getPythonDownloadPath = (): string => {
     return downloadPath;
 };
 
-export const getPythonInstallationPath = (): string => {
+export const getPythonInstallationDir = (): string => {
     const installDir = path.join(app.getPath("userData"), "python");
 
     if (!fs.existsSync(installDir)) {
@@ -311,7 +311,7 @@ const checkInternet = async () => {
 };
 
 export const installPython = async (
-    installationPath?: string
+    installationDir?: string
 ): Promise<boolean> => {
     let pythonDownloadPath = getPythonDownloadPath();
     if (!isPythonDownloaded()) {
@@ -326,9 +326,6 @@ export const installPython = async (
             log.info(
                 `Downloading Python: ${progress.toFixed(2)}% (${downloaded} of ${total} bytes)`
             );
-            log.info(
-                `Downloading Python: ${progress.toFixed(2)}% (${downloaded} of ${total} bytes)`
-            );
         });
     }
     if (!fs.existsSync(pythonDownloadPath)) {
@@ -336,8 +333,8 @@ export const installPython = async (
         return false;
     }
 
-    installationPath = installationPath || getPythonInstallationPath();
-    log.info(installationPath, pythonDownloadPath);
+    installationDir = installationDir || getPythonInstallationDir();
+    log.info(installationDir, pythonDownloadPath);
 
     try {
         const userDataPath = getUserDataPath();
@@ -351,8 +348,8 @@ export const installPython = async (
     }
 
     // Get the path to the installed Python binary
-    if (isPythonInstalled(installationPath)) {
-        const pythonPath = getPythonPath(installationPath);
+    if (isPythonInstalled(installationDir)) {
+        const pythonPath = getPythonPath(installationDir);
 
         execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
             encoding: "utf-8",
@@ -382,14 +379,14 @@ export const getPythonExecutablePath = (envPath: string) => {
     }
 };
 
-export const getPythonPath = (installationPath?: string) => {
+export const getPythonPath = (installationDir?: string) => {
     return path.normalize(
-        getPythonExecutablePath(installationPath || getPythonInstallationPath())
+        getPythonExecutablePath(installationDir || getPythonInstallationDir())
     );
 };
 
-export const isPythonInstalled = (installationPath?: string) => {
-    const pythonPath = getPythonPath(installationPath);
+export const isPythonInstalled = (installationDir?: string) => {
+    const pythonPath = getPythonPath(installationDir);
 
     if (!fs.existsSync(pythonPath)) {
         log.error("Python binary not found in install path");
@@ -416,8 +413,8 @@ export const isPythonInstalled = (installationPath?: string) => {
     }
 };
 
-export const isUvInstalled = (installationPath?: string) => {
-    const pythonPath = getPythonPath(installationPath);
+export const isUvInstalled = (installationDir?: string) => {
+    const pythonPath = getPythonPath(installationDir);
     try {
         // Check if uv is installed by running the command
         const result = execFileSync(pythonPath, ["-m", "uv", "--version"], {
@@ -441,16 +438,17 @@ export const isUvInstalled = (installationPath?: string) => {
     }
 };
 
-export const uninstallPython = (installationPath?: string): boolean => {
-    installationPath = installationPath || getPythonInstallationPath();
+export const uninstallPython = (installationDir?: string): boolean => {
+    installationDir = installationDir || getPythonInstallationDir();
 
-    if (!fs.existsSync(installationPath)) {
+    if (!fs.existsSync(installationDir)) {
         log.error("Python installation not found");
         return false;
     }
 
     try {
-        fs.rmSync(installationPath, { recursive: true });
+        fs.rmSync(installationDir, { recursive: true, force: true });
+        log.info("Python installation removed successfully:", installationDir);
     } catch (error) {
         log.error("Failed to remove Python installation", error);
         return false;
@@ -471,17 +469,6 @@ export const resetApp = async (): Promise<void> => {
     await uninstallPython();
     log.info("Uninstalled Python environment");
 
-    // remove /data folder
-    const dataPath = getOpenWebUIDataPath();
-    if (fs.existsSync(dataPath)) {
-        try {
-            fs.rmSync(dataPath, { recursive: true });
-            log.info("Removed data directory:", dataPath);
-        } catch (error) {
-            log.error("Failed to remove data directory:", error);
-        }
-    }
-
     // remove config file
     const configPath = path.join(getUserDataPath(), "config.json");
     if (fs.existsSync(configPath)) {
@@ -501,6 +488,17 @@ export const resetApp = async (): Promise<void> => {
             log.info("Removed secret key file:", secretKeyPath);
         } catch (error) {
             log.error("Failed to remove secret key file:", error);
+        }
+    }
+
+    // remove /data folder
+    const dataPath = getOpenWebUIDataPath();
+    if (fs.existsSync(dataPath)) {
+        try {
+            fs.rmSync(dataPath, { recursive: true, force: true });
+            log.info("Removed data directory:", dataPath);
+        } catch (error) {
+            log.error("Failed to remove data directory:", error);
         }
     }
 };
