@@ -54,9 +54,12 @@
     confirmLabel="Reset"
     onConfirm={async () => {
         try {
-            await window.electronAPI.resetApp();
             config = null;
+            await window.electronAPI.resetApp();
             toast.success("App has been reset successfully.");
+
+            // refresh the page to apply changes
+            window.location.reload();
         } catch (error) {
             toast.error("Failed to reset the app");
         }
