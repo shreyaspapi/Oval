@@ -363,8 +363,8 @@ const resetAppHandler = async () => {
         await stopServerHandler(); // Stop the server if running
         SERVER_STATUS = null;
 
-        // make sure all the subprocesses are killed
-        await stopAllServers();
+        // wait a moment to ensure all processes are stopped
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         await resetApp(); // Reset the application state
 

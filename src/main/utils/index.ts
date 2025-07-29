@@ -749,44 +749,148 @@ export const startServer = async (
 };
 
 /**
- * Terminates all server processes.
+ * Terminates all server processes with maximum reliability.
  */
 export async function stopAllServers(): Promise<void> {
     log.info("Stopping all servers...");
-    for (const pid of Array.from(serverPIDs)) {
-        try {
-            terminateProcessTree(pid);
-            serverPIDs.delete(pid); // Remove from tracking set after termination
+
+    const pidsToStop = Array.from(serverPIDs);
+    if (pidsToStop.length === 0) {
+        log.info("No servers to stop.");
+        return;
+    }
+
+    // First pass: attempt graceful termination
+    for (const pid of pidsToStop) {
+        await terminateProcessTree(pid, false);
+    }
+
+    // Wait a moment for graceful shutdown
+    await sleep(2000);
+
+    // Second pass: force kill any remaining processes
+    for (const pid of pidsToStop) {
+        await terminateProcessTree(pid, true);
+    }
+
+    // Final verification and cleanup
+    for (const pid of pidsToStop) {
+        if (!isProcessRunning(pid)) {
+            serverPIDs.delete(pid);
             serverLogs.delete(pid);
-        } catch (error) {
-            log.error(`Error stopping server with PID ${pid}:`, error);
+        } else {
+            log.warn(
+                `Process ${pid} may still be running after termination attempts`
+            );
         }
     }
-    log.info("All servers stopped successfully.");
+
+    log.info(
+        `Stopped ${pidsToStop.length - serverPIDs.size}/${pidsToStop.length} servers successfully.`
+    );
 }
+
 /**
- * Kills a process tree by PID.
+ * Kills a process tree by PID with retry logic.
  */
-function terminateProcessTree(pid: number): void {
-    if (process.platform === "win32") {
+async function terminateProcessTree(
+    pid: number,
+    forceKill: boolean = false
+): Promise<void> {
+    const maxRetries = 3;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            execSync(`taskkill /PID ${pid} /T /F`);
-            log.info(
-                `Terminated server process tree (PID: ${pid}) on Windows.`
-            );
+            if (process.platform === "win32") {
+                await terminateWindows(pid, forceKill);
+            } else {
+                await terminateUnix(pid, forceKill);
+            }
+
+            // Verify termination
+            if (!isProcessRunning(pid)) {
+                log.info(`Successfully terminated process tree (PID: ${pid})`);
+                return;
+            }
         } catch (error) {
-            log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
+            log.warn(
+                `Attempt ${attempt}/${maxRetries} failed for PID ${pid}:`,
+                error
+            );
         }
-    } else {
-        try {
-            process.kill(-pid, "SIGKILL");
-            log.info(
-                `Terminated server process tree (PID: ${pid}) on Unix-like OS.`
-            );
-        } catch (error) {
-            log.error(`Failed to terminate process tree (PID: ${pid}):`, error);
+
+        if (attempt < maxRetries) {
+            await sleep(1000); // Wait before retry
         }
     }
+
+    log.error(
+        `Failed to terminate process tree (PID: ${pid}) after ${maxRetries} attempts`
+    );
+}
+
+/**
+ * Terminate process on Windows.
+ */
+async function terminateWindows(
+    pid: number,
+    forceKill: boolean
+): Promise<void> {
+    const commands = forceKill
+        ? [`taskkill /PID ${pid} /T /F`]
+        : [`taskkill /PID ${pid} /T`, `taskkill /PID ${pid} /T /F`];
+
+    for (const cmd of commands) {
+        try {
+            execSync(cmd, { timeout: 5000, stdio: "ignore" });
+            await sleep(500); // Brief pause between commands
+        } catch (error) {
+            log.error(`Failed to terminate process (PID: ${pid}):`, error);
+        }
+    }
+}
+
+/**
+ * Terminate process on Unix-like systems.
+ */
+async function terminateUnix(pid: number, forceKill: boolean): Promise<void> {
+    const signals = forceKill ? ["SIGKILL"] : ["SIGTERM", "SIGKILL"];
+
+    for (const signal of signals) {
+        try {
+            // Kill process group (negative PID)
+            process.kill(-pid, signal);
+            await sleep(500);
+
+            // Also try individual process if group kill fails
+            if (isProcessRunning(pid)) {
+                process.kill(pid, signal);
+                await sleep(500);
+            }
+        } catch (error) {
+            log.error(`Failed to terminate process (PID: ${pid}):`, error);
+        }
+    }
+}
+
+/**
+ * Check if a process is still running.
+ */
+function isProcessRunning(pid: number): boolean {
+    try {
+        // Sending signal 0 checks if process exists without killing it
+        process.kill(pid, 0);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Simple sleep utility.
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
