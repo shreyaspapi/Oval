@@ -1,5 +1,5 @@
 {
-    "name": "desktop",
+    "name": "open-webui-desktop",
     "version": "0.0.1",
     "description": "Open WebUI Desktop",
     "main": "./out/main/index.js",
@@ -28,6 +28,7 @@
         "dompurify": "^3.2.6",
         "electron-log": "^5.4.1",
         "electron-updater": "^6.3.9",
+        "focus-trap": "^7.6.5",
         "marked": "^16.1.1",
         "svelte-sonner": "^1.0.5",
         "tailwindcss": "^4.1.11",

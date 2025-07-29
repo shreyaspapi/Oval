@@ -5,6 +5,7 @@
     import { copyToClipboard } from "../../utils";
     import Switch from "../common/Switch.svelte";
     import Spinner from "../common/Spinner.svelte";
+    import ConfirmDialog from "../common/ConfirmDialog.svelte";
 
     let { info } = $props();
 
@@ -12,6 +13,8 @@
 
     let serveOnLocalNetwork = $state(false);
     let autoUpdate = $state(true);
+
+    let showConfirm = $state(false);
 
     const onOpen = async () => {
         try {
@@ -34,6 +37,8 @@
         }
     };
 
+    const resetHandler = async () => {};
+
     onMount(async () => {
         config = await window.electronAPI.getConfig();
 
@@ -41,6 +46,23 @@
         autoUpdate = config?.autoUpdate ?? true;
     });
 </script>
+
+<ConfirmDialog
+    bind:showConfirm
+    title="Factory Reset"
+    message="Are you sure you want to reset the app? This will remove all configurations, user data, and the bundled Python environment, restoring the app to its original state."
+    confirmLabel="Reset"
+    onConfirm={async () => {
+        try {
+            await window.electronAPI.resetApp();
+            toast.success(
+                "App has been reset successfully. Please restart the app."
+            );
+        } catch (error) {
+            toast.error("Failed to reset the app");
+        }
+    }}
+/>
 
 {#if config}
     <div class="text-sm">
@@ -203,6 +225,36 @@
 
                 <div class="text-xs text-gray-500 mt-0.5">
                     Turn off to disable automatic updates on startup.
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col space-y-1 mt-2">
+            <div>
+                <div class="flex flex-row items-center justify-between">
+                    <div
+                        class="flex flex-row items-center space-x-1.5 text-green-100"
+                    >
+                        <div>Factory Reset</div>
+                    </div>
+
+                    <div>
+                        <button
+                            class="text-xs cursor-pointer"
+                            onclick={() => {
+                                showConfirm = true;
+                            }}
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-500 mt-0.5">
+                    Warning: Resetting the app will remove everything, including
+                    all configurations, user data, and the bundled Python
+                    environment. This action will fully restore the app to its
+                    original state.
                 </div>
             </div>
         </div>

@@ -342,7 +342,7 @@ export const installPython = async (
     if (isPythonInstalled(installationPath)) {
         const pythonPath = getPythonPath(installationPath);
 
-        execFileSync(pythonPath, ["-m", "uv", "pip", "install", "uv"], {
+        execFileSync(pythonPath, ["-m", "pip", "install", "uv"], {
             encoding: "utf-8",
             env: {
                 ...process.env,
