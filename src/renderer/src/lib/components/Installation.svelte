@@ -218,7 +218,7 @@
                             {`Continue`}
                         </div>
 
-                        <!-- <button
+                        <div
                             class="text-xs mt-3 text-gray-500 cursor-pointer"
                             in:fly={{
                                 delay: 500,
@@ -226,8 +226,16 @@
                                 y: 10,
                             }}
                         >
-                            To connect to an existing server, click here.
-                        </button> -->
+                            By continuing, you agree to our
+                            <button
+                                class="underline"
+                                onclick={() => {
+                                    window.electronAPI.openInBrowser(
+                                        "https://github.com/open-webui/desktop/blob/main/LICENSE"
+                                    );
+                                }}>license agreement</button
+                            >.
+                        </div>
                     {/if}
                 </div>
             </div>
