@@ -82,6 +82,15 @@ struct MessageBubbleView: View {
                         .foregroundStyle(AppColors.textTertiary)
                 }
 
+                // Tool calls
+                if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(toolCalls) { tc in
+                            ToolCallView(toolCall: tc)
+                        }
+                    }
+                }
+
                 // Message content
                 if message.content.isEmpty && isStreaming {
                     HStack(spacing: 4) {
@@ -191,6 +200,62 @@ struct MessageBubbleView: View {
     private func copyToClipboard(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+    }
+}
+
+// MARK: - Tool Call View
+
+private struct ToolCallView: View {
+    let toolCall: ToolCall
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.accentBlue)
+                    Text(toolCall.function.name)
+                        .font(AppFont.caption(size: 12).weight(.medium))
+                        .foregroundStyle(AppColors.textSecondary)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(AppColors.textTertiary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Text(formatArguments(toolCall.function.arguments))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+                    .padding(.top, 2)
+            }
+        }
+        .background(AppColors.fileAttachmentBg)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func formatArguments(_ args: String) -> String {
+        // Try to pretty-print JSON arguments
+        guard let data = args.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data),
+              let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: pretty, encoding: .utf8)
+        else { return args }
+        return str
     }
 }
 

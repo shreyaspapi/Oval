@@ -80,6 +80,7 @@ struct ConnectView: View {
                     HStack(spacing: 0) {
                         authTab(label: "Email", icon: "envelope", method: .emailPassword)
                         authTab(label: "API Key", icon: "key", method: .apiKey)
+                        authTab(label: "SSO", icon: "globe", method: .sso)
                     }
                     .background(Color.white.opacity(0.03))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -91,6 +92,8 @@ struct ConnectView: View {
                             emailPasswordFields
                         case .apiKey:
                             apiKeyFields
+                        case .sso:
+                            ssoFields
                         }
                     }
                     .transition(.opacity.combined(with: .blurReplace))
@@ -287,6 +290,60 @@ struct ConnectView: View {
                         }
                 )
             )
+        }
+    }
+
+    // MARK: - SSO Fields
+
+    @State private var showSSOWebView = false
+
+    private var ssoFields: some View {
+        VStack(spacing: 12) {
+            Text("Sign in via your server's OAuth/SSO provider. A browser window will open to complete authentication.")
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.35))
+                .multilineTextAlignment(.center)
+
+            Button {
+                let url = appState.urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !url.isEmpty else {
+                    appState.connectionError = "Please enter a server URL"
+                    return
+                }
+                showSSOWebView = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 13))
+                    Text("Open SSO Login")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $showSSOWebView) {
+                SSOWebView(
+                    serverURL: appState.urlInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                    onTokenCaptured: { token in
+                        showSSOWebView = false
+                        Task {
+                            await appState.connectWithSSO(token: token)
+                        }
+                    },
+                    onCancel: {
+                        showSSOWebView = false
+                    }
+                )
+                .frame(width: 480, height: 600)
+            }
         }
     }
 

@@ -192,6 +192,11 @@ struct AddServerSheet: View {
             guard !key.isEmpty else { error = "Enter your API key"; isConnecting = false; return }
             token = key
             resolvedAuthMethod = .apiKey
+
+        case .sso:
+            error = "SSO is configured on the login screen"
+            isConnecting = false
+            return
         }
 
         let name = serverName.trimmingCharacters(in: .whitespacesAndNewlines)

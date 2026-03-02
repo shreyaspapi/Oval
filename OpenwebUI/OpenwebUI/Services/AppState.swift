@@ -66,6 +66,13 @@ final class AppState {
     var streamingContent: String = ""
     var isLoadingConversations: Bool = false
     var isLoadingChat: Bool = false
+    var currentPage: Int = 1
+    var hasMoreConversations: Bool = true
+    var isLoadingMoreConversations: Bool = false
+
+    /// Active streaming tasks — cancelled when user taps stop.
+    private var streamingTask: Task<Void, Never>?
+    private var miniStreamingTask: Task<Void, Never>?
 
     /// When true, the sidebar onChange handler should NOT call selectConversation().
     /// Used when programmatically setting selectedConversationID (e.g. after creating a new chat).
@@ -291,6 +298,12 @@ final class AppState {
             }
             token = key
             authMethod = .apiKey
+
+        case .sso:
+            // SSO authentication is handled via connectWithSSO() method
+            connectionError = "Please use the SSO login button"
+            isConnecting = false
+            return
         }
 
         // Fetch version
@@ -325,6 +338,44 @@ final class AppState {
         isConnecting = false
         currentScreen = .chat
 
+        trayManager.updateMenu()
+    }
+
+    /// Connect after SSO/OAuth flow captured a JWT token.
+    func connectWithSSO(token: String) async {
+        let url = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else {
+            connectionError = "Please enter a server URL"
+            return
+        }
+
+        isConnecting = true
+        connectionError = nil
+
+        serverVersion = await connectionManager.fetchVersion(url: url)
+        serverURL = url
+        serverReachable = true
+
+        let server = ServerConfig(
+            name: "Server",
+            url: url,
+            apiKey: token,
+            authMethod: .sso,
+            email: nil
+        )
+
+        servers = [server]
+        activeServerID = server.id
+        saveServers()
+
+        client = OpenWebUIClient(baseURL: url, apiKey: token)
+
+        await loadModels()
+        await loadConversations()
+        await loadUser()
+
+        isConnecting = false
+        currentScreen = .chat
         trayManager.updateMenu()
     }
 
@@ -444,11 +495,15 @@ final class AppState {
     func loadConversations(silent: Bool = false) async {
         guard let client else { return }
         if !silent { isLoadingConversations = true }
+        currentPage = 1
+        hasMoreConversations = true
         do {
             var chats = try await client.listChats(page: 1)
             // Sort descending by updated_at (newest first)
             chats.sort { ($0.updated_at ?? 0) > ($1.updated_at ?? 0) }
             conversations = chats
+            // If we got fewer than a full page, there are no more
+            if chats.count < 50 { hasMoreConversations = false }
             // Prefetch messages for all conversations in background
             prefetchConversations()
         } catch {
@@ -457,6 +512,36 @@ final class AppState {
             }
         }
         if !silent { isLoadingConversations = false }
+    }
+
+    /// Load the next page of conversations and append to the list.
+    func loadMoreConversations() async {
+        guard let client, hasMoreConversations, !isLoadingMoreConversations else { return }
+        isLoadingMoreConversations = true
+        let nextPage = currentPage + 1
+        do {
+            var chats = try await client.listChats(page: nextPage)
+            if chats.isEmpty {
+                hasMoreConversations = false
+            } else {
+                currentPage = nextPage
+                chats.sort { ($0.updated_at ?? 0) > ($1.updated_at ?? 0) }
+                // Filter out duplicates
+                let existingIds = Set(conversations.map(\.id))
+                let newChats = chats.filter { !existingIds.contains($0.id) }
+                conversations.append(contentsOf: newChats)
+                if chats.count < 50 { hasMoreConversations = false }
+                // Prefetch new conversations
+                for convo in newChats {
+                    if messageCache[convo.id] == nil {
+                        Task { await refreshChatMessages(convo.id, silent: true) }
+                    }
+                }
+            }
+        } catch {
+            // Silent — don't show error for pagination
+        }
+        isLoadingMoreConversations = false
     }
 
     func selectConversation(_ id: String) async {
@@ -496,6 +581,42 @@ final class AppState {
             chatMessages = []
         } catch {
             toastManager.show("Failed to create conversation", style: .error)
+        }
+    }
+
+    func renameConversation(_ id: String, newTitle: String) async {
+        let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+
+        if isDemoMode {
+            if let idx = conversations.firstIndex(where: { $0.id == id }) {
+                conversations[idx] = ChatListItem(
+                    id: id,
+                    title: title,
+                    updated_at: conversations[idx].updated_at,
+                    created_at: conversations[idx].created_at
+                )
+            }
+            return
+        }
+
+        guard let client else { return }
+        do {
+            // Build a blob with the new title and current messages
+            let currentMessages = messageCache[id] ?? []
+            let oldMessages = chatMessages
+            // Temporarily use cached messages to build the blob
+            if selectedConversationID == id && !currentMessages.isEmpty {
+                chatMessages = currentMessages
+            }
+            let blob = buildChatBlob(title: title, assistantId: nil, assistantModel: nil)
+            if selectedConversationID == id {
+                chatMessages = oldMessages
+            }
+            _ = try await client.updateChat(id: id, blob: blob)
+            await loadConversations(silent: true)
+        } catch {
+            toastManager.show("Failed to rename: \(error.localizedDescription)", style: .error)
         }
     }
 
@@ -699,33 +820,68 @@ final class AppState {
         )
         chatMessages.append(assistantMsg)
 
-        do {
-            let stream = await client.streamChat(
-                model: model.id,
-                messages: completionMsgs,
-                files: uploadedFileRefs.isEmpty ? nil : uploadedFileRefs,
-                webSearch: isWebSearchEnabled
-            )
-            for try await delta in stream {
-                streamingContent += delta
-                if let idx = chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                    chatMessages[idx] = ChatMessage(
-                        id: assistantId,
-                        role: "assistant",
-                        content: streamingContent,
-                        model: model.id,
-                        timestamp: Date().timeIntervalSince1970,
-                        parentId: userMsg.id,
-                        childrenIds: nil
-                    )
+        // Wrap streaming in a cancellable task
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let stream = await client.streamChat(
+                    model: model.id,
+                    messages: completionMsgs,
+                    files: uploadedFileRefs.isEmpty ? nil : uploadedFileRefs,
+                    webSearch: self.isWebSearchEnabled
+                )
+                // Accumulate tool call chunks keyed by index
+                var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
+
+                for try await delta in stream {
+                    if Task.isCancelled { break }
+                    switch delta {
+                    case .content(let text):
+                        self.streamingContent += text
+                    case .toolCall(let tc):
+                        let idx = tc.index ?? 0
+                        var entry = toolCallAccumulator[idx] ?? (id: "", type: "function", name: "", arguments: "")
+                        if let id = tc.id { entry.id = id }
+                        if let type = tc.type { entry.type = type }
+                        if let name = tc.function?.name { entry.name += name }
+                        if let args = tc.function?.arguments { entry.arguments += args }
+                        toolCallAccumulator[idx] = entry
+                    case .done:
+                        break
+                    }
+                    // Build completed tool calls from accumulator
+                    let completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
+                        guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
+                        return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments))
+                    }
+                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                        var updated = ChatMessage(
+                            id: assistantId,
+                            role: "assistant",
+                            content: self.streamingContent,
+                            model: model.id,
+                            timestamp: Date().timeIntervalSince1970,
+                            parentId: userMsg.id,
+                            childrenIds: nil
+                        )
+                        if !completedToolCalls.isEmpty {
+                            updated.toolCalls = completedToolCalls
+                        }
+                        self.chatMessages[idx] = updated
+                    }
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
                 }
             }
-        } catch {
-            toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
         }
+        streamingTask = task
+        await task.value
 
         isStreaming = false
         streamingContent = ""
+        streamingTask = nil
 
         // ── Step 3: Save final state to server ──
         if let convId = selectedConversationID {
@@ -829,7 +985,7 @@ final class AppState {
             flatMessages.append(placeholder)
 
             // Update the last message's children to include the assistant
-            if let lastMsg = chatMessages.last, var entry = historyDict[lastMsg.id] {
+            if let lastMsg = chatMessages.last, let entry = historyDict[lastMsg.id] {
                 let updated = ChatBlobMessage(
                     id: entry.id,
                     role: entry.role,
@@ -852,9 +1008,10 @@ final class AppState {
     }
 
     func stopStreaming() {
-        // Currently streaming will finish on its own; this is a placeholder
-        // for future cancellation support
+        streamingTask?.cancel()
+        streamingTask = nil
         isStreaming = false
+        streamingContent = ""
     }
 
     // MARK: - Mini Chat
@@ -909,37 +1066,57 @@ final class AppState {
             CompletionMessage(role: msg.role, content: .text(msg.content))
         }
 
-        do {
-            let stream = await client.streamChat(
-                model: model.id,
-                messages: completionMsgs,
-                files: nil,
-                webSearch: false
-            )
-            for try await delta in stream {
-                miniStreamingContent += delta
-                if let idx = miniChatMessages.lastIndex(where: { $0.id == assistantId }) {
-                    miniChatMessages[idx] = ChatMessage(
-                        id: assistantId,
-                        role: "assistant",
-                        content: miniStreamingContent,
-                        model: model.id,
-                        timestamp: Date().timeIntervalSince1970,
-                        parentId: userMsg.id,
-                        childrenIds: nil
-                    )
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let stream = await client.streamChat(
+                    model: model.id,
+                    messages: completionMsgs,
+                    files: nil,
+                    webSearch: false
+                )
+                for try await delta in stream {
+                    if Task.isCancelled { break }
+                    switch delta {
+                    case .content(let text):
+                        self.miniStreamingContent += text
+                    case .toolCall:
+                        // Mini chat doesn't display tool calls
+                        break
+                    case .done:
+                        break
+                    }
+                    if let idx = self.miniChatMessages.lastIndex(where: { $0.id == assistantId }) {
+                        self.miniChatMessages[idx] = ChatMessage(
+                            id: assistantId,
+                            role: "assistant",
+                            content: self.miniStreamingContent,
+                            model: model.id,
+                            timestamp: Date().timeIntervalSince1970,
+                            parentId: userMsg.id,
+                            childrenIds: nil
+                        )
+                    }
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
                 }
             }
-        } catch {
-            toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
         }
+        miniStreamingTask = task
+        await task.value
 
         isMiniStreaming = false
         miniStreamingContent = ""
+        miniStreamingTask = nil
     }
 
     func stopMiniStreaming() {
+        miniStreamingTask?.cancel()
+        miniStreamingTask = nil
         isMiniStreaming = false
+        miniStreamingContent = ""
     }
 
     func newMiniChat() {

@@ -6,6 +6,7 @@ import Foundation
 enum AuthMethod: String, Codable, Equatable {
     case emailPassword  // Signed in with email + password, got JWT
     case apiKey         // Pasted an API key directly
+    case sso            // Authenticated via SSO/OAuth WebView
 }
 
 // MARK: - Server
@@ -102,7 +103,7 @@ struct ChatHistory: Codable {
 
 struct ChatMessage: Codable, Identifiable, Equatable {
     let id: String
-    let role: String          // "user", "assistant", "system"
+    let role: String          // "user", "assistant", "system", "tool"
     let content: String
     let model: String?
     let timestamp: Double?
@@ -112,6 +113,10 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     var images: [String]?
     /// Non-image file references attached to this message
     var files: [ChatFileRef]?
+    /// Tool calls made by the assistant in this message
+    var toolCalls: [ToolCall]?
+    /// For tool role messages: the tool call ID this result is for
+    var toolCallId: String?
 }
 
 /// Reference to an uploaded file attached to a message.
@@ -269,6 +274,34 @@ struct ChunkChoice: Codable {
 struct ChunkDelta: Codable {
     let content: String?
     let role: String?
+    let tool_calls: [ToolCallChunk]?
+}
+
+// MARK: - Tool Calling
+
+/// A tool call chunk received during streaming.
+struct ToolCallChunk: Codable {
+    let index: Int?
+    let id: String?
+    let type: String?
+    let function: ToolCallFunction?
+}
+
+struct ToolCallFunction: Codable {
+    let name: String?
+    let arguments: String?
+}
+
+/// A complete tool call assembled from streaming chunks.
+struct ToolCall: Codable, Identifiable, Equatable {
+    let id: String
+    let type: String
+    let function: ToolCallComplete
+
+    struct ToolCallComplete: Codable, Equatable {
+        let name: String
+        let arguments: String
+    }
 }
 
 struct TokenUsage: Codable {

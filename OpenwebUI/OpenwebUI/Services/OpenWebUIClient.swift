@@ -176,7 +176,14 @@ actor OpenWebUIClient {
 
     // MARK: - Chat Completions (Streaming)
 
-    /// Stream chat completions. Yields content deltas as they arrive.
+    /// A streaming delta: either content text or a tool call chunk.
+    enum StreamDelta: Sendable {
+        case content(String)
+        case toolCall(ToolCallChunk)
+        case done
+    }
+
+    /// Stream chat completions. Yields content deltas and tool call chunks as they arrive.
     /// Supports multimodal messages (text + images), file references, and web search.
     func streamChat(
         model: String,
@@ -184,7 +191,7 @@ actor OpenWebUIClient {
         temperature: Double = 0.7,
         files: [CompletionFileRef]? = nil,
         webSearch: Bool = false
-    ) -> AsyncThrowingStream<String, Error> {
+    ) -> AsyncThrowingStream<StreamDelta, Error> {
         let urlString = "\(baseURL)/api/chat/completions"
         let key = apiKey
 
@@ -238,8 +245,15 @@ actor OpenWebUIClient {
                             return
                         }
 
-                        if let content = chunk.choices?.first?.delta?.content {
-                            continuation.yield(content)
+                        if let delta = chunk.choices?.first?.delta {
+                            if let content = delta.content {
+                                continuation.yield(.content(content))
+                            }
+                            if let toolCalls = delta.tool_calls {
+                                for tc in toolCalls {
+                                    continuation.yield(.toolCall(tc))
+                                }
+                            }
                         }
                     }
 
