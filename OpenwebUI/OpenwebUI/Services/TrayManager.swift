@@ -119,10 +119,14 @@ final class TrayManager {
 
     @objc private func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows {
-            if window.title.contains("Oval") || window.identifier?.rawValue == "main" {
-                window.makeKeyAndOrderFront(nil)
-            }
+        var foundMainWindow = false
+        for window in NSApp.windows where !(window is NSPanel) {
+            window.makeKeyAndOrderFront(nil)
+            foundMainWindow = true
+        }
+        // If no window was found (shouldn't happen), force activation
+        if !foundMainWindow {
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 

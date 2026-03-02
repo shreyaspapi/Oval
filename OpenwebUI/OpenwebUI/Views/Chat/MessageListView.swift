@@ -18,8 +18,26 @@ struct MessageListView: View {
                         .padding(.top, 40)
                     } else {
                         ForEach(appState.chatMessages) { message in
-                            MessageBubbleView(message: message, isStreaming: isStreamingMessage(message))
-                                .id(message.id)
+                            MessageBubbleView(
+                                message: message,
+                                isStreaming: isStreamingMessage(message),
+                                isLastAssistant: isLastAssistantMessage(message),
+                                onEdit: { messageId, newContent, resubmit in
+                                    Task { await appState.editMessage(messageId, newContent: newContent, resubmit: resubmit) }
+                                },
+                                onRegenerate: { messageId in
+                                    Task { await appState.regenerateResponse(messageId: messageId) }
+                                },
+                                onSpeak: { content, messageId in
+                                    appState.speakMessage(content)
+                                    appState.ttsManager.speakingMessageId = messageId
+                                },
+                                onStopSpeaking: {
+                                    appState.stopSpeaking()
+                                },
+                                isSpeakingThis: appState.ttsManager.speakingMessageId == message.id && appState.ttsManager.isSpeaking
+                            )
+                            .id(message.id)
                         }
                     }
                 }
@@ -37,6 +55,11 @@ struct MessageListView: View {
 
     private func isStreamingMessage(_ message: ChatMessage) -> Bool {
         appState.isStreaming && message.id == appState.chatMessages.last?.id && message.role == "assistant"
+    }
+
+    private func isLastAssistantMessage(_ message: ChatMessage) -> Bool {
+        guard message.role == "assistant" else { return false }
+        return appState.chatMessages.last(where: { $0.role == "assistant" })?.id == message.id
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {

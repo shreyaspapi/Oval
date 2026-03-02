@@ -133,6 +133,7 @@ final class AppState {
     // MARK: - Speech
 
     let speechManager = SpeechManager()
+    let ttsManager = TTSManager()
 
     // MARK: - Window Preferences
 
@@ -1012,6 +1013,255 @@ final class AppState {
         streamingTask = nil
         isStreaming = false
         streamingContent = ""
+    }
+
+    // MARK: - Edit Message
+
+    /// Edit a user message's content and optionally re-send it.
+    /// When resubmit is true, removes all messages after the edited one and re-streams.
+    func editMessage(_ messageId: String, newContent: String, resubmit: Bool) async {
+        guard let idx = chatMessages.firstIndex(where: { $0.id == messageId }) else { return }
+        let original = chatMessages[idx]
+        guard original.role == "user" else { return }
+
+        // Update the message content in-place
+        chatMessages[idx] = ChatMessage(
+            id: original.id,
+            role: original.role,
+            content: newContent,
+            model: original.model,
+            timestamp: original.timestamp,
+            parentId: original.parentId,
+            childrenIds: original.childrenIds,
+            images: original.images,
+            files: original.files
+        )
+
+        if resubmit {
+            // Remove all messages after this one (the old assistant responses)
+            chatMessages = Array(chatMessages.prefix(idx + 1))
+
+            // Re-stream from this point
+            guard let model = selectedModel, let client else { return }
+
+            let assistantId = UUID().uuidString
+            isStreaming = true
+            streamingContent = ""
+
+            let assistantMsg = ChatMessage(
+                id: assistantId,
+                role: "assistant",
+                content: "",
+                model: model.id,
+                timestamp: Date().timeIntervalSince1970,
+                parentId: chatMessages[idx].id,
+                childrenIds: nil
+            )
+            chatMessages.append(assistantMsg)
+
+            // Build completion messages from the updated history
+            let completionMsgs = chatMessages.map { msg -> CompletionMessage in
+                if let images = msg.images, !images.isEmpty {
+                    var parts: [ContentPart] = [.text(msg.content)]
+                    for img in images {
+                        parts.append(.imageURL(img))
+                    }
+                    return CompletionMessage(role: msg.role, content: .parts(parts))
+                }
+                return CompletionMessage(role: msg.role, content: .text(msg.content))
+            }
+
+            let task = Task { @MainActor [weak self] in
+                guard let self else { return }
+                do {
+                    let stream = await client.streamChat(
+                        model: model.id,
+                        messages: completionMsgs,
+                        files: nil,
+                        webSearch: self.isWebSearchEnabled
+                    )
+                    for try await delta in stream {
+                        if Task.isCancelled { break }
+                        switch delta {
+                        case .content(let text):
+                            self.streamingContent += text
+                        case .toolCall, .done:
+                            break
+                        }
+                        if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                            self.chatMessages[idx] = ChatMessage(
+                                id: assistantId,
+                                role: "assistant",
+                                content: self.streamingContent,
+                                model: model.id,
+                                timestamp: Date().timeIntervalSince1970,
+                                parentId: chatMessages[self.chatMessages.count - 2].id,
+                                childrenIds: nil
+                            )
+                        }
+                    }
+                } catch {
+                    if !Task.isCancelled {
+                        self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
+                    }
+                }
+            }
+            streamingTask = task
+            await task.value
+
+            isStreaming = false
+            streamingContent = ""
+            streamingTask = nil
+
+            // Save to server
+            if let convId = selectedConversationID {
+                messageCache[convId] = chatMessages
+                let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+                    .map { String($0.content.prefix(100)) } ?? "New Chat"
+                let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                Task {
+                    _ = try? await client.updateChat(id: convId, blob: blob)
+                }
+            }
+        } else {
+            // Just save the edit without re-streaming
+            if let convId = selectedConversationID {
+                messageCache[convId] = chatMessages
+                if let client {
+                    let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+                        .map { String($0.content.prefix(100)) } ?? "New Chat"
+                    let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                    Task {
+                        _ = try? await client.updateChat(id: convId, blob: blob)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Regenerate Response
+
+    /// Regenerate the last assistant response from a given message.
+    /// Removes the assistant message and re-streams.
+    func regenerateResponse(messageId: String) async {
+        guard let idx = chatMessages.firstIndex(where: { $0.id == messageId }) else { return }
+        let message = chatMessages[idx]
+        guard message.role == "assistant" else { return }
+        guard !isStreaming else { return }
+
+        // Remove the assistant message and any messages after it
+        chatMessages = Array(chatMessages.prefix(idx))
+
+        guard let model = selectedModel, let client else { return }
+
+        let assistantId = UUID().uuidString
+        isStreaming = true
+        streamingContent = ""
+
+        let assistantMsg = ChatMessage(
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            model: model.id,
+            timestamp: Date().timeIntervalSince1970,
+            parentId: chatMessages.last?.id,
+            childrenIds: nil
+        )
+        chatMessages.append(assistantMsg)
+
+        let completionMsgs = chatMessages.dropLast().map { msg -> CompletionMessage in
+            if let images = msg.images, !images.isEmpty {
+                var parts: [ContentPart] = [.text(msg.content)]
+                for img in images {
+                    parts.append(.imageURL(img))
+                }
+                return CompletionMessage(role: msg.role, content: .parts(parts))
+            }
+            return CompletionMessage(role: msg.role, content: .text(msg.content))
+        }
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let stream = await client.streamChat(
+                    model: model.id,
+                    messages: Array(completionMsgs),
+                    files: nil,
+                    webSearch: self.isWebSearchEnabled
+                )
+                for try await delta in stream {
+                    if Task.isCancelled { break }
+                    switch delta {
+                    case .content(let text):
+                        self.streamingContent += text
+                    case .toolCall, .done:
+                        break
+                    }
+                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                        self.chatMessages[idx] = ChatMessage(
+                            id: assistantId,
+                            role: "assistant",
+                            content: self.streamingContent,
+                            model: model.id,
+                            timestamp: Date().timeIntervalSince1970,
+                            parentId: self.chatMessages.count >= 2 ? self.chatMessages[self.chatMessages.count - 2].id : nil,
+                            childrenIds: nil
+                        )
+                    }
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
+                }
+            }
+        }
+        streamingTask = task
+        await task.value
+
+        isStreaming = false
+        streamingContent = ""
+        streamingTask = nil
+
+        // Save to server
+        if let convId = selectedConversationID {
+            messageCache[convId] = chatMessages
+            let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+                .map { String($0.content.prefix(100)) } ?? "New Chat"
+            let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+            Task {
+                _ = try? await client.updateChat(id: convId, blob: blob)
+            }
+        }
+        Task { await loadConversations(silent: true) }
+    }
+
+    // MARK: - Text-to-Speech
+
+    /// Speak assistant message content using macOS native TTS.
+    /// Strips reasoning/thinking blocks before speaking.
+    func speakMessage(_ content: String) {
+        let cleaned = stripReasoningBlocks(content)
+        ttsManager.speak(cleaned)
+    }
+
+    func stopSpeaking() {
+        ttsManager.stop()
+    }
+
+    /// Strip <details type="reasoning">...</details> blocks from content
+    /// so TTS doesn't read the thinking process.
+    private func stripReasoningBlocks(_ content: String) -> String {
+        // Pattern: <details type="reasoning"...>...</details>
+        var result = content
+        while let startRange = result.range(of: "<details[^>]*type=\"reasoning\"[^>]*>", options: .regularExpression) {
+            if let endRange = result.range(of: "</details>", range: startRange.upperBound..<result.endIndex) {
+                result.removeSubrange(startRange.lowerBound..<endRange.upperBound)
+            } else {
+                // Unclosed tag — remove from start to end
+                result.removeSubrange(startRange.lowerBound..<result.endIndex)
+            }
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Mini Chat
