@@ -87,6 +87,12 @@ final class AppState {
 
     var isWebSearchEnabled: Bool = false
 
+    // MARK: - Demo Mode
+
+    /// When true, the app is in demo mode with mock data (no real server).
+    /// Used for App Store review so reviewers can see the full UI.
+    var isDemoMode: Bool = false
+
     // MARK: - Attachments
 
     var pendingAttachments: [PendingAttachment] = []
@@ -456,6 +462,12 @@ final class AppState {
     func selectConversation(_ id: String) async {
         selectedConversationID = id
 
+        // In demo mode, just use the cache (no server to fetch from)
+        if isDemoMode {
+            chatMessages = messageCache[id] ?? []
+            return
+        }
+
         // Use cached messages immediately if available
         if let cached = messageCache[id] {
             chatMessages = cached
@@ -488,6 +500,16 @@ final class AppState {
     }
 
     func deleteConversation(_ id: String) async {
+        if isDemoMode {
+            messageCache.removeValue(forKey: id)
+            conversations.removeAll { $0.id == id }
+            if selectedConversationID == id {
+                selectedConversationID = nil
+                chatMessages = []
+            }
+            return
+        }
+
         guard let client else { return }
         do {
             try await client.deleteChat(id: id)
@@ -563,6 +585,12 @@ final class AppState {
     // MARK: - Send Message
 
     func sendMessage() async {
+        // Route to demo handler if in demo mode
+        if isDemoMode {
+            await sendDemoMessage()
+            return
+        }
+
         let text = messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachments = pendingAttachments
         guard !text.isEmpty || !attachments.isEmpty, !isStreaming else { return }
@@ -834,6 +862,12 @@ final class AppState {
     /// Send a message in the mini chat window. This is a lightweight version
     /// that doesn't persist to the server — it's for quick one-off queries.
     func sendMiniMessage() async {
+        // Route to demo handler if in demo mode
+        if isDemoMode {
+            await sendMiniDemoMessage()
+            return
+        }
+
         let text = miniMessageInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isMiniStreaming else { return }
         guard let model = selectedModel, let client else {
@@ -925,6 +959,617 @@ final class AppState {
             NSPasteboard.general.setString(lastAssistant.content, forType: .string)
             toastManager.show("Copied to clipboard", style: .success)
         }
+    }
+
+    // MARK: - Demo Mode Logic
+
+    /// Enter demo mode: populate the app with mock data so reviewers can see
+    /// the full UI without connecting to a real server.
+    func enterDemoMode() {
+        isDemoMode = true
+
+        // Mock server
+        let demoServer = ServerConfig(
+            name: "Demo Server",
+            url: "https://demo.openwebui.local",
+            apiKey: "demo-key",
+            authMethod: .apiKey,
+            email: nil,
+            iconEmoji: "🧪"
+        )
+        servers = [demoServer]
+        activeServerID = demoServer.id
+        serverURL = demoServer.url
+        serverReachable = true
+        serverVersion = "0.5.1"
+
+        // Mock user
+        currentUser = SessionUser(
+            token: nil,
+            id: "demo-user",
+            email: "reviewer@apple.com",
+            name: "App Reviewer",
+            role: "user",
+            profile_image_url: nil
+        )
+
+        // Mock models
+        models = [
+            AIModel(id: "llama3.2:latest", name: "Llama 3.2", owned_by: "meta"),
+            AIModel(id: "gpt-4o", name: "GPT-4o", owned_by: "openai"),
+            AIModel(id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", owned_by: "anthropic"),
+            AIModel(id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", owned_by: "google"),
+            AIModel(id: "mistral-large", name: "Mistral Large", owned_by: "mistral"),
+            AIModel(id: "deepseek-r1:latest", name: "DeepSeek R1", owned_by: "deepseek"),
+        ]
+        selectedModel = models[0]
+
+        // Mock conversations with realistic timestamps
+        let now = Date().timeIntervalSince1970
+        let hour: Double = 3600
+        let day: Double = 86400
+
+        conversations = [
+            ChatListItem(id: "demo-1", title: "🧮 Explain quantum computing basics", updated_at: now - 0.5 * hour, created_at: now - 1 * hour),
+            ChatListItem(id: "demo-2", title: "🍳 Quick pasta recipe for dinner", updated_at: now - 2 * hour, created_at: now - 3 * hour),
+            ChatListItem(id: "demo-3", title: "🐍 Python async/await best practices", updated_at: now - 1 * day, created_at: now - 1 * day),
+            ChatListItem(id: "demo-4", title: "📝 Draft email to client about project", updated_at: now - 1.5 * day, created_at: now - 2 * day),
+            ChatListItem(id: "demo-5", title: "🎨 SwiftUI animation techniques", updated_at: now - 3 * day, created_at: now - 3 * day),
+            ChatListItem(id: "demo-6", title: "🌍 Climate change impact on oceans", updated_at: now - 5 * day, created_at: now - 5 * day),
+            ChatListItem(id: "demo-7", title: "🎵 Music theory for beginners", updated_at: now - 10 * day, created_at: now - 10 * day),
+            ChatListItem(id: "demo-8", title: "🚀 How to deploy with Docker", updated_at: now - 15 * day, created_at: now - 15 * day),
+            ChatListItem(id: "demo-9", title: "📊 SQL query optimization tips", updated_at: now - 35 * day, created_at: now - 35 * day),
+            ChatListItem(id: "demo-10", title: "✈️ Planning a trip to Japan", updated_at: now - 45 * day, created_at: now - 45 * day),
+        ]
+
+        // Populate message cache for each conversation
+        populateDemoMessages()
+
+        // Select the first conversation and show its messages
+        selectedConversationID = "demo-1"
+        chatMessages = demoMessageSets["demo-1"] ?? []
+
+        // Navigate to chat
+        currentScreen = .chat
+    }
+
+    /// Populate demo message cache with realistic multi-turn conversations.
+    private func populateDemoMessages() {
+        let model = "llama3.2:latest"
+        let now = Date().timeIntervalSince1970
+
+        // -- Conversation 1: Quantum computing
+        let q1: [ChatMessage] = [
+            ChatMessage(id: "d1-1", role: "user", content: "Can you explain quantum computing in simple terms?", model: nil, timestamp: now - 3600, parentId: nil, childrenIds: ["d1-2"]),
+            ChatMessage(id: "d1-2", role: "assistant", content: """
+            Of course! Here's a simple breakdown:
+
+            ## Classical vs Quantum
+
+            **Classical computers** use **bits** — each bit is either `0` or `1`. Think of it like a light switch: on or off.
+
+            **Quantum computers** use **qubits** (quantum bits). Thanks to a property called **superposition**, a qubit can be `0`, `1`, or *both at the same time*. This lets quantum computers explore many possibilities simultaneously.
+
+            ## Key Concepts
+
+            1. **Superposition** — A qubit exists in multiple states until measured
+            2. **Entanglement** — Two qubits can be linked so measuring one instantly affects the other, regardless of distance
+            3. **Interference** — Quantum algorithms amplify correct answers and cancel wrong ones
+
+            ## Why It Matters
+
+            Quantum computers excel at:
+            - **Cryptography** — Breaking and creating encryption
+            - **Drug discovery** — Simulating molecular interactions
+            - **Optimization** — Finding the best solution among billions of options
+            - **Machine learning** — Training complex models faster
+
+            > Think of it this way: if a classical computer tries every path in a maze one by one, a quantum computer explores all paths at once.
+
+            It's still early days — most quantum computers need extreme cooling (near absolute zero) and are prone to errors. But progress is accelerating rapidly!
+            """, model: model, timestamp: now - 3500, parentId: "d1-1", childrenIds: ["d1-3"]),
+            ChatMessage(id: "d1-3", role: "user", content: "What's the difference between a qubit and a classical bit in terms of information capacity?", model: nil, timestamp: now - 3400, parentId: "d1-2", childrenIds: ["d1-4"]),
+            ChatMessage(id: "d1-4", role: "assistant", content: """
+            Great question! Here's the key difference:
+
+            | Property | Classical Bit | Qubit |
+            |----------|--------------|-------|
+            | States | 0 or 1 | 0, 1, or superposition |
+            | Info per unit | 1 bit | Up to 2 classical bits* |
+            | N units encode | N bits | 2^N amplitudes |
+
+            With **3 classical bits**, you can represent one of 8 values (000, 001, ..., 111).
+
+            With **3 qubits**, you can represent all 8 values *simultaneously* as a superposition. That's the power — it scales exponentially:
+
+            ```
+            1 qubit  →  2 states
+            10 qubits → 1,024 states
+            50 qubits → 1,125,899,906,842,624 states
+            ```
+
+            *However*, when you measure a qubit, it collapses to a single value. The trick is designing algorithms that guide the superposition toward the correct answer before measurement.
+            """, model: model, timestamp: now - 3300, parentId: "d1-3", childrenIds: nil),
+        ]
+
+        // -- Conversation 2: Pasta recipe
+        let q2: [ChatMessage] = [
+            ChatMessage(id: "d2-1", role: "user", content: "What's a quick and easy pasta recipe I can make in 20 minutes?", model: nil, timestamp: now - 7200, parentId: nil, childrenIds: ["d2-2"]),
+            ChatMessage(id: "d2-2", role: "assistant", content: """
+            Here's my go-to **Garlic Butter Pasta with Lemon and Parmesan** — ready in 15 minutes!
+
+            ### Ingredients
+            - 300g spaghetti (or any pasta)
+            - 4 cloves garlic, thinly sliced
+            - 3 tbsp butter
+            - 2 tbsp olive oil
+            - Juice of 1 lemon
+            - 1/2 cup grated Parmesan
+            - Red pepper flakes (optional)
+            - Fresh basil or parsley
+            - Salt & black pepper
+
+            ### Steps
+
+            1. **Cook pasta** in salted boiling water until al dente. Reserve 1 cup pasta water before draining.
+            2. **Sauté garlic** in butter + olive oil over medium heat until golden (~2 min). Don't burn it!
+            3. **Combine** — Toss drained pasta into the pan. Add lemon juice, 1/2 cup pasta water, and Parmesan.
+            4. **Toss** until creamy. Add more pasta water if needed.
+            5. **Finish** with pepper flakes, fresh herbs, and extra Parmesan.
+
+            > **Pro tip:** The starchy pasta water is what makes the sauce silky. Don't skip it!
+
+            Pairs well with a simple side salad. Enjoy! 🍝
+            """, model: model, timestamp: now - 7100, parentId: "d2-1", childrenIds: nil),
+        ]
+
+        // -- Conversation 3: Python async
+        let q3: [ChatMessage] = [
+            ChatMessage(id: "d3-1", role: "user", content: "What are the best practices for using async/await in Python?", model: nil, timestamp: now - 86400, parentId: nil, childrenIds: ["d3-2"]),
+            ChatMessage(id: "d3-2", role: "assistant", content: """
+            Here are the key best practices for Python's `async`/`await`:
+
+            ## 1. Use `asyncio.run()` as your entry point
+
+            ```python
+            import asyncio
+
+            async def main():
+                result = await fetch_data()
+                print(result)
+
+            asyncio.run(main())
+            ```
+
+            ## 2. Use `asyncio.gather()` for concurrent tasks
+
+            ```python
+            async def fetch_all():
+                results = await asyncio.gather(
+                    fetch_users(),
+                    fetch_posts(),
+                    fetch_comments(),
+                )
+                return results
+            ```
+
+            ## 3. Avoid blocking calls in async code
+
+            Never use `time.sleep()` or synchronous I/O in async functions. Use `await asyncio.sleep()` and async-compatible libraries like `aiohttp`, `asyncpg`, etc.
+
+            ## 4. Use `async with` for resource management
+
+            ```python
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    data = await resp.json()
+            ```
+
+            ## 5. Handle exceptions properly
+
+            ```python
+            try:
+                results = await asyncio.gather(
+                    task1(), task2(),
+                    return_exceptions=True
+                )
+            except Exception as e:
+                logging.error(f"Task failed: {e}")
+            ```
+
+            The main takeaway: **async is for I/O-bound work** (network, disk, DB). For CPU-bound work, use `multiprocessing` or `concurrent.futures`.
+            """, model: model, timestamp: now - 86300, parentId: "d3-1", childrenIds: nil),
+        ]
+
+        // -- Conversation 5: SwiftUI animations
+        let q5: [ChatMessage] = [
+            ChatMessage(id: "d5-1", role: "user", content: "What are some cool SwiftUI animation techniques?", model: nil, timestamp: now - 259200, parentId: nil, childrenIds: ["d5-2"]),
+            ChatMessage(id: "d5-2", role: "assistant", content: """
+            SwiftUI has a powerful animation system. Here are some standout techniques:
+
+            ## 1. Matched Geometry Effect
+            Creates smooth transitions between views sharing an identity:
+            ```swift
+            @Namespace var animation
+
+            // Source view
+            Circle()
+                .matchedGeometryEffect(id: "shape", in: animation)
+
+            // Destination view
+            Rectangle()
+                .matchedGeometryEffect(id: "shape", in: animation)
+            ```
+
+            ## 2. Phase Animator (iOS 17+)
+            Multi-step animations without timers:
+            ```swift
+            PhaseAnimator([false, true]) { phase in
+                Image(systemName: "star.fill")
+                    .scaleEffect(phase ? 1.5 : 1.0)
+                    .rotationEffect(.degrees(phase ? 360 : 0))
+            }
+            ```
+
+            ## 3. Spring Animations
+            Natural-feeling motion:
+            ```swift
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                isExpanded.toggle()
+            }
+            ```
+
+            ## 4. Keyframe Animator (iOS 17+)
+            Fine-grained control over timing:
+            ```swift
+            KeyframeAnimator(initialValue: AnimationValues()) { values in
+                content
+                    .scaleEffect(values.scale)
+                    .offset(y: values.yOffset)
+            } keyframes: { _ in
+                KeyframeTrack(\\.scale) {
+                    SpringKeyframe(1.2, duration: 0.2)
+                    SpringKeyframe(1.0, duration: 0.3)
+                }
+            }
+            ```
+
+            These make SwiftUI apps feel incredibly polished!
+            """, model: model, timestamp: now - 259100, parentId: "d5-1", childrenIds: nil),
+        ]
+
+        demoMessageSets = [
+            "demo-1": q1,
+            "demo-2": q2,
+            "demo-3": q3,
+            "demo-5": q5,
+        ]
+
+        // Store in message cache for instant switching
+        for (id, msgs) in demoMessageSets {
+            messageCache[id] = msgs
+        }
+    }
+
+    /// Stored demo message sets keyed by conversation ID.
+    private var demoMessageSets: [String: [ChatMessage]] = [:]
+
+    // MARK: - Demo Responses
+
+    /// Pre-written demo responses for common questions. The app picks one based on keywords
+    /// and simulates streaming it character-by-character.
+    private static let demoResponses: [(keywords: [String], response: String)] = [
+        (["hello", "hi", "hey", "greet"], """
+        Hello! 👋 Welcome to **Oval** — a native macOS client for Open WebUI.
+
+        I'm a demo assistant running in offline mode. Here are some things you can try:
+
+        - Ask me about **programming**, **science**, or **recipes**
+        - Test the **model selector** in the toolbar
+        - Toggle **dark/light mode** in System Settings
+        - Try the **keyboard shortcuts** (Cmd+N for new chat)
+        - Open **Settings** with Cmd+,
+
+        How can I help you today?
+        """),
+        (["swift", "swiftui", "ios", "apple", "xcode"], """
+        Great question about Swift development! Here's a quick overview:
+
+        ## SwiftUI Essentials
+
+        SwiftUI is Apple's declarative framework for building user interfaces. Key concepts:
+
+        1. **Views are structs** — lightweight and efficient
+        2. **State management** — `@State`, `@Binding`, `@Observable`
+        3. **Modifiers chain** — `.padding().background().cornerRadius()`
+
+        ```swift
+        struct ContentView: View {
+            @State private var count = 0
+
+            var body: some View {
+                VStack {
+                    Text("Count: \\(count)")
+                        .font(.title)
+                    Button("Increment") {
+                        count += 1
+                    }
+                }
+            }
+        }
+        ```
+
+        > **Tip:** Use `#Preview` macros in Xcode for instant visual feedback.
+
+        SwiftUI works across all Apple platforms — iOS, macOS, watchOS, tvOS, and visionOS.
+        """),
+        (["python", "code", "programming", "javascript", "rust"], """
+        Here's a quick programming tip!
+
+        ## Clean Code Principles
+
+        1. **Single Responsibility** — Each function does one thing well
+        2. **Meaningful Names** — `calculateTotalPrice()` not `calc()`
+        3. **DRY** — Don't Repeat Yourself
+
+        ```python
+        # Bad
+        def process(d):
+            r = []
+            for i in d:
+                if i > 0:
+                    r.append(i * 2)
+            return r
+
+        # Good
+        def double_positive_values(numbers: list[int]) -> list[int]:
+            return [n * 2 for n in numbers if n > 0]
+        ```
+
+        | Principle | Benefit |
+        |-----------|---------|
+        | SOLID | Maintainable architecture |
+        | KISS | Reduced complexity |
+        | YAGNI | Less unused code |
+
+        Remember: **readable code is maintainable code**.
+        """),
+        (["weather", "climate", "temperature", "rain"], """
+        ## Understanding Weather Patterns
+
+        Weather is the short-term state of the atmosphere. Key factors:
+
+        - **Temperature** — Driven by solar radiation and altitude
+        - **Pressure** — High pressure → clear skies, low pressure → storms
+        - **Humidity** — Water vapor content in the air
+        - **Wind** — Caused by pressure differences
+
+        ### Fun Facts
+        - Lightning strikes Earth ~100 times per second ⚡
+        - A hurricane releases energy equivalent to 10,000 nuclear bombs per day
+        - The highest temperature ever recorded was 56.7°C (134°F) in Death Valley
+
+        > Weather forecasting uses massive computational models processing billions of data points from satellites, weather stations, and ocean buoys.
+        """),
+        (["math", "calculus", "equation", "number", "algebra"], """
+        ## Quick Math Refresher
+
+        ### The Quadratic Formula
+        For any equation $ax^2 + bx + c = 0$:
+
+        ```
+        x = (-b ± √(b² - 4ac)) / 2a
+        ```
+
+        ### Example
+        Solve: `x² - 5x + 6 = 0`
+
+        - a=1, b=-5, c=6
+        - Discriminant: 25 - 24 = 1
+        - x = (5 ± 1) / 2
+        - **x = 3** or **x = 2**
+
+        ### Key Identities
+        | Identity | Formula |
+        |----------|---------|
+        | Pythagorean | a² + b² = c² |
+        | Euler's | e^(iπ) + 1 = 0 |
+        | Sum of n | n(n+1)/2 |
+
+        Mathematics is the language of the universe! 🔢
+        """),
+    ]
+
+    /// Default fallback response for demo mode.
+    private static let defaultDemoResponse = """
+    That's an interesting question! Let me share some thoughts:
+
+    ## Key Points
+
+    1. **Context matters** — The best answer depends on your specific situation
+    2. **Research is key** — I'd recommend looking into authoritative sources
+    3. **Iterate** — Start with a simple approach and refine
+
+    Here's a general framework for thinking about problems:
+
+    ```
+    1. Define the problem clearly
+    2. Break it into smaller parts
+    3. Solve each part independently
+    4. Combine and verify the solution
+    ```
+
+    ### Additional Resources
+    - Documentation and official guides
+    - Community forums and discussions
+    - Hands-on experimentation
+
+    > **Note:** This is a demo response. In a real session connected to your Open WebUI server, you'd get responses from your configured AI models (Llama, GPT-4, Claude, etc.).
+
+    Would you like me to elaborate on any of these points?
+    """
+
+    /// Send a message in demo mode with simulated streaming.
+    func sendDemoMessage() async {
+        let text = messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !isStreaming else { return }
+        guard let model = selectedModel else { return }
+
+        let isNewConversation = selectedConversationID == nil
+
+        // Add user message
+        let userMsg = ChatMessage(
+            id: UUID().uuidString,
+            role: "user",
+            content: text,
+            model: nil,
+            timestamp: Date().timeIntervalSince1970,
+            parentId: chatMessages.last?.id,
+            childrenIds: nil
+        )
+        chatMessages.append(userMsg)
+        messageInput = ""
+        pendingAttachments = []
+
+        // If new conversation, create a mock one and add to sidebar
+        if isNewConversation {
+            let title = String(text.prefix(50))
+            let newId = UUID().uuidString
+            let newConvo = ChatListItem(
+                id: newId,
+                title: "💬 \(title)",
+                updated_at: Date().timeIntervalSince1970,
+                created_at: Date().timeIntervalSince1970
+            )
+            conversations.insert(newConvo, at: 0)
+            suppressConversationSelection = true
+            selectedConversationID = newId
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                suppressConversationSelection = false
+            }
+        }
+
+        // Pick a response based on keywords
+        let lowerText = text.lowercased()
+        let response = Self.demoResponses.first(where: { pair in
+            pair.keywords.contains(where: { lowerText.contains($0) })
+        })?.response ?? Self.defaultDemoResponse
+
+        // Simulate streaming
+        let assistantId = UUID().uuidString
+        isStreaming = true
+        streamingContent = ""
+
+        let assistantMsg = ChatMessage(
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            model: model.id,
+            timestamp: Date().timeIntervalSince1970,
+            parentId: userMsg.id,
+            childrenIds: nil
+        )
+        chatMessages.append(assistantMsg)
+
+        // Stream character by character with variable speed
+        for char in response {
+            // Check if streaming was cancelled
+            guard isStreaming else { break }
+
+            streamingContent += String(char)
+
+            if let idx = chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                chatMessages[idx] = ChatMessage(
+                    id: assistantId,
+                    role: "assistant",
+                    content: streamingContent,
+                    model: model.id,
+                    timestamp: Date().timeIntervalSince1970,
+                    parentId: userMsg.id,
+                    childrenIds: nil
+                )
+            }
+
+            // Variable typing speed: faster for spaces, slower for newlines
+            let delay: UInt64
+            if char == "\n" {
+                delay = 15_000_000   // 15ms for newlines
+            } else if char == " " {
+                delay = 5_000_000    // 5ms for spaces
+            } else {
+                delay = 8_000_000    // 8ms per character
+            }
+            try? await Task.sleep(nanoseconds: delay)
+        }
+
+        isStreaming = false
+        streamingContent = ""
+
+        // Update cache
+        if let convId = selectedConversationID {
+            messageCache[convId] = chatMessages
+        }
+    }
+
+    /// Send a message in the mini chat in demo mode with simulated streaming.
+    func sendMiniDemoMessage() async {
+        let text = miniMessageInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !isMiniStreaming else { return }
+        guard let model = selectedModel else { return }
+
+        let userMsg = ChatMessage(
+            id: UUID().uuidString,
+            role: "user",
+            content: text,
+            model: nil,
+            timestamp: Date().timeIntervalSince1970,
+            parentId: miniChatMessages.last?.id,
+            childrenIds: nil
+        )
+        miniChatMessages.append(userMsg)
+        miniMessageInput = ""
+
+        let lowerText = text.lowercased()
+        let response = Self.demoResponses.first(where: { pair in
+            pair.keywords.contains(where: { lowerText.contains($0) })
+        })?.response ?? Self.defaultDemoResponse
+
+        let assistantId = UUID().uuidString
+        isMiniStreaming = true
+        miniStreamingContent = ""
+
+        let assistantMsg = ChatMessage(
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            model: model.id,
+            timestamp: Date().timeIntervalSince1970,
+            parentId: userMsg.id,
+            childrenIds: nil
+        )
+        miniChatMessages.append(assistantMsg)
+
+        for char in response {
+            guard isMiniStreaming else { break }
+            miniStreamingContent += String(char)
+            if let idx = miniChatMessages.lastIndex(where: { $0.id == assistantId }) {
+                miniChatMessages[idx] = ChatMessage(
+                    id: assistantId,
+                    role: "assistant",
+                    content: miniStreamingContent,
+                    model: model.id,
+                    timestamp: Date().timeIntervalSince1970,
+                    parentId: userMsg.id,
+                    childrenIds: nil
+                )
+            }
+            let delay: UInt64 = char == "\n" ? 15_000_000 : (char == " " ? 5_000_000 : 8_000_000)
+            try? await Task.sleep(nanoseconds: delay)
+        }
+
+        isMiniStreaming = false
+        miniStreamingContent = ""
     }
 
     // MARK: - Persistence
