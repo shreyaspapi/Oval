@@ -10,6 +10,8 @@ struct ChatSidebarView: View {
     @Bindable var appState: AppState
 
     @State private var deleteTarget: String?
+    @State private var renameTarget: String?
+    @State private var renameText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,7 +63,8 @@ struct ChatSidebarView: View {
                                 .tag(conversation.id)
                                 .contextMenu {
                                     Button("Rename...") {
-                                        // Placeholder for rename
+                                        renameText = conversation.title
+                                        renameTarget = conversation.id
                                     }
                                     Divider()
                                     Button("Delete", role: .destructive) {
@@ -74,6 +77,31 @@ struct ChatSidebarView: View {
                                 .font(AppFont.semibold(size: 11))
                                 .foregroundStyle(AppColors.textTertiary)
                                 .textCase(.uppercase)
+                        }
+                    }
+
+                    // Load more pagination trigger
+                    if appState.hasMoreConversations && !appState.isDemoMode {
+                        Section {
+                            HStack {
+                                Spacer()
+                                if appState.isLoadingMoreConversations {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Button("Load more...") {
+                                        Task { await appState.loadMoreConversations() }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .font(AppFont.body(size: 12))
+                                    .foregroundStyle(AppColors.textTertiary)
+                                }
+                                Spacer()
+                            }
+                            .onAppear {
+                                // Auto-load when scrolled into view
+                                Task { await appState.loadMoreConversations() }
+                            }
                         }
                     }
                 }
@@ -137,6 +165,24 @@ struct ChatSidebarView: View {
             }
         } message: {
             Text("Are you sure you want to delete this conversation? This action cannot be undone.")
+        }
+        .alert("Rename Conversation", isPresented: Binding(
+            get: { renameTarget != nil },
+            set: { if !$0 { renameTarget = nil } }
+        )) {
+            TextField("Title", text: $renameText)
+            Button("Rename") {
+                if let id = renameTarget {
+                    let newTitle = renameText
+                    renameTarget = nil
+                    Task { await appState.renameConversation(id, newTitle: newTitle) }
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                renameTarget = nil
+            }
+        } message: {
+            Text("Enter a new title for this conversation.")
         }
     }
 
