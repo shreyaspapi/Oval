@@ -35,9 +35,13 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 
 ## Screenshots
 
-<!-- Add screenshots here -->
-<!-- ![Main Chat](docs/screenshots/chat.png) -->
-<!-- ![Quick Chat](docs/screenshots/quickchat.png) -->
+| Login | Sidebar & Conversations |
+|:---:|:---:|
+| ![Login](screenshots/login.png) | ![Sidebar](screenshots/sidebar.png) |
+
+| Chat with Markdown & Code | Quick Chat (Ctrl+Space) |
+|:---:|:---:|
+| ![Chat](screenshots/chat.png) | ![Quick Chat](screenshots/quick-chat.png) |
 
 ## Requirements
 
