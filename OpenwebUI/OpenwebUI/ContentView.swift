@@ -40,9 +40,10 @@ struct ContentView: View {
             appState.onDisappear()
         }
         .onKeyPress(.escape) {
-            // Close the main window on Esc
+            // Minimize the main window on Esc (orderOut hides it completely
+            // and causes the menu bar to disappear since no window is visible)
             if let window = NSApp.keyWindow, !(window is NSPanel) {
-                window.orderOut(nil)
+                window.miniaturize(nil)
                 return .handled
             }
             return .ignored

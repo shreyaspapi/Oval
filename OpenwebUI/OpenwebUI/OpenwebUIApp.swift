@@ -5,10 +5,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            for window in sender.windows {
+            // Restore all non-panel windows (main window, settings, etc.)
+            for window in sender.windows where !(window is NSPanel) {
                 window.makeKeyAndOrderFront(nil)
             }
         }
+        // Always ensure the app is fully activated with its menu bar
+        sender.activate(ignoringOtherApps: true)
         return true
     }
 
@@ -20,6 +23,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Ensure window frame autosave (HIG Rule 2.5)
         for window in NSApp.windows {
             window.setFrameAutosaveName("MainWindow")
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Ensure the app has a visible main window when activated.
+        // This prevents the "no menu bar" state when all windows were hidden.
+        let hasVisibleNonPanel = NSApp.windows.contains { window in
+            !(window is NSPanel) && window.isVisible && !window.isMiniaturized
+        }
+        if !hasVisibleNonPanel {
+            for window in NSApp.windows where !(window is NSPanel) {
+                window.makeKeyAndOrderFront(nil)
+                break  // Only restore one main window
+            }
         }
     }
 }
