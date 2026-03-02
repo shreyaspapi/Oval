@@ -4,6 +4,7 @@ import SwiftUI
 /// Accessible by tapping the "Oval" title 10 times on the login screen.
 ///
 /// Provides:
+/// - **Demo Mode** — Full offline demo with mock data and simulated streaming
 /// - Quick-connect with a demo server URL + API key
 /// - App diagnostics (version, build, OS)
 /// - Feature checklist for reviewers
@@ -35,6 +36,44 @@ struct ReviewTestingView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
 
+                    // MARK: - Demo Mode (prominent)
+                    GroupBox {
+                        VStack(spacing: 16) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.blue)
+
+                            Text("Try Demo Mode")
+                                .font(.system(size: 18, weight: .semibold))
+
+                            Text("Experience the full app with mock data — no server required. Includes sample conversations, model selector, simulated AI streaming, and all UI features.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+
+                            Button {
+                                appState.enterDemoMode()
+                                dismiss()
+                            } label: {
+                                Text("Launch Demo")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(.blue)
+                                    .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+
+                            Text("Demo mode simulates streaming responses locally.\nType any message to see it in action.")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
+
                     // MARK: - App Info
                     GroupBox("App Info") {
                         VStack(alignment: .leading, spacing: 8) {
@@ -48,14 +87,14 @@ struct ReviewTestingView: View {
                         .padding(.vertical, 4)
                     }
 
-                    // MARK: - Quick Connect
-                    GroupBox("Quick Connect") {
+                    // MARK: - Quick Connect (for real server testing)
+                    GroupBox("Quick Connect (Optional)") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Enter a demo server URL and API key to test the app without signing in through the main login flow.")
+                            Text("If you have a real Open WebUI server, enter its URL and API key to test with live data.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
 
-                            TextField("Server URL", text: $demoURL, prompt: Text("https://demo.openwebui.com"))
+                            TextField("Server URL", text: $demoURL, prompt: Text("https://your-server.example.com"))
                                 .textFieldStyle(.roundedBorder)
 
                             SecureField("API Key", text: $demoAPIKey, prompt: Text("sk-..."))
@@ -104,9 +143,12 @@ struct ReviewTestingView: View {
                             featureItem("Auto-generated chat titles")
                             featureItem("Conversation caching & prefetch")
                             featureItem("Light & dark mode (adaptive colors)")
+                            featureItem("Quick Chat window (Ctrl+Space)")
                             featureItem("System tray menu bar icon")
                             featureItem("macOS Settings window (Cmd+,)")
                             featureItem("Keyboard shortcuts (Cmd+N, Cmd+F, etc.)")
+                            featureItem("Launch at Login")
+                            featureItem("Always on Top")
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 4)
@@ -128,7 +170,7 @@ struct ReviewTestingView: View {
                 .padding(20)
             }
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: 650)
     }
 
     // MARK: - Quick Connect
