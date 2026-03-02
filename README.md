@@ -1,8 +1,17 @@
+<div align="center">
+
 # Oval
 
 A native macOS client for [Open WebUI](https://openwebui.com). Chat with your self-hosted AI — right from your Mac.
 
-<!-- [![Download on the Mac App Store](docs/store-badges/appstore.svg)](https://apps.apple.com/app/oval-for-open-webui/idXXXXXXXXXX) -->
+[![Downloads](https://img.shields.io/github/downloads/shreyaspapi/Oval/total.svg?style=flat)](https://github.com/shreyaspapi/Oval/releases)
+[![Latest Release](https://img.shields.io/github/v/release/shreyaspapi/Oval?style=flat)](https://github.com/shreyaspapi/Oval/releases/latest)
+[![License](https://img.shields.io/github/license/shreyaspapi/Oval.svg?style=flat)](https://github.com/shreyaspapi/Oval/blob/main/LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS-blue.svg?style=flat)](https://github.com/shreyaspapi/Oval)
+
+[**Download**](https://github.com/shreyaspapi/Oval/releases/latest) · [**Report Bug**](https://github.com/shreyaspapi/Oval/issues/new?template=bug_report.yml) · [**Request Feature**](https://github.com/shreyaspapi/Oval/issues/new?template=feature_request.yml)
+
+</div>
 
 ## Features
 
@@ -50,6 +59,12 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 - Oval does **not** host or provide AI models — it connects to your server
 
 ## Installation
+
+### Download
+
+Download the latest `.dmg` from the [**Releases page**](https://github.com/shreyaspapi/Oval/releases/latest), open it, and drag Oval to your Applications folder.
+
+> **First launch:** Since the app is not notarized, right-click Oval and select "Open" the first time, or go to System Settings → Privacy & Security to allow it.
 
 ### Mac App Store
 
