@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Oval Updates</title>
+        <description>Most recent changes with links to updates.</description>
+        <language>en</language>
+        <item>
+            <title>Version 1.1.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.1.0</h2>
+                <ul>
+                    <li><strong>Voice mode floating window</strong> — ChatGPT-style compact window instead of fullscreen</li>
+                    <li><strong>On-device STT/TTS model selection</strong> — choose from multiple Whisper and Piper models in Settings</li>
+                    <li><strong>Better TTS for chat</strong> — play button uses on-device Piper voice instead of macOS system voice</li>
+                    <li><strong>Instant TTS stop</strong> — stops mid-sentence when you hit stop</li>
+                    <li><strong>Auto-update support</strong> — Sparkle integration for seamless updates</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 03 Mar 2026 16:13:00 +0000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.1.0/Oval-1.1.0.dmg"
+                sparkle:edSignature="LZLglwKJWsDPD8ssSGBewpiqxvqwhxWgsk24CWMpdrEydcjGYelh37oCyWFbah0ZrsUIBO8u5UR37/DTw3BOCA=="
+                length="31420586"
+                type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>
