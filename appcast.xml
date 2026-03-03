@@ -5,6 +5,25 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.2.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.2.0</h2>
+                <ul>
+                    <li><strong>Sparkle auto-update</strong> — Oval now checks for updates automatically and installs them in-app</li>
+                    <li>All voice mode improvements from v1.1.0 included</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 03 Mar 2026 19:06:00 +0000</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.2.0/Oval-1.2.0.dmg"
+                sparkle:edSignature="adtgluZkGHlEfMroooZoeX9RRT21rMPuJArLdxqRSyzmSAgxyOx7c2GcJDD3jKsM+YTAUzuuNGPW8AiCmW1+DQ=="
+                length="33549699"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.1.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.1.0</h2>
