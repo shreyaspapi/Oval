@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct OpenwebUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var appState = AppState()
+    @StateObject private var updateManager = UpdateManager()
 
     var body: some Scene {
 
@@ -72,6 +73,13 @@ struct OpenwebUIApp: App {
                     appState.miniChatWindowManager.toggle()
                 }
                 .keyboardShortcut(" ", modifiers: .control)
+
+                Divider()
+
+                Button(appState.isRealtimeTranscriptionActive ? "Stop Transcription" : "Live Transcription") {
+                    appState.setRealtimeTranscriptionActive(!appState.isRealtimeTranscriptionActive)
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             }
 
             // MARK: Edit Menu
@@ -109,6 +117,10 @@ struct OpenwebUIApp: App {
 
             // MARK: Custom App Commands
             CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updateManager: updateManager)
+
+                Divider()
+
                 Button("Open Server in Browser") {
                     appState.openInBrowser()
                 }

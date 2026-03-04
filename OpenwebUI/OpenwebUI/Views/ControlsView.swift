@@ -12,12 +12,17 @@ struct SettingsView: View {
                     Label("General", systemImage: "gearshape")
                 }
 
+            VoiceModelSettingsView()
+                .tabItem {
+                    Label("Voice", systemImage: "waveform")
+                }
+
             AboutView(appState: appState)
                 .tabItem {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 480, height: 560)
     }
 }
 

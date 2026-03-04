@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import AppKit
+import os.log
+
+private let ovalLog = Logger(subsystem: "com.oval.app", category: "chat")
 
 // MARK: - Screen Enum
 
@@ -135,6 +138,39 @@ final class AppState {
     let speechManager = SpeechManager()
     let ttsManager = TTSManager()
 
+    // MARK: - Voice Mode (on-device STT/TTS via RunAnywhere)
+
+    let voiceModeManager = VoiceModeManager()
+    let voiceModeWindowManager = VoiceModeWindowManager()
+    var isVoiceModeActive = false
+
+    /// Open or close the voice mode floating window.
+    func setVoiceModeActive(_ active: Bool) {
+        isVoiceModeActive = active
+        if active {
+            voiceModeWindowManager.show()
+        } else {
+            voiceModeWindowManager.hide()
+        }
+    }
+
+    // MARK: - Realtime Transcription (live captions)
+
+    let realtimeTranscriptionManager = RealtimeTranscriptionManager()
+    let transcriptionWindowManager = TranscriptionWindowManager()
+    let speakerDiarizationManager = SpeakerDiarizationManager()
+    var isRealtimeTranscriptionActive = false
+
+    /// Open or close the realtime transcription floating window.
+    func setRealtimeTranscriptionActive(_ active: Bool) {
+        isRealtimeTranscriptionActive = active
+        if active {
+            transcriptionWindowManager.show()
+        } else {
+            transcriptionWindowManager.hide()
+        }
+    }
+
     // MARK: - Window Preferences
 
     var alwaysOnTop: Bool = false {
@@ -153,6 +189,17 @@ final class AppState {
     private let connectionManager = ServerConnectionManager()
     private var client: OpenWebUIClient?
 
+    /// Internal access for VoiceModeManager to call the server LLM.
+    var currentClient: OpenWebUIClient? { client }
+
+    // MARK: - Socket.IO
+
+    let socketService = SocketService()
+    /// Continuation for the Socket.IO streaming path — finished when the server sends completion done.
+    private var socketStreamContinuation: AsyncThrowingStream<OpenWebUIClient.StreamDelta, Error>.Continuation?
+    /// The message ID currently being streamed via Socket.IO
+    private var socketStreamingMessageId: String?
+
     init() {
         self.configManager = ConfigManager()
         self.trayManager = TrayManager()
@@ -160,6 +207,7 @@ final class AppState {
         self.miniChatWindowManager = MiniChatWindowManager()
         self.launchAtLogin = LaunchAtLoginManager.isEnabled()
         loadServers()
+        setupSocketEventHandler()
     }
 
     // MARK: - Lifecycle
@@ -167,7 +215,16 @@ final class AppState {
     func onAppear() async {
         trayManager.setup(appState: self)
         miniChatWindowManager.setup(appState: self)
+        voiceModeManager.setup(appState: self)
+        voiceModeWindowManager.setup(appState: self)
+        transcriptionWindowManager.setup(appState: self)
+        realtimeTranscriptionManager.setDiarizationManager(speakerDiarizationManager)
         setupHotkeys()
+
+        // Initialize RunAnywhere SDK for on-device STT/TTS
+        Task {
+            await RunAnywhereService.shared.initialize()
+        }
 
         if let server = activeServer {
             // Already have a saved server, try to reconnect
@@ -197,6 +254,8 @@ final class AppState {
         trayManager.teardown()
         hotkeyManager.stop()
         miniChatWindowManager.teardown()
+        voiceModeWindowManager.teardown()
+        transcriptionWindowManager.teardown()
     }
 
     // MARK: - Hotkey Setup
@@ -454,6 +513,9 @@ final class AppState {
         serverReachable = healthy
 
         if healthy {
+            // Connect Socket.IO for real-time events
+            socketService.connect(url: server.url, token: server.apiKey)
+
             serverVersion = await connectionManager.fetchVersion(url: server.url)
             async let modelsResult: () = loadModels()
             async let chatsResult: () = loadConversations()
@@ -475,6 +537,96 @@ final class AppState {
         isStreaming = false
         searchText = ""
         messageCache = [:]
+        socketService.disconnect()
+    }
+
+    /// Clear the message cache so conversations reload fresh from the server.
+    func clearMessageCache() {
+        messageCache = [:]
+        // Reload current conversation if one is selected
+        if let convId = selectedConversationID {
+            Task { await loadChatMessages(convId) }
+        }
+    }
+
+    // MARK: - Socket.IO Event Handler
+
+    /// Wire up the Socket.IO event handler to update messages with status events
+    /// and streaming content received via the real-time channel.
+    private func setupSocketEventHandler() {
+        socketService.onEvent = { [weak self] chatId, messageId, eventType, data in
+            Task { @MainActor in
+                self?.handleSocketEvent(chatId: chatId, messageId: messageId, type: eventType, data: data)
+            }
+        }
+    }
+
+    private func handleSocketEvent(chatId: String, messageId: String, type: String, data: [String: Any]) {
+        switch type {
+        case "status":
+            // Web search progress, knowledge search, etc.
+            guard let statusEvent = SocketService.parseStatusEvent(from: data) else { return }
+            if let msgId = socketStreamingMessageId,
+               let idx = chatMessages.lastIndex(where: { $0.id == msgId }) {
+                var msg = chatMessages[idx]
+                var history = msg.statusHistory ?? []
+                // Replace last event with same action if it's updating (e.g. search in-progress → done)
+                if let lastIdx = history.lastIndex(where: { $0.action == statusEvent.action && !$0.done }) {
+                    history[lastIdx] = statusEvent
+                } else {
+                    history.append(statusEvent)
+                }
+                msg.statusHistory = history
+                chatMessages[idx] = msg
+            }
+
+        case "chat:completion":
+            // Streaming content via Socket.IO
+            if let done = data["done"] as? Bool, done {
+                // Stream finished
+                socketStreamContinuation?.yield(.done)
+                socketStreamContinuation?.finish()
+                socketStreamContinuation = nil
+                return
+            }
+            if let content = data["content"] as? String, !content.isEmpty {
+                socketStreamContinuation?.yield(.content(content))
+            }
+
+        case "message":
+            // Direct content append
+            if let content = data["content"] as? String {
+                socketStreamContinuation?.yield(.content(content))
+            }
+
+        case "replace":
+            // Full content replacement — emit as a special content with marker
+            if let content = data["content"] as? String {
+                // Reset streaming content and replace
+                streamingContent = content
+                if let msgId = socketStreamingMessageId,
+                   let idx = chatMessages.lastIndex(where: { $0.id == msgId }) {
+                    let msg = chatMessages[idx]
+                    var updated = ChatMessage(
+                        id: msg.id,
+                        role: msg.role,
+                        content: content,
+                        model: msg.model,
+                        timestamp: msg.timestamp,
+                        parentId: msg.parentId,
+                        childrenIds: msg.childrenIds
+                    )
+                    // Preserve statusHistory and toolCalls
+                    updated.statusHistory = msg.statusHistory
+                    updated.toolCalls = msg.toolCalls
+                    updated.toolCallId = msg.toolCallId
+                    chatMessages[idx] = updated
+                }
+            }
+
+        default:
+            break
+        }
     }
 
     // MARK: - Models
@@ -652,13 +804,29 @@ final class AppState {
         do {
             let chat = try await client.getChat(id: chatId)
             let messages = chat.chat?.history?.linearMessages() ?? []
+
+            // DEBUG: Log statusHistory presence
+            let msgsWithStatus = messages.filter { $0.statusHistory != nil && !($0.statusHistory?.isEmpty ?? true) }
+            if !msgsWithStatus.isEmpty {
+                ovalLog.info("[Oval] loadChatMessages: \(msgsWithStatus.count) messages have statusHistory in chat \(chatId)")
+                for msg in msgsWithStatus {
+                    ovalLog.info("[Oval]   msg[\(msg.id)] role=\(msg.role) statusHistory.count=\(msg.statusHistory?.count ?? 0)")
+                    for s in msg.statusHistory ?? [] {
+                        ovalLog.info("[Oval]     action=\(s.action) done=\(s.done) queries=\(s.queries ?? []) urls=\(s.urls ?? [])")
+                    }
+                }
+            } else {
+                ovalLog.debug("[Oval] loadChatMessages: no messages with statusHistory in chat \(chatId) (total: \(messages.count))")
+            }
+
             messageCache[chatId] = messages
             // Only update UI if this conversation is still selected
             if selectedConversationID == chatId {
                 chatMessages = messages
             }
         } catch {
-            toastManager.show("Failed to load messages", style: .error)
+            toastManager.show("Failed to load messages: \(error.localizedDescription)", style: .error)
+            print("[Oval DEBUG] loadChatMessages error: \(error)")
             if selectedConversationID == chatId {
                 chatMessages = []
             }
@@ -673,12 +841,25 @@ final class AppState {
         do {
             let chat = try await client.getChat(id: chatId)
             let messages = chat.chat?.history?.linearMessages() ?? []
+
+            // DEBUG: Log statusHistory presence
+            let msgsWithStatus = messages.filter { $0.statusHistory != nil && !($0.statusHistory?.isEmpty ?? true) }
+            if !msgsWithStatus.isEmpty {
+                ovalLog.info("[Oval] refreshChatMessages: \(msgsWithStatus.count) messages have statusHistory in chat \(chatId)")
+                for msg in msgsWithStatus {
+                    ovalLog.info("[Oval]   msg[\(msg.id)] role=\(msg.role) statusHistory.count=\(msg.statusHistory?.count ?? 0)")
+                }
+            } else {
+                ovalLog.debug("[Oval] refreshChatMessages: no messages with statusHistory in chat \(chatId) (total: \(messages.count))")
+            }
+
             messageCache[chatId] = messages
             if selectedConversationID == chatId {
                 chatMessages = messages
             }
         } catch {
             // Silent refresh — don't show errors
+            ovalLog.error("[Oval] refreshChatMessages error for \(chatId): \(error.localizedDescription)")
         }
         if !silent { isLoadingChat = false }
     }
@@ -790,21 +971,7 @@ final class AppState {
         }
 
         // Build completion messages (multimodal for the current message if it has images)
-        var completionMsgs: [CompletionMessage] = []
-        for msg in chatMessages {
-            if let images = msg.images, !images.isEmpty {
-                var parts: [ContentPart] = []
-                if !msg.content.isEmpty {
-                    parts.append(.text(msg.content))
-                }
-                for imageURI in images {
-                    parts.append(.imageURL(imageURI))
-                }
-                completionMsgs.append(CompletionMessage(role: msg.role, content: .parts(parts)))
-            } else {
-                completionMsgs.append(CompletionMessage(role: msg.role, content: .text(msg.content)))
-            }
-        }
+        let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
 
         // ── Step 2: Start streaming ──
         isStreaming = true
@@ -821,16 +988,44 @@ final class AppState {
         )
         chatMessages.append(assistantMsg)
 
+        // Track the message ID for Socket.IO event routing
+        socketStreamingMessageId = assistantId
+
         // Wrap streaming in a cancellable task
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                let stream = await client.streamChat(
-                    model: model.id,
-                    messages: completionMsgs,
-                    files: uploadedFileRefs.isEmpty ? nil : uploadedFileRefs,
-                    webSearch: self.isWebSearchEnabled
-                )
+                // Use Socket.IO path when connected (enables status events like web search progress)
+                let useSocket = self.socketService.isConnected && self.selectedConversationID != nil
+                let socketSid = useSocket ? self.socketService.sessionId : nil
+                let socketChatId = useSocket ? self.selectedConversationID : nil
+
+                let fileRefs = uploadedFileRefs.isEmpty ? nil : uploadedFileRefs
+                let stream: AsyncThrowingStream<OpenWebUIClient.StreamDelta, Error>
+                if useSocket, let sid = socketSid, let cid = socketChatId {
+                    // Create a stream that will be fed by Socket.IO events
+                    stream = AsyncThrowingStream { continuation in
+                        self.socketStreamContinuation = continuation
+                        // Fire the HTTP request to trigger the server (returns immediately)
+                        Task {
+                            _ = await client.streamChat(
+                                model: model.id,
+                                messages: completionMsgs,
+                                files: fileRefs,
+                                webSearch: self.isWebSearchEnabled,
+                                sessionId: sid,
+                                chatId: cid
+                            )
+                        }
+                    }
+                } else {
+                    stream = await client.streamChat(
+                        model: model.id,
+                        messages: completionMsgs,
+                        files: fileRefs,
+                        webSearch: self.isWebSearchEnabled
+                    )
+                }
                 // Accumulate tool call chunks keyed by index
                 var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
@@ -850,11 +1045,28 @@ final class AppState {
                     case .done:
                         break
                     }
-                    // Build completed tool calls from accumulator
-                    let completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
+
+                    // Build tool calls from streaming chunks (status = executing while streaming)
+                    var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
                         guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
-                        return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments))
+                        return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
                     }
+
+                    // Also parse <details type="tool_calls"> from content — the server embeds
+                    // tool results this way after executing tools server-side
+                    let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                    if !parsedFromContent.isEmpty {
+                        // Merge: content-parsed tool calls (with results) take priority
+                        let streamIds = Set(completedToolCalls.map(\.id))
+                        for parsed in parsedFromContent {
+                            if let idx = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
+                                completedToolCalls[idx] = parsed
+                            } else if !streamIds.contains(parsed.id) {
+                                completedToolCalls.append(parsed)
+                            }
+                        }
+                    }
+
                     if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
                         var updated = ChatMessage(
                             id: assistantId,
@@ -868,7 +1080,23 @@ final class AppState {
                         if !completedToolCalls.isEmpty {
                             updated.toolCalls = completedToolCalls
                         }
+                        // Preserve statusHistory from Socket.IO events (set by handleSocketEvent)
+                        updated.statusHistory = self.chatMessages[idx].statusHistory
                         self.chatMessages[idx] = updated
+                    }
+                }
+
+                // After streaming ends, mark any remaining "executing" tool calls as completed
+                if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                    var finalMsg = self.chatMessages[idx]
+                    if var toolCalls = finalMsg.toolCalls {
+                        for i in toolCalls.indices {
+                            if toolCalls[i].status == .executing || toolCalls[i].status == .pending {
+                                toolCalls[i].status = .completed
+                            }
+                        }
+                        finalMsg.toolCalls = toolCalls
+                        self.chatMessages[idx] = finalMsg
                     }
                 }
             } catch {
@@ -883,6 +1111,8 @@ final class AppState {
         isStreaming = false
         streamingContent = ""
         streamingTask = nil
+        socketStreamingMessageId = nil
+        socketStreamContinuation = nil
 
         // ── Step 3: Save final state to server ──
         if let convId = selectedConversationID {
@@ -963,7 +1193,10 @@ final class AppState {
                 childrenIds: childrenIds,
                 timestamp: msg.timestamp,
                 images: msg.images,
-                files: msg.files
+                files: msg.files,
+                toolCalls: msg.toolCalls,
+                toolCallId: msg.toolCallId,
+                statusHistory: msg.statusHistory?.map { StatusEventCodable(from: $0) }
             )
             historyDict[msg.id] = blobMsg
             flatMessages.append(blobMsg)
@@ -980,7 +1213,10 @@ final class AppState {
                 childrenIds: [],
                 timestamp: Date().timeIntervalSince1970,
                 images: nil,
-                files: nil
+                files: nil,
+                toolCalls: nil,
+                toolCallId: nil,
+                statusHistory: nil
             )
             historyDict[aId] = placeholder
             flatMessages.append(placeholder)
@@ -996,7 +1232,10 @@ final class AppState {
                     childrenIds: entry.childrenIds + [aId],
                     timestamp: entry.timestamp,
                     images: entry.images,
-                    files: entry.files
+                    files: entry.files,
+                    toolCalls: entry.toolCalls,
+                    toolCallId: entry.toolCallId,
+                    statusHistory: entry.statusHistory
                 )
                 historyDict[lastMsg.id] = updated
             }
@@ -1059,17 +1298,8 @@ final class AppState {
             )
             chatMessages.append(assistantMsg)
 
-            // Build completion messages from the updated history
-            let completionMsgs = chatMessages.map { msg -> CompletionMessage in
-                if let images = msg.images, !images.isEmpty {
-                    var parts: [ContentPart] = [.text(msg.content)]
-                    for img in images {
-                        parts.append(.imageURL(img))
-                    }
-                    return CompletionMessage(role: msg.role, content: .parts(parts))
-                }
-                return CompletionMessage(role: msg.role, content: .text(msg.content))
-            }
+            // Build completion messages from the updated history (includes tool call context)
+            let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
 
             let task = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -1080,24 +1310,64 @@ final class AppState {
                         files: nil,
                         webSearch: self.isWebSearchEnabled
                     )
+                    var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
+
                     for try await delta in stream {
                         if Task.isCancelled { break }
                         switch delta {
                         case .content(let text):
                             self.streamingContent += text
-                        case .toolCall, .done:
+                        case .toolCall(let tc):
+                            let tcIdx = tc.index ?? 0
+                            var entry = toolCallAccumulator[tcIdx] ?? (id: "", type: "function", name: "", arguments: "")
+                            if let id = tc.id { entry.id = id }
+                            if let type = tc.type { entry.type = type }
+                            if let name = tc.function?.name { entry.name += name }
+                            if let args = tc.function?.arguments { entry.arguments += args }
+                            toolCallAccumulator[tcIdx] = entry
+                        case .done:
                             break
                         }
+
+                        var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
+                            guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
+                            return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
+                        }
+                        let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                        for parsed in parsedFromContent {
+                            if let i = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
+                                completedToolCalls[i] = parsed
+                            } else if !completedToolCalls.contains(where: { $0.id == parsed.id }) {
+                                completedToolCalls.append(parsed)
+                            }
+                        }
+
                         if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                            self.chatMessages[idx] = ChatMessage(
+                            var updated = ChatMessage(
                                 id: assistantId,
                                 role: "assistant",
                                 content: self.streamingContent,
                                 model: model.id,
                                 timestamp: Date().timeIntervalSince1970,
-                                parentId: chatMessages[self.chatMessages.count - 2].id,
+                                parentId: self.chatMessages.count >= 2 ? self.chatMessages[self.chatMessages.count - 2].id : nil,
                                 childrenIds: nil
                             )
+                            if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
+                            // Preserve statusHistory from Socket.IO events
+                            updated.statusHistory = self.chatMessages[idx].statusHistory
+                            self.chatMessages[idx] = updated
+                        }
+                    }
+
+                    // Finalize tool call statuses
+                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                        var finalMsg = self.chatMessages[idx]
+                        if var toolCalls = finalMsg.toolCalls {
+                            for i in toolCalls.indices where toolCalls[i].status == .executing || toolCalls[i].status == .pending {
+                                toolCalls[i].status = .completed
+                            }
+                            finalMsg.toolCalls = toolCalls
+                            self.chatMessages[idx] = finalMsg
                         }
                     }
                 } catch {
@@ -1169,36 +1439,51 @@ final class AppState {
         )
         chatMessages.append(assistantMsg)
 
-        let completionMsgs = chatMessages.dropLast().map { msg -> CompletionMessage in
-            if let images = msg.images, !images.isEmpty {
-                var parts: [ContentPart] = [.text(msg.content)]
-                for img in images {
-                    parts.append(.imageURL(img))
-                }
-                return CompletionMessage(role: msg.role, content: .parts(parts))
-            }
-            return CompletionMessage(role: msg.role, content: .text(msg.content))
-        }
+        let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let stream = await client.streamChat(
                     model: model.id,
-                    messages: Array(completionMsgs),
+                    messages: completionMsgs,
                     files: nil,
                     webSearch: self.isWebSearchEnabled
                 )
+                var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
+
                 for try await delta in stream {
                     if Task.isCancelled { break }
                     switch delta {
                     case .content(let text):
                         self.streamingContent += text
-                    case .toolCall, .done:
+                    case .toolCall(let tc):
+                        let tcIdx = tc.index ?? 0
+                        var entry = toolCallAccumulator[tcIdx] ?? (id: "", type: "function", name: "", arguments: "")
+                        if let id = tc.id { entry.id = id }
+                        if let type = tc.type { entry.type = type }
+                        if let name = tc.function?.name { entry.name += name }
+                        if let args = tc.function?.arguments { entry.arguments += args }
+                        toolCallAccumulator[tcIdx] = entry
+                    case .done:
                         break
                     }
+
+                    var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
+                        guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
+                        return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
+                    }
+                    let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                    for parsed in parsedFromContent {
+                        if let i = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
+                            completedToolCalls[i] = parsed
+                        } else if !completedToolCalls.contains(where: { $0.id == parsed.id }) {
+                            completedToolCalls.append(parsed)
+                        }
+                    }
+
                     if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                        self.chatMessages[idx] = ChatMessage(
+                        var updated = ChatMessage(
                             id: assistantId,
                             role: "assistant",
                             content: self.streamingContent,
@@ -1207,6 +1492,22 @@ final class AppState {
                             parentId: self.chatMessages.count >= 2 ? self.chatMessages[self.chatMessages.count - 2].id : nil,
                             childrenIds: nil
                         )
+                        if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
+                        // Preserve statusHistory from Socket.IO events
+                        updated.statusHistory = self.chatMessages[idx].statusHistory
+                        self.chatMessages[idx] = updated
+                    }
+                }
+
+                // Finalize tool call statuses
+                if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                    var finalMsg = self.chatMessages[idx]
+                    if var toolCalls = finalMsg.toolCalls {
+                        for i in toolCalls.indices where toolCalls[i].status == .executing || toolCalls[i].status == .pending {
+                            toolCalls[i].status = .completed
+                        }
+                        finalMsg.toolCalls = toolCalls
+                        self.chatMessages[idx] = finalMsg
                     }
                 }
             } catch {
@@ -1237,11 +1538,17 @@ final class AppState {
 
     // MARK: - Text-to-Speech
 
-    /// Speak assistant message content using macOS native TTS.
+    /// Speak assistant message content.
+    /// Uses RunAnywhere on-device TTS if loaded, otherwise falls back to macOS native TTS.
     /// Strips reasoning/thinking blocks before speaking.
     func speakMessage(_ content: String) {
         let cleaned = stripReasoningBlocks(content)
-        ttsManager.speak(cleaned)
+        if RunAnywhereService.shared.ttsModelState == .loaded {
+            // Use on-device RunAnywhere TTS (much better quality)
+            ttsManager.speakWithRunAnywhere(cleaned)
+        } else {
+            ttsManager.speak(cleaned)
+        }
     }
 
     func stopSpeaking() {
@@ -1262,6 +1569,135 @@ final class AppState {
             }
         }
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Tool Call Details Parser
+
+    /// Parse `<details type="tool_calls" ...>` blocks from message content.
+    /// Open WebUI embeds tool call results as HTML details tags in the streaming content.
+    static func parseToolCallDetails(from content: String) -> [ToolCall] {
+        var toolCalls: [ToolCall] = []
+
+        // Match both closed and unclosed (in-progress) tool call details
+        let closedPattern = #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?</details>"#
+        let unclosedPattern = #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?$"#
+
+        for pattern in [closedPattern, unclosedPattern] {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { continue }
+            let nsContent = content as NSString
+            let matches = regex.matches(in: content, options: [], range: NSRange(location: 0, length: nsContent.length))
+
+            for match in matches {
+                let attrsRange = match.range(at: 1)
+                let attrs = nsContent.substring(with: attrsRange)
+
+                // Extract attributes
+                let id = extractAttribute("id", from: attrs) ?? UUID().uuidString
+                let name = extractAttribute("name", from: attrs) ?? "unknown"
+                let arguments = htmlDecode(extractAttribute("arguments", from: attrs) ?? "{}")
+                let result = extractAttribute("result", from: attrs).map { htmlDecode($0) }
+                let isDone = attrs.contains(#"done="true""#)
+
+                let status: ToolCallStatus = isDone ? .completed : .executing
+                let toolCall = ToolCall(
+                    id: id,
+                    type: "function",
+                    function: ToolCall.ToolCallComplete(name: name, arguments: arguments),
+                    status: status,
+                    result: result
+                )
+                // Avoid duplicates
+                if !toolCalls.contains(where: { $0.id == toolCall.id }) {
+                    toolCalls.append(toolCall)
+                }
+            }
+            // If we found closed matches, don't also look for unclosed
+            if !toolCalls.isEmpty && pattern == closedPattern { break }
+        }
+
+        return toolCalls
+    }
+
+    /// Extract an HTML attribute value from an attributes string.
+    private static func extractAttribute(_ name: String, from attrs: String) -> String? {
+        let pattern = name + #"="([^"]*)""#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: attrs, range: NSRange(location: 0, length: (attrs as NSString).length)) else {
+            return nil
+        }
+        return (attrs as NSString).substring(with: match.range(at: 1))
+    }
+
+    /// Basic HTML entity decoding for tool call attributes.
+    private static func htmlDecode(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+    }
+
+    /// Strip `<details type="tool_calls">` blocks from content for display,
+    /// since tool calls are rendered separately in the UI.
+    static func stripToolCallDetails(from content: String) -> String {
+        var result = content
+        // Closed blocks
+        while let startRange = result.range(of: #"<details[^>]*type="tool_calls"[^>]*>"#, options: .regularExpression) {
+            if let endRange = result.range(of: "</details>", range: startRange.upperBound..<result.endIndex) {
+                result.removeSubrange(startRange.lowerBound..<endRange.upperBound)
+            } else {
+                result.removeSubrange(startRange.lowerBound..<result.endIndex)
+            }
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Completion Message Builder
+
+    /// Build completion messages from chat messages, including tool call context.
+    /// This ensures tool calls and tool results are properly represented in the
+    /// OpenAI-compatible format when sent to the server.
+    static func buildCompletionMessages(from messages: [ChatMessage]) -> [CompletionMessage] {
+        var result: [CompletionMessage] = []
+        for msg in messages {
+            // Strip tool call details HTML from content for the API payload
+            let cleanContent = stripToolCallDetails(from: msg.content)
+
+            if msg.role == "assistant", let toolCalls = msg.toolCalls, !toolCalls.isEmpty {
+                // Assistant message with tool calls — include them in OpenAI format
+                let apiToolCalls = toolCalls.map { tc in
+                    CompletionToolCall(
+                        id: tc.id,
+                        type: tc.type,
+                        function: CompletionToolCallFunction(name: tc.function.name, arguments: tc.function.arguments)
+                    )
+                }
+                if let images = msg.images, !images.isEmpty {
+                    var parts: [ContentPart] = []
+                    if !cleanContent.isEmpty { parts.append(.text(cleanContent)) }
+                    for img in images { parts.append(.imageURL(img)) }
+                    result.append(CompletionMessage(role: msg.role, content: .parts(parts), tool_calls: apiToolCalls))
+                } else {
+                    result.append(CompletionMessage(role: msg.role, content: .text(cleanContent), tool_calls: apiToolCalls))
+                }
+            } else if msg.role == "tool" {
+                // Tool result message — include tool_call_id
+                result.append(CompletionMessage(role: "tool", content: .text(cleanContent), tool_call_id: msg.toolCallId))
+            } else {
+                // Regular message (user, system, assistant without tool calls)
+                if let images = msg.images, !images.isEmpty {
+                    var parts: [ContentPart] = []
+                    if !cleanContent.isEmpty { parts.append(.text(cleanContent)) }
+                    for img in images { parts.append(.imageURL(img)) }
+                    result.append(CompletionMessage(role: msg.role, content: .parts(parts)))
+                } else {
+                    result.append(CompletionMessage(role: msg.role, content: .text(cleanContent)))
+                }
+            }
+        }
+        return result
     }
 
     // MARK: - Mini Chat

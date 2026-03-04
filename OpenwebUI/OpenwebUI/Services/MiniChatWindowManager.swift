@@ -14,7 +14,7 @@ final class MiniChatWindowManager {
     private weak var appState: AppState?
 
     private let compactWidth: CGFloat = 680
-    private let compactHeight: CGFloat = 110
+    private let compactHeight: CGFloat = 82
     private let expandedWidth: CGFloat = 680
     private let expandedHeight: CGFloat = 540
 
@@ -49,6 +49,10 @@ final class MiniChatWindowManager {
         let hasMessages = !appState.miniChatMessages.isEmpty
         let targetWidth = hasMessages ? expandedWidth : compactWidth
         let targetHeight = hasMessages ? expandedHeight : compactHeight
+
+        // Transparent in compact mode, opaque dark in expanded mode
+        panel.backgroundColor = hasMessages ? NSColor(hex: "#1a1a1a") : .clear
+        panel.contentView?.layer?.cornerRadius = hasMessages ? 18 : 0
 
         // Center on the screen with the cursor
         if let screen = NSScreen.main ?? NSScreen.screens.first {
@@ -97,6 +101,9 @@ final class MiniChatWindowManager {
     /// Animate from compact to expanded size when first message is sent.
     func expandToFullSize() {
         guard let panel else { return }
+        // Switch to opaque background and rounded corners for expanded (messages) mode
+        panel.backgroundColor = NSColor(hex: "#1a1a1a")
+        panel.contentView?.layer?.cornerRadius = 18
         let currentFrame = panel.frame
         let newHeight = expandedHeight
         let newWidth = expandedWidth
@@ -126,19 +133,25 @@ final class MiniChatWindowManager {
         panel.contentView = hosting
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
+        // Hide the traffic-light (close/minimize/zoom) buttons entirely
+        panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.isMovableByWindowBackground = true
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.animationBehavior = .utilityWindow
-        panel.backgroundColor = NSColor(hex: "#1a1a1a")
+        // Start transparent — the input card provides its own background
+        panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
 
-        // Rounded corners
+        // Rounded corners — start with none for compact (transparent) mode;
+        // corners are applied when expanding to show messages.
         panel.contentView?.wantsLayer = true
-        panel.contentView?.layer?.cornerRadius = 18
+        panel.contentView?.layer?.cornerRadius = 0
         panel.contentView?.layer?.masksToBounds = true
 
         // Size limits

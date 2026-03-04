@@ -148,6 +148,37 @@ struct ChatInputView: View {
                         .buttonStyle(.plain)
                         .help(appState.speechManager.isListening ? "Stop listening" : "Speech to text")
 
+                        // Voice conversation mode (on-device STT/TTS)
+                        Button {
+                            appState.setVoiceModeActive(true)
+                        } label: {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(AppColors.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(AppColors.inputActionBg.opacity(0.6))
+                                .clipShape(Circle())
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Voice conversation mode")
+
+                        // Live transcription (realtime captions)
+                        Button {
+                            appState.setRealtimeTranscriptionActive(!appState.isRealtimeTranscriptionActive)
+                        } label: {
+                            Image(systemName: appState.isRealtimeTranscriptionActive ? "captions.bubble.fill" : "captions.bubble")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(appState.isRealtimeTranscriptionActive ? Color.white : AppColors.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(appState.isRealtimeTranscriptionActive ? AppColors.accentBlue.opacity(0.7) : AppColors.inputActionBg.opacity(0.6))
+                                .clipShape(Circle())
+                                .contentShape(Circle())
+                                .animation(.easeInOut(duration: 0.15), value: appState.isRealtimeTranscriptionActive)
+                        }
+                        .buttonStyle(.plain)
+                        .help(appState.isRealtimeTranscriptionActive ? "Stop live transcription" : "Live transcription (Cmd+Shift+T)")
+
                         Spacer()
 
                         // Character hint

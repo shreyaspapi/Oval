@@ -18,6 +18,29 @@ struct MessageBubbleView: View {
     @State private var isEditing = false
     @State private var editText = ""
 
+    /// Merge tool calls from the message model with those parsed from content HTML.
+    /// The server embeds tool call results as `<details type="tool_calls">` in the content.
+    private var resolvedToolCalls: [ToolCall] {
+        var calls = message.toolCalls ?? []
+        let contentParsed = AppState.parseToolCallDetails(from: message.content)
+        for parsed in contentParsed {
+            if let idx = calls.firstIndex(where: { $0.id == parsed.id }) {
+                // Update with result/status from content HTML
+                if parsed.result != nil || parsed.status == .completed {
+                    calls[idx] = parsed
+                }
+            } else {
+                calls.append(parsed)
+            }
+        }
+        return calls
+    }
+
+    /// Message content with tool call HTML details stripped (rendered separately above).
+    private var strippedContent: String {
+        AppState.stripToolCallDetails(from: message.content)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if message.role == "user" {
@@ -178,24 +201,30 @@ struct MessageBubbleView: View {
                         .foregroundStyle(AppColors.textTertiary)
                 }
 
-                // Tool calls
-                if let toolCalls = message.toolCalls, !toolCalls.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(toolCalls) { tc in
-                            ToolCallView(toolCall: tc)
+                // Search status events (from Socket.IO — web search progress, query chips)
+                if let statusHistory = message.statusHistory, !statusHistory.isEmpty {
+                    SearchStatusView(statusHistory: statusHistory)
+                }
+
+                // Tool calls (from streaming chunks and/or parsed from content HTML)
+                let allToolCalls = resolvedToolCalls
+                if !allToolCalls.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(allToolCalls) { tc in
+                            ToolCallView(toolCall: tc, isStreaming: isStreaming)
                         }
                     }
                 }
 
                 // Reasoning/thinking blocks (parsed from content)
-                let parsed = parseReasoningBlocks(message.content)
+                let parsed = parseReasoningBlocks(strippedContent)
                 if !parsed.reasoning.isEmpty {
                     ForEach(Array(parsed.reasoning.enumerated()), id: \.offset) { _, block in
                         ReasoningBlockView(block: block, isStreaming: isStreaming)
                     }
                 }
 
-                // Message content (with reasoning stripped)
+                // Message content (with reasoning and tool call HTML stripped)
                 if parsed.visibleContent.isEmpty && isStreaming {
                     HStack(spacing: 4) {
                         ForEach(0..<3, id: \.self) { _ in
@@ -525,55 +554,219 @@ private struct ReasoningBlockView: View {
 
 // MARK: - Tool Call View
 
+/// Renders a tool call with status indicator, collapsible INPUT/OUTPUT sections,
+/// and result display — matching the Open WebUI web frontend's ToolCallDisplay.
 private struct ToolCallView: View {
     let toolCall: ToolCall
+    var isStreaming: Bool = false
     @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Header button — always visible
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppColors.accentBlue)
-                    Text(toolCall.function.name)
-                        .font(AppFont.caption(size: 12).weight(.medium))
-                        .foregroundStyle(AppColors.textSecondary)
+                    statusIcon
+                    headerLabel
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(AppColors.textTertiary)
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
+            // Expandable details section
             if isExpanded {
-                Text(formatArguments(toolCall.function.arguments))
+                Divider()
+                    .padding(.horizontal, 10)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    // INPUT section
+                    inputSection
+
+                    // OUTPUT section (only when we have a result)
+                    if let result = toolCall.result, !result.isEmpty {
+                        outputSection(result)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+            }
+        }
+        .background(AppColors.fileAttachmentBg.opacity(0.8))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AppColors.borderColor.opacity(0.5), lineWidth: 0.5)
+        )
+    }
+
+    // MARK: - Status Icon
+
+    @ViewBuilder
+    private var statusIcon: some View {
+        switch toolCall.status {
+        case .pending, .executing:
+            ProgressView()
+                .controlSize(.mini)
+                .scaleEffect(0.7)
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(AppColors.emerald600)
+        case .error:
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(AppColors.red500)
+        }
+    }
+
+    // MARK: - Header Label
+
+    @ViewBuilder
+    private var headerLabel: some View {
+        switch toolCall.status {
+        case .pending:
+            Text(toolCall.function.name)
+                .font(AppFont.caption(size: 12).weight(.medium))
+                .foregroundStyle(AppColors.textSecondary)
+        case .executing:
+            (Text("Executing ").foregroundStyle(AppColors.textTertiary)
+             + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold()
+             + Text("...").foregroundStyle(AppColors.textTertiary))
+                .font(AppFont.caption(size: 12))
+        case .completed:
+            if toolCall.result != nil {
+                (Text("View Result from ").foregroundStyle(AppColors.textTertiary)
+                 + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
+                    .font(AppFont.caption(size: 12))
+            } else {
+                (Text("Executed ").foregroundStyle(AppColors.textTertiary)
+                 + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
+                    .font(AppFont.caption(size: 12))
+            }
+        case .error:
+            (Text("Failed: ").foregroundStyle(AppColors.red500)
+             + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
+                .font(AppFont.caption(size: 12))
+        }
+    }
+
+    // MARK: - INPUT Section
+
+    private var inputSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("INPUT")
+                .font(.system(size: 10, weight: .medium))
+                .tracking(1)
+                .foregroundStyle(AppColors.textTertiary)
+
+            let parsed = parseArgumentsToKeyValues(toolCall.function.arguments)
+            if let keyValues = parsed {
+                // Render as compact key-value pairs
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(keyValues.sorted(by: { $0.key < $1.key })), id: \.key) { key, value in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(key)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(AppColors.textSecondary)
+                                .frame(minWidth: 50, alignment: .leading)
+                            Text(value)
+                                .font(.system(size: 11))
+                                .foregroundStyle(AppColors.textPrimary)
+                                .textSelection(.enabled)
+                                .lineLimit(5)
+                        }
+                    }
+                }
+            } else {
+                // Render as raw JSON code block
+                Text(formatJSON(toolCall.function.arguments))
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(AppColors.textSecondary)
                     .textSelection(.enabled)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 8)
-                    .padding(.top, 2)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.codeBlockBg.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
         }
-        .background(AppColors.fileAttachmentBg)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func formatArguments(_ args: String) -> String {
+    // MARK: - OUTPUT Section
+
+    private func outputSection(_ result: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("OUTPUT")
+                .font(.system(size: 10, weight: .medium))
+                .tracking(1)
+                .foregroundStyle(AppColors.textTertiary)
+
+            // Try parsing as JSON for formatted display
+            if let data = result.data(using: .utf8),
+               let _ = try? JSONSerialization.jsonObject(with: data) {
+                Text(formatJSON(result))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .textSelection(.enabled)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.codeBlockBg.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                Text(result)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(AppColors.textSecondary)
+                    .textSelection(.enabled)
+                    .lineLimit(20)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.codeBlockBg.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Parse JSON arguments into key-value pairs for compact display.
+    /// Returns nil if the arguments aren't a flat JSON object.
+    private func parseArgumentsToKeyValues(_ args: String) -> [String: String]? {
         guard let data = args.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        var result: [String: String] = [:]
+        for (key, value) in obj {
+            if let str = value as? String {
+                result[key] = str
+            } else if let num = value as? NSNumber {
+                result[key] = num.stringValue
+            } else if let bool = value as? Bool {
+                result[key] = bool ? "true" : "false"
+            } else {
+                // Complex value — fall back to JSON display for the whole thing
+                return nil
+            }
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    /// Pretty-print a JSON string.
+    private func formatJSON(_ json: String) -> String {
+        guard let data = json.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data),
               let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
               let str = String(data: pretty, encoding: .utf8)
-        else { return args }
+        else { return json }
         return str
     }
 }

@@ -1,4 +1,7 @@
 import Foundation
+import os.log
+
+private nonisolated(unsafe) let clientLog = Logger(subsystem: "com.oval.app", category: "client")
 
 /// HTTP client for the Open WebUI API.
 /// Handles auth, models, chats, and streaming chat completions.
@@ -185,12 +188,18 @@ actor OpenWebUIClient {
 
     /// Stream chat completions. Yields content deltas and tool call chunks as they arrive.
     /// Supports multimodal messages (text + images), file references, and web search.
+    ///
+    /// When `sessionId` and `chatId` are provided, the server routes events through
+    /// Socket.IO instead of SSE. The HTTP response is just `{"status": true}` and
+    /// all actual content arrives via the Socket.IO "events" channel.
     func streamChat(
         model: String,
         messages: [CompletionMessage],
         temperature: Double = 0.7,
         files: [CompletionFileRef]? = nil,
-        webSearch: Bool = false
+        webSearch: Bool = false,
+        sessionId: String? = nil,
+        chatId: String? = nil
     ) -> AsyncThrowingStream<StreamDelta, Error> {
         let urlString = "\(baseURL)/api/chat/completions"
         let key = apiKey
@@ -215,49 +224,70 @@ actor OpenWebUIClient {
                     temperature: temperature,
                     max_tokens: nil,
                     files: files,
-                    features: features
+                    features: features,
+                    session_id: sessionId,
+                    chat_id: chatId
                 )
                 req.httpBody = try? JSONEncoder().encode(body)
 
                 do {
-                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
-
-                    if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                        continuation.finish(throwing: URLError(.badServerResponse))
-                        return
-                    }
-
-                    for try await line in bytes.lines {
-                        // SSE format: "data: {...}" or "data: [DONE]"
-                        guard line.hasPrefix("data: ") else { continue }
-                        let payload = String(line.dropFirst(6))
-
-                        if payload == "[DONE]" {
-                            break
+                    if sessionId != nil && chatId != nil {
+                        // Socket.IO path: server returns immediately with {"status": true}
+                        // All content arrives via Socket.IO events — just fire the request
+                        let (data, response) = try await URLSession.shared.data(for: req)
+                        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                            // Try to get error message
+                            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                               let detail = json["detail"] as? String {
+                                continuation.finish(throwing: NSError(domain: "OpenWebUI", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: detail]))
+                            } else {
+                                continuation.finish(throwing: URLError(.badServerResponse))
+                            }
+                            return
                         }
+                        // Don't finish — AppState will finish the stream when Socket.IO
+                        // sends the completion event
+                    } else {
+                        // SSE path: read the streaming response line by line
+                        let (bytes, response) = try await URLSession.shared.bytes(for: req)
 
-                        guard let data = payload.data(using: .utf8),
-                              let chunk = try? JSONDecoder().decode(ChatCompletionChunk.self, from: data)
-                        else { continue }
-
-                        if let error = chunk.error {
-                            continuation.finish(throwing: NSError(domain: "OpenWebUI", code: -1, userInfo: [NSLocalizedDescriptionKey: error]))
+                        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                            continuation.finish(throwing: URLError(.badServerResponse))
                             return
                         }
 
-                        if let delta = chunk.choices?.first?.delta {
-                            if let content = delta.content {
-                                continuation.yield(.content(content))
+                        for try await line in bytes.lines {
+                            guard line.hasPrefix("data: ") else { continue }
+                            let payload = String(line.dropFirst(6))
+
+                            if payload == "[DONE]" {
+                                break
                             }
-                            if let toolCalls = delta.tool_calls {
-                                for tc in toolCalls {
-                                    continuation.yield(.toolCall(tc))
+
+                            guard let data = payload.data(using: .utf8),
+                                  let chunk = try? JSONDecoder().decode(ChatCompletionChunk.self, from: data)
+                            else { continue }
+
+                            if let error = chunk.error {
+                                continuation.finish(throwing: NSError(domain: "OpenWebUI", code: -1, userInfo: [NSLocalizedDescriptionKey: error]))
+                                return
+                            }
+
+                            if let delta = chunk.choices?.first?.delta {
+                                if let content = delta.content {
+                                    continuation.yield(.content(content))
+                                }
+                                if let toolCalls = delta.tool_calls {
+                                    for tc in toolCalls {
+                                        continuation.yield(.toolCall(tc))
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    continuation.finish()
+                        continuation.yield(.done)
+                        continuation.finish()
+                    }
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -274,7 +304,33 @@ actor OpenWebUIClient {
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.allHTTPHeaderFields = authHeader
         let (data, _) = try await URLSession.shared.data(for: req)
-        return try JSONDecoder().decode(T.self, from: data)
+
+        // DEBUG: Log raw JSON for chat responses
+        if path.contains("/chats/") && !path.contains("page=") {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let chat = json["chat"] as? [String: Any],
+               let history = chat["history"] as? [String: Any],
+               let messages = history["messages"] as? [String: Any] {
+                clientLog.info("[Oval] GET \(path): \(messages.count) messages in history")
+                for (msgId, msgData) in messages {
+                    if let msg = msgData as? [String: Any] {
+                        let role = msg["role"] as? String ?? "?"
+                        let hasSH = msg["statusHistory"] != nil
+                        if hasSH {
+                            let shCount = (msg["statusHistory"] as? [[String: Any]])?.count ?? 0
+                            clientLog.info("[Oval]   msg[\(msgId)] role=\(role) statusHistory.count=\(shCount)")
+                        }
+                    }
+                }
+            }
+        }
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            clientLog.error("[Oval] Decode error for \(path): \(error.localizedDescription)")
+            throw error
+        }
     }
 
     private func post<B: Encodable, T: Decodable>(_ path: String, body: B) async throws -> T {
