@@ -55,17 +55,8 @@ final class RunAnywhereService {
             language: "English",
             quality: "Good"
         ),
-        RAModelCatalogEntry(
-            id: "sherpa-onnx-moonshine-base-en-int8",
-            name: "Moonshine Base EN",
-            description: "Best accuracy with int8 quantization. Great for dictation.",
-            url: URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v2/sherpa-onnx-moonshine-base-en-int8.tar.gz")!,
-            size: "~100 MB",
-            memoryBytes: 100_000_000,
-            category: .stt,
-            language: "English",
-            quality: "Best"
-        ),
+        // Note: Moonshine models are not yet supported by the SDK's ONNX backend.
+        // Only Whisper (ONNX) and WhisperKit (CoreML) STT models work currently.
         RAModelCatalogEntry(
             id: "whisperkit-tiny.en",
             name: "WhisperKit Tiny EN",
@@ -103,17 +94,8 @@ final class RunAnywhereService {
             language: "English (US)",
             quality: "Medium"
         ),
-        RAModelCatalogEntry(
-            id: "kokoro-en-v0_19",
-            name: "Kokoro EN",
-            description: "High-quality neural voice. Expressive and natural.",
-            url: URL(string: "https://github.com/RunanywhereAI/sherpa-onnx/releases/download/runanywhere-models-v1/kokoro-en-v0_19.tar.gz")!,
-            size: "~350 MB",
-            memoryBytes: 350_000_000,
-            category: .tts,
-            language: "English (US)",
-            quality: "Best"
-        ),
+        // Note: Kokoro TTS is not yet supported by the SDK's ONNX backend.
+        // Only VITS-Piper TTS voices work currently.
         RAModelCatalogEntry(
             id: "vits-piper-en_GB-alba-medium",
             name: "Alba (British Female)",
