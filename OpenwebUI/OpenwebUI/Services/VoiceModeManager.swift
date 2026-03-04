@@ -53,25 +53,24 @@ final class VoiceModeManager {
     /// Cancelled on stopSession() so we don't restart listening after stop.
     private var processingTask: Task<Void, Never>?
 
-    /// Base silence threshold (RMS level below which we consider silence).
-    /// Adaptive: calibrated from ambient noise during the first ~0.5s.
-    private var silenceThreshold: Float = 0.008
+    /// Fixed silence threshold — uses a proven value that works for most mics.
+    /// The adaptive calibration was too aggressive and prevented speech detection.
+    private var silenceThreshold: Float = 0.02
     /// How long to wait after silence before processing (seconds)
     private let silenceDuration: TimeInterval = 1.5
-    /// Minimum audio buffer size to process (~0.5s at 16kHz Int16 = 16000 bytes)
-    private let minAudioSize = 16000
+    /// Minimum audio buffer size to process (~0.5s at 16kHz Int16 mono = 16000 bytes)
+    private let minAudioSize = 16_000
     /// Maximum listening time before auto-processing (seconds).
-    /// Prevents listening forever if VAD never triggers end-of-speech.
     private let maxListenDuration: TimeInterval = 30.0
+    /// Peak RMS seen during this listening turn
+    private var peakRMS: Float = 0.0
+    /// Frame counter for periodic debug logging
+    private var frameCount: Int = 0
 
     private var lastSpeechTime: Date?
     private var isSpeechActive = false
     private weak var appState: AppState?
 
-    // Adaptive noise floor calibration
-    private var noiseFloorSamples: [Float] = []
-    private var noiseFloor: Float = 0.0
-    private var isCalibrated = false
     private var listenStartTime: Date?
     private var maxListenTimer: Task<Void, Never>?
 
@@ -124,8 +123,8 @@ final class VoiceModeManager {
         audioBuffer = Data()
         isSpeechActive = false
         lastSpeechTime = nil
-        noiseFloorSamples = []
-        isCalibrated = false
+        peakRMS = 0.0
+        frameCount = 0
         sessionState = .idle
         audioLevel = 0.0
     }
@@ -234,9 +233,9 @@ final class VoiceModeManager {
         isSpeechActive = false
         lastSpeechTime = nil
 
-        // Reset noise calibration for each listening turn
-        noiseFloorSamples = []
-        isCalibrated = false
+        // Reset state for each listening turn
+        peakRMS = 0.0
+        frameCount = 0
         listenStartTime = Date()
 
         // Safety net: if we're still listening after maxListenDuration, process whatever we have.
@@ -300,67 +299,37 @@ final class VoiceModeManager {
 
     // MARK: - Voice Activity Detection (adaptive energy-based)
 
-    /// Adaptive VAD: Calibrates noise floor from the first ~20 frames (~0.5s),
-    /// then uses a dynamic threshold above the noise floor.
-    /// Also uses a secondary "any-audio" path: if speech was never formally
-    /// detected but we have substantial audio, we still process it after
-    /// a longer silence gap.
+    /// Simple energy-based VAD with fixed threshold.
+    /// Speech detection: level > threshold starts speech.
+    /// End-of-speech: silence for 1.5s after speech was detected.
+    /// Hallucination filtering happens post-STT, not here.
     private func checkSpeechState(level: Float) {
         guard sessionState == .listening, !isStopped else { return }
 
-        // Phase 1: Calibrate noise floor from the first ~20 audio frames
-        if !isCalibrated {
-            noiseFloorSamples.append(level)
-            if noiseFloorSamples.count >= 20 {
-                noiseFloor = noiseFloorSamples.reduce(0, +) / Float(noiseFloorSamples.count)
-                // Threshold = noise floor + adaptive margin (at least 0.005)
-                // For quiet rooms: noiseFloor~0.002, threshold~0.007
-                // For noisy rooms: noiseFloor~0.01, threshold~0.02
-                silenceThreshold = max(noiseFloor * 2.5, noiseFloor + 0.005)
-                // Clamp to reasonable range
-                silenceThreshold = min(max(silenceThreshold, 0.005), 0.05)
-                isCalibrated = true
-                logger.info("VAD calibrated: noiseFloor=\(self.noiseFloor), threshold=\(self.silenceThreshold)")
-            }
-            // During calibration, don't trigger VAD but still accumulate audio
-            return
+        // Track peak RMS
+        if level > peakRMS { peakRMS = level }
+
+        // Log levels periodically so we can debug mic issues
+        frameCount += 1
+        if frameCount % 50 == 0 {
+            logger.debug("Audio level: \(level) (peak: \(self.peakRMS), threshold: \(self.silenceThreshold), speech: \(self.isSpeechActive), buffer: \(self.audioBuffer.count))")
         }
 
         if level > silenceThreshold {
             if !isSpeechActive {
                 isSpeechActive = true
-                logger.debug("Speech started (level=\(level), threshold=\(self.silenceThreshold))")
+                logger.info("Speech started (level=\(level), threshold=\(self.silenceThreshold))")
             }
             lastSpeechTime = Date()
             silenceTimer?.cancel()
             silenceTimer = nil
         } else if isSpeechActive {
-            // Speech was active, now silence — start timer
+            // Speech was active, now silence — start end-of-speech timer
             if silenceTimer == nil {
                 silenceTimer = Task { [weak self] in
                     try? await Task.sleep(for: .seconds(self?.silenceDuration ?? 1.5))
                     guard !Task.isCancelled else { return }
                     await self?.onSilenceDetected()
-                }
-            }
-        } else {
-            // Speech was never formally detected, but we have audio accumulating.
-            // If we have a decent amount of audio and haven't heard anything "loud"
-            // for a while, try processing anyway — handles very quiet speakers.
-            if audioBuffer.count > minAudioSize * 4 {
-                // ~2+ seconds of audio accumulated without formal speech detection
-                if silenceTimer == nil {
-                    silenceTimer = Task { [weak self] in
-                        try? await Task.sleep(for: .seconds(2.5))
-                        guard !Task.isCancelled else { return }
-                        // Double-check: if still no speech detected but buffer is large,
-                        // force process it
-                        guard let self else { return }
-                        if !self.isSpeechActive, self.audioBuffer.count > self.minAudioSize * 2 {
-                            self.logger.info("Quiet-speaker fallback: processing accumulated audio (\(self.audioBuffer.count) bytes)")
-                            await self.onSilenceDetected()
-                        }
-                    }
                 }
             }
         }
@@ -383,6 +352,44 @@ final class VoiceModeManager {
         }
     }
 
+    // MARK: - Hallucination Filter
+
+    /// Known Whisper hallucination outputs that should be discarded.
+    /// These appear when Whisper processes audio with no clear speech
+    /// (ambient noise, silence, or very faint audio).
+    private static let hallucinationPatterns: Set<String> = [
+        "silence", "(silence)", "[silence]",
+        "music", "(music)", "[music]",
+        "blank audio", "[blank_audio]", "(blank_audio)",
+        "thank you", "thanks", "you",
+        "bye", "goodbye",
+        "♪", "...", "…",
+        "the end", "subtitle",
+        "thanks for watching",
+        "thank you for watching",
+        "please subscribe",
+        "like and subscribe",
+    ]
+
+    /// Returns true if the transcript is likely a Whisper hallucination.
+    private func isHallucination(_ text: String) -> Bool {
+        let cleaned = text.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Exact match against known hallucinations
+        if Self.hallucinationPatterns.contains(cleaned) { return true }
+
+        // Very short output (1-2 chars) is almost always hallucination
+        if cleaned.count <= 2 { return true }
+
+        // Single repeated character
+        if Set(cleaned).count == 1 { return true }
+
+        return false
+    }
+
     // MARK: - Pipeline: STT -> LLM -> TTS
 
     private func processCurrentAudio() async {
@@ -390,6 +397,8 @@ final class VoiceModeManager {
         audioBuffer = Data()
 
         guard !audio.isEmpty, !isStopped else { return }
+
+        logger.info("Processing audio: \(audio.count) bytes, peakRMS=\(self.peakRMS)")
 
         // Pause capturing during processing (don't tear down the tap)
         pauseCapture()
@@ -402,8 +411,10 @@ final class VoiceModeManager {
             guard !isStopped, !Task.isCancelled else { return }
 
             let transcript = sttOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !transcript.isEmpty else {
-                logger.info("Empty transcription, resuming listening")
+
+            // Filter out empty or hallucinated transcriptions
+            guard !transcript.isEmpty, !isHallucination(transcript) else {
+                logger.info("Discarded STT output (empty or hallucination): '\(transcript)'")
                 guard !isStopped else { return }
                 await startListening()
                 return
