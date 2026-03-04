@@ -5,6 +5,30 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.3.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.3.0</h2>
+                <ul>
+                    <li><strong>Realtime transcription</strong> — Live captions with sliding window STT (WhisperKit Neural Engine or ONNX). Press Cmd+Shift+T or click the captions button.</li>
+                    <li><strong>Speaker diarization</strong> — Identify who's speaking with FluidAudio (Pyannote + WeSpeaker). Toggle "Speakers" in the transcription panel.</li>
+                    <li><strong>Adaptive voice detection</strong> — VAD now auto-calibrates to ambient noise, works for all voice types.</li>
+                    <li><strong>Fixed model downloads</strong> — Resolved -422 errors, downloads now show progress in MB with a progress bar.</li>
+                    <li><strong>WhisperKit CoreML support</strong> — WhisperKit models now load correctly on Apple Neural Engine.</li>
+                    <li><strong>Updated model catalog</strong> — Added Moonshine Base EN and Kokoro EN voice, removed broken URLs.</li>
+                    <li><strong>Socket.IO chat streaming</strong> — Dual-path streaming (Socket.IO + SSE) for faster responses.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 04 Mar 2026 11:06:00 +0000</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.3.0/Oval-1.3.0.dmg"
+                sparkle:edSignature="/9p9wsGYXY+fNTdXSfiwzFCQpQhhpCEiqdxpeRgO/bp6yGfPQMJm6KTLslNkEgtZFQV2fVYKWoWPV+uJ0VJGDg=="
+                length="34296961"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.2.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.2.0</h2>
