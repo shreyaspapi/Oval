@@ -25,7 +25,7 @@ struct MiniChatView: View {
                 compactContent
             }
         }
-        .background(Color(hex: "#1a1a1a"))
+        .background(hasMessages ? Color(hex: "#1a1a1a") : Color.clear)
         .onAppear {
             isInputFocused = true
         }
@@ -35,12 +35,10 @@ struct MiniChatView: View {
 
     private var compactContent: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
             miniInputCard
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 0)
+        .padding(.vertical, 0)
     }
 
     // MARK: - Expanded Mode (toolbar + messages + input)

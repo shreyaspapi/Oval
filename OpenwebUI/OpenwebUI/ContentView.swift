@@ -31,6 +31,7 @@ struct ContentView: View {
         .overlay {
             ToastOverlayView(toasts: appState.toastManager.toasts)
         }
+        // Voice mode is now shown in a separate floating window (VoiceModeWindowManager)
         // Make the toolbar background transparent for an immersive look
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .task {

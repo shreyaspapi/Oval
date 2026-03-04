@@ -6,6 +6,7 @@ struct GeneralSettingsView: View {
     @Bindable var appState: AppState
 
     @State private var showDisconnectConfirm = false
+    @State private var cacheCleared = false
 
     var body: some View {
         Form {
@@ -67,6 +68,29 @@ struct GeneralSettingsView: View {
                     Text("Cmd + Shift + C")
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            // Section: Cache
+            Section("Cache") {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Clear Message Cache")
+                            .font(.callout)
+                        Text("Force reload all conversations from server")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(cacheCleared ? "Cleared" : "Clear") {
+                        appState.clearMessageCache()
+                        cacheCleared = true
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            cacheCleared = false
+                        }
+                    }
+                    .disabled(cacheCleared)
                 }
             }
 
