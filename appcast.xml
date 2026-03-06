@@ -5,6 +5,29 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.4.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.4.0</h2>
+                <ul>
+                    <li><strong>Fix login persistence</strong> — Login now persists across app restarts. Tokens stored securely in macOS Keychain.</li>
+                    <li><strong>Per-conversation streaming</strong> — Multiple chats can stream responses independently. Switching chats no longer interrupts active streams.</li>
+                    <li><strong>Sidebar streaming indicators</strong> — Spinner shows next to chats that are actively generating responses.</li>
+                    <li><strong>Sidebar auto-sorting</strong> — Conversations move to the top when you send a message.</li>
+                    <li><strong>Rich model selector</strong> — Search, filter, pin favorite models, model avatars with async loading and caching.</li>
+                    <li><strong>Voice model persistence</strong> — Downloaded voice models no longer flash the download button on restart.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Thu, 06 Mar 2026 10:00:00 +0000</pubDate>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.4.0/Oval-1.4.0.dmg"
+                sparkle:edSignature="10KdEpHHWePbBJKB9e9FdsPPSlF/bHZ6KCP7obpDrr2dr8dogWq9AFjqlx1Vk3RfOyXMu2zd414RhUjdj1lYBg=="
+                length="37100938"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.3.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.3.0</h2>
