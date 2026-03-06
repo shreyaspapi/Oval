@@ -20,10 +20,10 @@ struct AboutView: View {
                 Link(destination: URL(string: "https://discord.gg/5rJgQTnV4s")!) {
                     Label("Discord", systemImage: "bubble.left.and.bubble.right")
                 }
-                Link(destination: URL(string: "https://x.com/OpenWebUI")!) {
+                Link(destination: URL(string: "https://x.com/spapinwar")!) {
                     Label("Twitter / X", systemImage: "at")
                 }
-                Link(destination: URL(string: "https://github.com/open-webui/open-webui")!) {
+                Link(destination: URL(string: "https://github.com/anomalyco/oval")!) {
                     Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
                 }
             }

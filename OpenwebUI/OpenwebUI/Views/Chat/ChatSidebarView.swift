@@ -42,6 +42,14 @@ struct ChatSidebarView: View {
             .padding(.top, 8)
             .padding(.bottom, 4)
 
+            // MARK: - Pinned Models
+            if !appState.pinnedModels.isEmpty {
+                PinnedModelsSection(appState: appState)
+
+                Divider()
+                    .padding(.horizontal, 10)
+            }
+
             // MARK: - Conversations List
             List(selection: $appState.selectedConversationID) {
                 if appState.isLoadingConversations {
@@ -59,7 +67,7 @@ struct ChatSidebarView: View {
                     ForEach(groupedConversations, id: \.label) { group in
                         Section {
                             ForEach(group.conversations) { conversation in
-                                ConversationRow(conversation: conversation)
+                                ConversationRow(conversation: conversation, isStreaming: appState.isChatStreaming(conversation.id))
                                 .tag(conversation.id)
                                 .contextMenu {
                                     Button("Rename...") {
@@ -257,17 +265,111 @@ struct ChatSidebarView: View {
     }
 }
 
-// MARK: - Conversation Row
+// MARK: - Pinned Models Section
 
-/// A single conversation row showing the title only.
-private struct ConversationRow: View {
-    let conversation: ChatListItem
+/// Compact pinned models list shown above the conversation list.
+/// Clicking a pinned model creates a new chat with that model selected.
+struct PinnedModelsSection: View {
+    @Bindable var appState: AppState
 
     var body: some View {
-        Text(conversation.title)
-            .font(AppFont.body(size: 13))
-            .foregroundStyle(AppColors.textPrimary)
-            .lineLimit(1)
-            .truncationMode(.tail)
+        VStack(alignment: .leading, spacing: 2) {
+            // Section header
+            Text("PINNED MODELS")
+                .font(AppFont.semibold(size: 10))
+                .foregroundStyle(AppColors.textTertiary)
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+
+            ForEach(appState.pinnedModels) { model in
+                Button {
+                    appState.newConversationWithModel(model)
+                } label: {
+                    HStack(spacing: 8) {
+                        ModelAvatarView(
+                            model: model,
+                            serverURL: appState.serverURL,
+                            apiKey: appState.activeServer?.apiKey ?? "",
+                            size: 20
+                        )
+
+                        Text(model.displayName)
+                            .font(AppFont.body(size: 12))
+                            .foregroundStyle(AppColors.textPrimary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        // Parameter size badge
+                        if let paramSize = model.parameterSize {
+                            Text(paramSize)
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .foregroundStyle(AppColors.textTertiary)
+                        }
+
+                        // Loaded indicator
+                        if model.isLoaded {
+                            Circle()
+                                .fill(.green)
+                                .frame(width: 5, height: 5)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button {
+                        appState.togglePinModel(model)
+                    } label: {
+                        Label("Unpin from Sidebar", systemImage: "pin.slash")
+                    }
+
+                    Button {
+                        appState.selectedModel = model
+                    } label: {
+                        Label("Select Model", systemImage: "checkmark.circle")
+                    }
+
+                    if !appState.isDefaultModel(model) {
+                        Button {
+                            appState.setDefaultModel(model)
+                        } label: {
+                            Label("Set as Default", systemImage: "star")
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Conversation Row
+
+/// A single conversation row showing the title and optional streaming indicator.
+private struct ConversationRow: View {
+    let conversation: ChatListItem
+    var isStreaming: Bool = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(conversation.title)
+                .font(AppFont.body(size: 13))
+                .foregroundStyle(AppColors.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer()
+
+            if isStreaming {
+                ProgressView()
+                    .controlSize(.mini)
+                    .scaleEffect(0.7)
+            }
+        }
     }
 }

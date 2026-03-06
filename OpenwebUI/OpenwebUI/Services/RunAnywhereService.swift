@@ -159,12 +159,54 @@ final class RunAnywhereService {
     private var downloadQueue: [String] = []
     private var isDownloading = false
 
+    /// Whether the async model state refresh (which checks loaded status via SDK)
+    /// is still in progress. Views can use this to show a subtle loading indicator
+    /// instead of flashing incorrect "Download" buttons.
+    var isCheckingModelStates = true
+
     private init() {
         // Restore user's model selections (or use defaults)
         self.selectedSTTModelId = UserDefaults.standard.string(forKey: "ra_selected_stt")
             ?? Self.sttCatalog.first!.id
         self.selectedTTSModelId = UserDefaults.standard.string(forKey: "ra_selected_tts")
             ?? Self.ttsCatalog.first!.id
+
+        // Pre-populate modelStates from disk synchronously so the UI never
+        // flashes "Download" buttons for already-downloaded models.
+        preloadModelStatesFromDisk()
+    }
+
+    // MARK: - Synchronous Disk Pre-check
+
+    /// Pre-populate `modelStates` by checking the known model directories on disk.
+    /// This runs synchronously in `init()` (before any view renders) so the UI
+    /// never flashes "Download" buttons for already-downloaded models.
+    ///
+    /// Uses the same path convention as the SDK:
+    ///   `~/Documents/RunAnywhere/Models/{framework}/{modelId}/`
+    /// where framework is "ONNX" or "WhisperKitCoreML".
+    private func preloadModelStatesFromDisk() {
+        guard let documentsDir = FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask
+        ).first else { return }
+
+        let allEntries = Self.sttCatalog + Self.ttsCatalog
+        for entry in allEntries {
+            let frameworkDir = entry.id.hasPrefix("whisperkit") ? "WhisperKitCoreML" : "ONNX"
+            let modelFolder = documentsDir
+                .appendingPathComponent("RunAnywhere/Models/\(frameworkDir)/\(entry.id)")
+
+            if hasModelFiles(at: modelFolder)
+                || hasModelFiles(at: modelFolder.appendingPathComponent(entry.id)) {
+                modelStates[entry.id] = .downloaded
+            } else {
+                modelStates[entry.id] = .notDownloaded
+            }
+        }
+
+        // Set selected model states from the pre-checked dict
+        sttModelState = modelStates[selectedSTTModelId] ?? .notDownloaded
+        ttsModelState = modelStates[selectedTTSModelId] ?? .notDownloaded
     }
 
     // MARK: - SDK Initialization
@@ -210,8 +252,9 @@ final class RunAnywhereService {
             isInitialized = true
             isSDKReady = true
 
-            // Refresh download/load states for all models
+            // Refresh download/load states for all models (also checks if loaded in SDK)
             await refreshAllModelStates()
+            isCheckingModelStates = false
 
             // Auto-load selected models if already downloaded
             if sttModelState == .downloaded || ttsModelState == .downloaded {
@@ -223,6 +266,7 @@ final class RunAnywhereService {
         } catch {
             self.error = "Failed to initialize RunAnywhere: \(error.localizedDescription)"
             logger.error("RunAnywhere init failed: \(error)")
+            isCheckingModelStates = false
         }
     }
 

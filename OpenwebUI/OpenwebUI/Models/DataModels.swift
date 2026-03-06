@@ -12,14 +12,54 @@ enum AuthMethod: String, Codable, Equatable {
 // MARK: - Server
 
 /// A saved Open WebUI server connection.
+/// The API key / JWT token is stored securely in the macOS Keychain — never in the JSON config file.
 struct ServerConfig: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     var name: String
     var url: String              // e.g. "http://localhost:8080"
-    var apiKey: String           // JWT token or sk-... API key
+    var apiKey: String           // JWT token or sk-... API key (stored in Keychain, not JSON)
     var authMethod: AuthMethod = .apiKey
     var email: String?           // Only set when authMethod == .emailPassword
     var iconEmoji: String = "🌐" // Emoji shown in the server sidebar
+
+    // Custom coding keys — apiKey is excluded from JSON serialization.
+    // It is stored in and loaded from the Keychain separately.
+    enum CodingKeys: String, CodingKey {
+        case id, name, url, authMethod, email, iconEmoji
+    }
+
+    init(id: UUID = UUID(), name: String, url: String, apiKey: String, authMethod: AuthMethod = .apiKey, email: String? = nil, iconEmoji: String = "🌐") {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.apiKey = apiKey
+        self.authMethod = authMethod
+        self.email = email
+        self.iconEmoji = iconEmoji
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        url = try c.decode(String.self, forKey: .url)
+        authMethod = try c.decodeIfPresent(AuthMethod.self, forKey: .authMethod) ?? .apiKey
+        email = try c.decodeIfPresent(String.self, forKey: .email)
+        iconEmoji = try c.decodeIfPresent(String.self, forKey: .iconEmoji) ?? "🌐"
+        // apiKey is loaded from Keychain after decoding — default to empty string
+        apiKey = ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(url, forKey: .url)
+        try c.encode(authMethod, forKey: .authMethod)
+        try c.encodeIfPresent(email, forKey: .email)
+        try c.encode(iconEmoji, forKey: .iconEmoji)
+        // apiKey is NOT encoded — it lives in the Keychain
+    }
 }
 
 // MARK: - Auth
@@ -56,14 +96,202 @@ struct ModelListResponse: Codable {
     let data: [AIModel]?
 }
 
-struct AIModel: Codable, Identifiable, Equatable, Hashable {
+/// A model returned by the Open WebUI `/api/models` endpoint.
+/// Captures the rich metadata the server provides: Ollama details, connection type,
+/// tags, description, profile image, and more.
+struct AIModel: Codable, Identifiable, Hashable {
     let id: String
     let name: String?
     let owned_by: String?
 
-    var displayName: String {
-        name ?? id
+    // Rich metadata from the server
+    var connection_type: String?       // "local", "external", or nil
+    var ollama: OllamaInfo?            // Ollama-specific details (parameter size, quant, loaded status)
+    var info: OpenWebUIModelInfo?       // DB-level customization (description, profile image, tags, etc.)
+    var tags: [ModelTag]?              // Merged tag list
+    var preset: Bool?                  // True for user-created preset/custom models
+    var pipe: PipeInfo?                // Present for function/pipe models
+
+    init(id: String, name: String?, owned_by: String?,
+         connection_type: String? = nil, ollama: OllamaInfo? = nil,
+         info: OpenWebUIModelInfo? = nil, tags: [ModelTag]? = nil,
+         preset: Bool? = nil, pipe: PipeInfo? = nil) {
+        self.id = id
+        self.name = name
+        self.owned_by = owned_by
+        self.connection_type = connection_type
+        self.ollama = ollama
+        self.info = info
+        self.tags = tags
+        self.preset = preset
+        self.pipe = pipe
     }
+
+    // MARK: - Computed Properties
+
+    var displayName: String {
+        // Prefer the customized name from `info`, then the top-level `name`, then the raw `id`
+        if let customName = info?.name, !customName.isEmpty { return customName }
+        return name ?? id
+    }
+
+    /// Short parameter size string, e.g. "7B", "70B", "13B"
+    var parameterSize: String? {
+        ollama?.details?.parameter_size
+    }
+
+    /// Quantization level, e.g. "Q4_0", "Q5_K_M"
+    var quantizationLevel: String? {
+        ollama?.details?.quantization_level
+    }
+
+    /// Model file size in bytes (Ollama models)
+    var fileSize: Int? {
+        ollama?.size
+    }
+
+    /// True if the Ollama model is currently loaded in memory
+    var isLoaded: Bool {
+        guard let expiresAt = ollama?.expires_at, expiresAt > 0 else { return false }
+        return Date(timeIntervalSince1970: TimeInterval(expiresAt)) > Date()
+    }
+
+    /// Human-readable description from model info
+    var descriptionText: String? {
+        info?.meta?.description
+    }
+
+    /// Profile image URL path (relative to server base URL)
+    var profileImagePath: String? {
+        // The server strips profile_image_url from /api/models responses to save bandwidth.
+        // Use the dedicated image endpoint instead.
+        nil
+    }
+
+    /// Tag names as a flat string array
+    var tagNames: [String] {
+        tags?.map(\.name) ?? []
+    }
+
+    /// Connection category for filtering
+    var connectionCategory: ModelConnectionCategory {
+        switch connection_type {
+        case "local":    return .local
+        case "external": return .external
+        default:
+            // Infer from owned_by if connection_type is missing
+            if owned_by == "ollama" { return .local }
+            if owned_by == "openai" { return .external }
+            return .unknown
+        }
+    }
+
+    /// True for function/pipe models
+    var isPipe: Bool { pipe != nil }
+
+    /// True for user-created preset models
+    var isPreset: Bool { preset ?? false }
+
+    // MARK: - Equatable (by id only for performance)
+
+    static func == (lhs: AIModel, rhs: AIModel) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    // MARK: - Hashable
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+/// Connection type categories for model filtering
+enum ModelConnectionCategory: String, CaseIterable {
+    case local
+    case external
+    case unknown
+}
+
+// MARK: - Ollama Sub-Models
+
+/// Ollama-specific model information
+struct OllamaInfo: Codable, Hashable {
+    let name: String?
+    let model: String?
+    let modified_at: String?
+    let size: Int?
+    let digest: String?
+    let details: OllamaDetails?
+    let expires_at: Int?               // epoch timestamp — non-nil if model is loaded in memory
+
+    static func == (lhs: OllamaInfo, rhs: OllamaInfo) -> Bool { lhs.digest == rhs.digest }
+    func hash(into hasher: inout Hasher) { hasher.combine(digest) }
+}
+
+/// Ollama model details (family, parameter size, quantization)
+struct OllamaDetails: Codable, Hashable {
+    let parent_model: String?
+    let format: String?
+    let family: String?
+    let families: [String]?
+    let parameter_size: String?
+    let quantization_level: String?
+}
+
+// MARK: - Model Info (DB customization)
+
+/// Server-side model customization stored in the Open WebUI database.
+/// Named `OpenWebUIModelInfo` to avoid collision with `RunAnywhere.ModelInfo`.
+struct OpenWebUIModelInfo: Codable, Hashable {
+    let id: String?
+    let name: String?
+    let base_model_id: String?
+    let meta: ModelMeta?
+
+    static func == (lhs: OpenWebUIModelInfo, rhs: OpenWebUIModelInfo) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
+/// Model metadata: description, profile image, tags, suggestion prompts, capabilities
+struct ModelMeta: Codable, Hashable {
+    let profile_image_url: String?
+    let description: String?
+    let capabilities: ModelCapabilities?
+    let tags: [ModelTag]?
+    let suggestion_prompts: [SuggestionPrompt]?
+    let hidden: Bool?
+
+    static func == (lhs: ModelMeta, rhs: ModelMeta) -> Bool {
+        lhs.description == rhs.description && lhs.profile_image_url == rhs.profile_image_url
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(description)
+        hasher.combine(profile_image_url)
+    }
+}
+
+struct ModelCapabilities: Codable, Hashable {
+    let vision: Bool?
+    let web_search: Bool?
+    let image_generation: Bool?
+    let code_interpreter: Bool?
+}
+
+struct SuggestionPrompt: Codable, Hashable {
+    let content: String?
+    let title: [String]?               // Usually [shortTitle, subtitle]
+}
+
+// MARK: - Model Tag
+
+struct ModelTag: Codable, Hashable {
+    let name: String
+}
+
+// MARK: - Pipe Info
+
+struct PipeInfo: Codable, Hashable {
+    let type: String?
 }
 
 // MARK: - Chat / Conversations

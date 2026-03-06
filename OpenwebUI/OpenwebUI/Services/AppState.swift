@@ -60,21 +60,158 @@ final class AppState {
     var selectedConversationID: String?
     var currentUser: SessionUser?
 
+    // MARK: - Model Preferences
+
+    /// The user's explicit default model ID (persisted in config).
+    var defaultModelID: String?
+
+    /// Pinned/favorite model IDs shown in the sidebar (persisted in config).
+    var pinnedModelIDs: [String] = []
+
+    /// Internal: persisted selected model ID loaded from config (used in loadModels to restore selection).
+    private var _persistedSelectedModelID: String?
+    /// Internal: persisted default model ID loaded from config.
+    private var _persistedDefaultModelID: String?
+
+    /// Computed: pinned models resolved from the current model list.
+    var pinnedModels: [AIModel] {
+        pinnedModelIDs.compactMap { id in models.first { $0.id == id } }
+    }
+
+    /// Whether a model is pinned.
+    func isModelPinned(_ model: AIModel) -> Bool {
+        pinnedModelIDs.contains(model.id)
+    }
+
+    /// Toggle pin state for a model.
+    func togglePinModel(_ model: AIModel) {
+        if let idx = pinnedModelIDs.firstIndex(of: model.id) {
+            pinnedModelIDs.remove(at: idx)
+        } else {
+            pinnedModelIDs.append(model.id)
+        }
+        saveModelPreferences()
+    }
+
+    /// Set the default model.
+    func setDefaultModel(_ model: AIModel?) {
+        defaultModelID = model?.id
+        saveModelPreferences()
+    }
+
+    /// Whether a model is the user's default.
+    func isDefaultModel(_ model: AIModel) -> Bool {
+        defaultModelID == model.id
+    }
+
     // MARK: - Chat
 
     var chatMessages: [ChatMessage] = []
-    var selectedModel: AIModel?
+    var selectedModel: AIModel? {
+        didSet {
+            // Persist whenever the user changes model selection
+            if selectedModel?.id != oldValue?.id {
+                saveModelPreferences()
+            }
+        }
+    }
     var messageInput: String = ""
-    var isStreaming: Bool = false
-    var streamingContent: String = ""
+
+    /// Per-conversation streaming state: set of chat IDs that are currently streaming.
+    var streamingChatIDs: Set<String> = []
+
+    /// Per-conversation streaming content (accumulated text for the assistant response).
+    var streamingContentByChat: [String: String] = [:]
+
+    /// Per-conversation streaming tasks — keyed by chat ID.
+    private var streamingTaskByChat: [String: Task<Void, Never>] = [:]
+
+    /// Per-conversation streaming message IDs (for Socket.IO event routing).
+    private var streamingMessageIdByChat: [String: String] = [:]
+
+    /// Per-conversation cached messages — used when user switches away from a streaming chat.
+    /// The streaming task updates this instead of `chatMessages` when the user navigates away.
+    private var streamingMessagesCache: [String: [ChatMessage]] = [:]
+
+    /// Convenience: whether the *currently viewed* conversation is streaming.
+    var isStreaming: Bool {
+        guard let id = selectedConversationID else { return false }
+        return streamingChatIDs.contains(id)
+    }
+
+    /// Convenience: streaming content for the *currently viewed* conversation.
+    var streamingContent: String {
+        get {
+            guard let id = selectedConversationID else { return "" }
+            return streamingContentByChat[id] ?? ""
+        }
+        set {
+            guard let id = selectedConversationID else { return }
+            streamingContentByChat[id] = newValue
+        }
+    }
+
+    // MARK: - Per-Conversation Streaming Helpers
+
+    /// Start streaming for a specific conversation.
+    private func beginStreaming(chatId: String) {
+        streamingChatIDs.insert(chatId)
+        streamingContentByChat[chatId] = ""
+    }
+
+    /// End streaming for a specific conversation.
+    private func endStreaming(chatId: String) {
+        streamingChatIDs.remove(chatId)
+        streamingContentByChat.removeValue(forKey: chatId)
+        streamingTaskByChat.removeValue(forKey: chatId)
+        streamingMessageIdByChat.removeValue(forKey: chatId)
+        streamingMessagesCache.removeValue(forKey: chatId)
+    }
+
+    /// Stop streaming for the currently viewed conversation.
+    func stopStreaming() {
+        guard let chatId = selectedConversationID else { return }
+        stopStreaming(chatId: chatId)
+    }
+
+    /// Stop streaming for a specific conversation.
+    func stopStreaming(chatId: String) {
+        streamingTaskByChat[chatId]?.cancel()
+        endStreaming(chatId: chatId)
+    }
+
+    /// Whether a specific conversation is streaming (for sidebar indicators).
+    func isChatStreaming(_ chatId: String) -> Bool {
+        streamingChatIDs.contains(chatId)
+    }
+
+    /// Get or update messages for a streaming conversation. If the conversation is the
+    /// currently viewed one, uses `chatMessages`. Otherwise, uses the streaming cache.
+    private func getStreamingMessages(chatId: String) -> [ChatMessage] {
+        if chatId == selectedConversationID {
+            return chatMessages
+        }
+        return streamingMessagesCache[chatId] ?? messageCache[chatId] ?? []
+    }
+
+    /// Update messages for a streaming conversation.
+    private func setStreamingMessages(chatId: String, messages: [ChatMessage]) {
+        if chatId == selectedConversationID {
+            chatMessages = messages
+        } else {
+            streamingMessagesCache[chatId] = messages
+        }
+        // Always keep the message cache in sync
+        messageCache[chatId] = messages
+    }
+
     var isLoadingConversations: Bool = false
     var isLoadingChat: Bool = false
     var currentPage: Int = 1
     var hasMoreConversations: Bool = true
     var isLoadingMoreConversations: Bool = false
 
-    /// Active streaming tasks — cancelled when user taps stop.
-    private var streamingTask: Task<Void, Never>?
+    /// Active streaming task for mini chat — cancelled when user taps stop.
     private var miniStreamingTask: Task<Void, Never>?
 
     /// When true, the sidebar onChange handler should NOT call selectConversation().
@@ -197,8 +334,6 @@ final class AppState {
     let socketService = SocketService()
     /// Continuation for the Socket.IO streaming path — finished when the server sends completion done.
     private var socketStreamContinuation: AsyncThrowingStream<OpenWebUIClient.StreamDelta, Error>.Continuation?
-    /// The message ID currently being streamed via Socket.IO
-    private var socketStreamingMessageId: String?
 
     init() {
         self.configManager = ConfigManager()
@@ -232,12 +367,35 @@ final class AppState {
             client = OpenWebUIClient(baseURL: server.url, apiKey: server.apiKey)
             let healthy = await connectionManager.checkHealth(url: server.url)
             if healthy {
-                serverReachable = true
-                serverVersion = await connectionManager.fetchVersion(url: server.url)
-                await loadModels()
-                await loadConversations()
-                await loadUser()
-                currentScreen = .chat
+                // Validate the token before proceeding
+                let tokenValid = await client!.validateToken()
+                if tokenValid {
+                    serverReachable = true
+                    serverVersion = await connectionManager.fetchVersion(url: server.url)
+                    await loadModels()
+                    await loadConversations()
+                    await loadUser()
+                    currentScreen = .chat
+                    // Connect Socket.IO after navigating to chat so it doesn't
+                    // block the UI. If the connection fails, chat still works via SSE.
+                    socketService.connect(url: server.url, token: server.apiKey)
+                } else {
+                    // Token expired — try to re-authenticate
+                    let reauthSuccess = await attemptReauthentication(for: server)
+                    if reauthSuccess {
+                        serverReachable = true
+                        serverVersion = await connectionManager.fetchVersion(url: server.url)
+                        await loadModels()
+                        await loadConversations()
+                        await loadUser()
+                        currentScreen = .chat
+                    } else {
+                        // Re-auth failed, send to connect screen with pre-filled fields
+                        prefillConnectFields(from: server)
+                        connectionError = "Your session has expired. Please sign in again."
+                        currentScreen = .connect
+                    }
+                }
             } else {
                 currentScreen = .connect
             }
@@ -398,6 +556,9 @@ final class AppState {
         isConnecting = false
         currentScreen = .chat
 
+        // Connect Socket.IO for real-time events (non-blocking, chat works via SSE if this fails)
+        socketService.connect(url: url, token: token)
+
         trayManager.updateMenu()
     }
 
@@ -445,11 +606,47 @@ final class AppState {
         serverURL = ""
         serverVersion = nil
         clearServerState()
+        // Delete Keychain tokens for all servers being disconnected
+        for server in servers {
+            KeychainManager.deleteToken(for: server.id)
+        }
         servers = []
         activeServerID = nil
         saveServers()
         currentScreen = .connect
         trayManager.updateMenu()
+    }
+
+    // MARK: - Re-authentication
+
+    /// Attempt to re-authenticate with the server when the saved token has expired.
+    /// For email+password auth, re-signs in using the saved email (password is not saved,
+    /// so this only works if the server issues long-lived tokens or uses API keys).
+    /// For API key auth, the key should not expire, so validation failure means the key
+    /// was revoked — re-auth is not possible.
+    /// For SSO, re-auth requires user interaction — not possible automatically.
+    private func attemptReauthentication(for server: ServerConfig) async -> Bool {
+        // API keys don't expire in the normal sense — if validation failed,
+        // the key was likely revoked. Can't re-auth automatically.
+        // SSO requires interactive browser login — can't re-auth automatically.
+        // Email+password: we have the email saved but NOT the password (by design).
+        // We cannot silently re-authenticate without the password.
+        //
+        // For now, return false and let the user re-enter credentials.
+        // In the future, we could store a refresh token if the server supports it.
+        return false
+    }
+
+    /// Pre-fill the connect form fields from a saved server config so the user
+    /// doesn't have to re-enter everything from scratch.
+    private func prefillConnectFields(from server: ServerConfig) {
+        urlInput = server.url
+        selectedAuthMethod = server.authMethod
+        if let email = server.email {
+            emailInput = email
+        }
+        // apiKey is not pre-filled into the input for security — the user
+        // should enter a new one if the old one was revoked.
     }
 
     // MARK: - Navigation
@@ -483,6 +680,8 @@ final class AppState {
     }
 
     func removeServer(_ id: UUID) async {
+        // Remove Keychain token for the deleted server
+        KeychainManager.deleteToken(for: id)
         servers.removeAll { $0.id == id }
         if activeServerID == id {
             activeServerID = servers.first?.id
@@ -513,14 +712,23 @@ final class AppState {
         serverReachable = healthy
 
         if healthy {
-            // Connect Socket.IO for real-time events
-            socketService.connect(url: server.url, token: server.apiKey)
+            // Validate the token before loading data
+            let tokenValid = await client!.validateToken()
+            if tokenValid {
+                // Connect Socket.IO for real-time events
+                socketService.connect(url: server.url, token: server.apiKey)
 
-            serverVersion = await connectionManager.fetchVersion(url: server.url)
-            async let modelsResult: () = loadModels()
-            async let chatsResult: () = loadConversations()
-            async let userResult: () = loadUser()
-            _ = await (modelsResult, chatsResult, userResult)
+                serverVersion = await connectionManager.fetchVersion(url: server.url)
+                async let modelsResult: () = loadModels()
+                async let chatsResult: () = loadConversations()
+                async let userResult: () = loadUser()
+                _ = await (modelsResult, chatsResult, userResult)
+            } else {
+                // Token expired for this server
+                prefillConnectFields(from: server)
+                connectionError = "Your session has expired. Please sign in again."
+                currentScreen = .connect
+            }
         }
 
         trayManager.updateMenu()
@@ -533,11 +741,19 @@ final class AppState {
         selectedConversationID = nil
         selectedModel = nil
         currentUser = nil
-        streamingContent = ""
-        isStreaming = false
+        // Cancel all active streaming tasks
+        for (chatId, _) in streamingTaskByChat {
+            stopStreaming(chatId: chatId)
+        }
+        streamingChatIDs.removeAll()
+        streamingContentByChat.removeAll()
+        streamingTaskByChat.removeAll()
+        streamingMessageIdByChat.removeAll()
+        streamingMessagesCache.removeAll()
         searchText = ""
         messageCache = [:]
         socketService.disconnect()
+        ModelImageLoader.shared.clearCache()
     }
 
     /// Clear the message cache so conversations reload fresh from the server.
@@ -562,28 +778,32 @@ final class AppState {
     }
 
     private func handleSocketEvent(chatId: String, messageId: String, type: String, data: [String: Any]) {
+        // Resolve streaming message ID for this chat (per-conversation)
+        let streamingMsgId = streamingMessageIdByChat[chatId]
+
         switch type {
         case "status":
             // Web search progress, knowledge search, etc.
             guard let statusEvent = SocketService.parseStatusEvent(from: data) else { return }
-            if let msgId = socketStreamingMessageId,
-               let idx = chatMessages.lastIndex(where: { $0.id == msgId }) {
-                var msg = chatMessages[idx]
-                var history = msg.statusHistory ?? []
-                // Replace last event with same action if it's updating (e.g. search in-progress → done)
-                if let lastIdx = history.lastIndex(where: { $0.action == statusEvent.action && !$0.done }) {
-                    history[lastIdx] = statusEvent
-                } else {
-                    history.append(statusEvent)
+            if let msgId = streamingMsgId {
+                var messages = getStreamingMessages(chatId: chatId)
+                if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                    var msg = messages[idx]
+                    var history = msg.statusHistory ?? []
+                    if let lastIdx = history.lastIndex(where: { $0.action == statusEvent.action && !$0.done }) {
+                        history[lastIdx] = statusEvent
+                    } else {
+                        history.append(statusEvent)
+                    }
+                    msg.statusHistory = history
+                    messages[idx] = msg
+                    setStreamingMessages(chatId: chatId, messages: messages)
                 }
-                msg.statusHistory = history
-                chatMessages[idx] = msg
             }
 
         case "chat:completion":
             // Streaming content via Socket.IO
             if let done = data["done"] as? Bool, done {
-                // Stream finished
                 socketStreamContinuation?.yield(.done)
                 socketStreamContinuation?.finish()
                 socketStreamContinuation = nil
@@ -600,27 +820,28 @@ final class AppState {
             }
 
         case "replace":
-            // Full content replacement — emit as a special content with marker
+            // Full content replacement
             if let content = data["content"] as? String {
-                // Reset streaming content and replace
-                streamingContent = content
-                if let msgId = socketStreamingMessageId,
-                   let idx = chatMessages.lastIndex(where: { $0.id == msgId }) {
-                    let msg = chatMessages[idx]
-                    var updated = ChatMessage(
-                        id: msg.id,
-                        role: msg.role,
-                        content: content,
-                        model: msg.model,
-                        timestamp: msg.timestamp,
-                        parentId: msg.parentId,
-                        childrenIds: msg.childrenIds
-                    )
-                    // Preserve statusHistory and toolCalls
-                    updated.statusHistory = msg.statusHistory
-                    updated.toolCalls = msg.toolCalls
-                    updated.toolCallId = msg.toolCallId
-                    chatMessages[idx] = updated
+                streamingContentByChat[chatId] = content
+                if let msgId = streamingMsgId {
+                    var messages = getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                        let msg = messages[idx]
+                        var updated = ChatMessage(
+                            id: msg.id,
+                            role: msg.role,
+                            content: content,
+                            model: msg.model,
+                            timestamp: msg.timestamp,
+                            parentId: msg.parentId,
+                            childrenIds: msg.childrenIds
+                        )
+                        updated.statusHistory = msg.statusHistory
+                        updated.toolCalls = msg.toolCalls
+                        updated.toolCallId = msg.toolCallId
+                        messages[idx] = updated
+                        setStreamingMessages(chatId: chatId, messages: messages)
+                    }
                 }
             }
 
@@ -635,8 +856,26 @@ final class AppState {
         guard let client else { return }
         do {
             models = try await client.listModels()
-            if selectedModel == nil, let first = models.first {
-                selectedModel = first
+
+            // Restore model selection with priority cascade:
+            // 1. Previously selected model (from last session)
+            // 2. User's explicit default model
+            // 3. First available model (fallback)
+            if selectedModel == nil {
+                if let persistedID = _persistedSelectedModelID,
+                   let match = models.first(where: { $0.id == persistedID }) {
+                    selectedModel = match
+                } else if let defaultID = _persistedDefaultModelID ?? defaultModelID,
+                          let match = models.first(where: { $0.id == defaultID }) {
+                    selectedModel = match
+                } else if let first = models.first {
+                    selectedModel = first
+                }
+            } else {
+                // Ensure the currently selected model still exists in the model list
+                if let current = selectedModel, !models.contains(where: { $0.id == current.id }) {
+                    selectedModel = models.first
+                }
             }
         } catch {
             toastManager.show("Failed to load models", style: .error)
@@ -698,11 +937,26 @@ final class AppState {
     }
 
     func selectConversation(_ id: String) async {
+        // Save current conversation's messages before switching
+        if let currentId = selectedConversationID {
+            messageCache[currentId] = chatMessages
+            // If the current conversation is streaming, also save to the streaming cache
+            if streamingChatIDs.contains(currentId) {
+                streamingMessagesCache[currentId] = chatMessages
+            }
+        }
+
         selectedConversationID = id
 
         // In demo mode, just use the cache (no server to fetch from)
         if isDemoMode {
             chatMessages = messageCache[id] ?? []
+            return
+        }
+
+        // If switching to a conversation that's currently streaming, use its cached messages
+        if streamingChatIDs.contains(id) {
+            chatMessages = streamingMessagesCache[id] ?? messageCache[id] ?? []
             return
         }
 
@@ -718,11 +972,31 @@ final class AppState {
         }
     }
 
+    /// Move a conversation to the top of the sidebar (update its timestamp locally).
+    private func bumpConversationToTop(chatId: String) {
+        guard let idx = conversations.firstIndex(where: { $0.id == chatId }) else { return }
+        let old = conversations[idx]
+        let updated = ChatListItem(
+            id: old.id,
+            title: old.title,
+            updated_at: Date().timeIntervalSince1970,
+            created_at: old.created_at
+        )
+        conversations.remove(at: idx)
+        conversations.insert(updated, at: 0)
+    }
+
     func newConversation() {
         selectedConversationID = nil
         chatMessages = []
         messageInput = ""
         pendingAttachments = []
+    }
+
+    /// Start a new conversation with a specific model pre-selected.
+    func newConversationWithModel(_ model: AIModel) {
+        selectedModel = model
+        newConversation()
     }
 
     func createAndSelectConversation() async {
@@ -898,6 +1172,7 @@ final class AppState {
         let attachments = pendingAttachments
         guard !text.isEmpty || !attachments.isEmpty, !isStreaming else { return }
         guard let model = selectedModel, let client else {
+            ovalLog.error("[Oval] sendMessage: GUARD FAIL — selectedModel=\(self.selectedModel?.id ?? "nil") client=\(self.client != nil ? "yes" : "nil")")
             toastManager.show("Select a model first", style: .error)
             return
         }
@@ -970,12 +1245,27 @@ final class AppState {
             }
         }
 
+        // Capture the chat ID now — this won't change even if the user switches conversations
+        guard let chatId = selectedConversationID else { return }
+
+        // For existing conversations, update the chat on the server so updated_at changes,
+        // then refresh the sidebar to move this chat to the top.
+        if !isNewConversation {
+            let earlyBlob = buildChatBlob(title: conversations.first(where: { $0.id == chatId })?.title ?? "Chat", assistantId: nil, assistantModel: nil)
+            Task {
+                _ = try? await client.updateChat(id: chatId, blob: earlyBlob)
+                await self.loadConversations(silent: true)
+            }
+        } else {
+            // New conversation — refresh sidebar to pick it up
+            Task { await self.loadConversations(silent: true) }
+        }
+
         // Build completion messages (multimodal for the current message if it has images)
         let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
 
         // ── Step 2: Start streaming ──
-        isStreaming = true
-        streamingContent = ""
+        beginStreaming(chatId: chatId)
 
         let assistantMsg = ChatMessage(
             id: assistantId,
@@ -987,53 +1277,35 @@ final class AppState {
             childrenIds: nil
         )
         chatMessages.append(assistantMsg)
+        // Sync initial messages to the cache so background streaming can find them
+        messageCache[chatId] = chatMessages
 
-        // Track the message ID for Socket.IO event routing
-        socketStreamingMessageId = assistantId
+        // Track the message ID for Socket.IO event routing (per-conversation)
+        streamingMessageIdByChat[chatId] = assistantId
 
-        // Wrap streaming in a cancellable task
+        // Move this conversation to the top of the sidebar immediately
+        bumpConversationToTop(chatId: chatId)
+
+        let webSearchEnabled = isWebSearchEnabled
+
+        // Wrap streaming in a cancellable task — runs in background even if user switches chats
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                // Use Socket.IO path when connected (enables status events like web search progress)
-                let useSocket = self.socketService.isConnected && self.selectedConversationID != nil
-                let socketSid = useSocket ? self.socketService.sessionId : nil
-                let socketChatId = useSocket ? self.selectedConversationID : nil
-
                 let fileRefs = uploadedFileRefs.isEmpty ? nil : uploadedFileRefs
-                let stream: AsyncThrowingStream<OpenWebUIClient.StreamDelta, Error>
-                if useSocket, let sid = socketSid, let cid = socketChatId {
-                    // Create a stream that will be fed by Socket.IO events
-                    stream = AsyncThrowingStream { continuation in
-                        self.socketStreamContinuation = continuation
-                        // Fire the HTTP request to trigger the server (returns immediately)
-                        Task {
-                            _ = await client.streamChat(
-                                model: model.id,
-                                messages: completionMsgs,
-                                files: fileRefs,
-                                webSearch: self.isWebSearchEnabled,
-                                sessionId: sid,
-                                chatId: cid
-                            )
-                        }
-                    }
-                } else {
-                    stream = await client.streamChat(
-                        model: model.id,
-                        messages: completionMsgs,
-                        files: fileRefs,
-                        webSearch: self.isWebSearchEnabled
-                    )
-                }
-                // Accumulate tool call chunks keyed by index
+                let stream = await client.streamChat(
+                    model: model.id,
+                    messages: completionMsgs,
+                    files: fileRefs,
+                    webSearch: webSearchEnabled
+                )
                 var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
                 for try await delta in stream {
                     if Task.isCancelled { break }
                     switch delta {
                     case .content(let text):
-                        self.streamingContent += text
+                        self.streamingContentByChat[chatId, default: ""] += text
                     case .toolCall(let tc):
                         let idx = tc.index ?? 0
                         var entry = toolCallAccumulator[idx] ?? (id: "", type: "function", name: "", arguments: "")
@@ -1046,17 +1318,16 @@ final class AppState {
                         break
                     }
 
-                    // Build tool calls from streaming chunks (status = executing while streaming)
+                    let currentContent = self.streamingContentByChat[chatId] ?? ""
+
+                    // Build tool calls from streaming chunks
                     var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
                         guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
                         return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
                     }
 
-                    // Also parse <details type="tool_calls"> from content — the server embeds
-                    // tool results this way after executing tools server-side
-                    let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                    let parsedFromContent = Self.parseToolCallDetails(from: currentContent)
                     if !parsedFromContent.isEmpty {
-                        // Merge: content-parsed tool calls (with results) take priority
                         let streamIds = Set(completedToolCalls.map(\.id))
                         for parsed in parsedFromContent {
                             if let idx = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
@@ -1067,11 +1338,13 @@ final class AppState {
                         }
                     }
 
-                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                    // Update the assistant message — use per-conversation message access
+                    var messages = self.getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == assistantId }) {
                         var updated = ChatMessage(
                             id: assistantId,
                             role: "assistant",
-                            content: self.streamingContent,
+                            content: currentContent,
                             model: model.id,
                             timestamp: Date().timeIntervalSince1970,
                             parentId: userMsg.id,
@@ -1080,15 +1353,16 @@ final class AppState {
                         if !completedToolCalls.isEmpty {
                             updated.toolCalls = completedToolCalls
                         }
-                        // Preserve statusHistory from Socket.IO events (set by handleSocketEvent)
-                        updated.statusHistory = self.chatMessages[idx].statusHistory
-                        self.chatMessages[idx] = updated
+                        updated.statusHistory = messages[idx].statusHistory
+                        messages[idx] = updated
+                        self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
 
-                // After streaming ends, mark any remaining "executing" tool calls as completed
-                if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                    var finalMsg = self.chatMessages[idx]
+                // After streaming ends, mark remaining tool calls as completed
+                var messages = self.getStreamingMessages(chatId: chatId)
+                if let idx = messages.lastIndex(where: { $0.id == assistantId }) {
+                    var finalMsg = messages[idx]
                     if var toolCalls = finalMsg.toolCalls {
                         for i in toolCalls.indices {
                             if toolCalls[i].status == .executing || toolCalls[i].status == .pending {
@@ -1096,7 +1370,8 @@ final class AppState {
                             }
                         }
                         finalMsg.toolCalls = toolCalls
-                        self.chatMessages[idx] = finalMsg
+                        messages[idx] = finalMsg
+                        self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
             } catch {
@@ -1104,42 +1379,29 @@ final class AppState {
                     self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
                 }
             }
-        }
-        streamingTask = task
-        await task.value
 
-        isStreaming = false
-        streamingContent = ""
-        streamingTask = nil
-        socketStreamingMessageId = nil
-        socketStreamContinuation = nil
+            // ── Cleanup streaming state ──
+            self.endStreaming(chatId: chatId)
+            self.socketStreamContinuation = nil
 
-        // ── Step 3: Save final state to server ──
-        if let convId = selectedConversationID {
-            messageCache[convId] = chatMessages
+            // ── Step 3: Save final state to server ──
+            let finalMessages = self.getStreamingMessages(chatId: chatId)
+            self.messageCache[chatId] = finalMessages
 
-            // Use first user message as temporary title
-            let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+            let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
                 .map { String($0.content.prefix(100)) } ?? "New Chat"
-            let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-            Task {
-                do {
-                    _ = try await client.updateChat(id: convId, blob: blob)
-                } catch {
-                    // Non-critical: chat still works locally
-                }
-            }
+            let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+            _ = try? await client.updateChat(id: chatId, blob: blob)
 
-            // ── Step 4: Generate a proper title for new conversations ──
+            // Generate title for new conversations
             if isNewConversation {
-                Task {
-                    await generateAndSetTitle(chatId: convId, modelId: model.id)
-                }
+                await self.generateAndSetTitle(chatId: chatId, modelId: model.id)
             }
-        }
 
-        // Refresh sidebar to show new/updated conversation
-        Task { await loadConversations(silent: true) }
+            // Refresh sidebar from server so sort order reflects updated_at
+            await self.loadConversations(silent: true)
+        }
+        streamingTaskByChat[chatId] = task
     }
 
     // MARK: - Title Generation
@@ -1247,13 +1509,6 @@ final class AppState {
         return ChatBlob(title: title, history: history, messages: flatMessages)
     }
 
-    func stopStreaming() {
-        streamingTask?.cancel()
-        streamingTask = nil
-        isStreaming = false
-        streamingContent = ""
-    }
-
     // MARK: - Edit Message
 
     /// Edit a user message's content and optionally re-send it.
@@ -1282,24 +1537,27 @@ final class AppState {
 
             // Re-stream from this point
             guard let model = selectedModel, let client else { return }
+            guard let chatId = selectedConversationID else { return }
 
             let assistantId = UUID().uuidString
-            isStreaming = true
-            streamingContent = ""
+            beginStreaming(chatId: chatId)
 
+            let parentMsgId = chatMessages[idx].id
             let assistantMsg = ChatMessage(
                 id: assistantId,
                 role: "assistant",
                 content: "",
                 model: model.id,
                 timestamp: Date().timeIntervalSince1970,
-                parentId: chatMessages[idx].id,
+                parentId: parentMsgId,
                 childrenIds: nil
             )
             chatMessages.append(assistantMsg)
+            messageCache[chatId] = chatMessages
+            streamingMessageIdByChat[chatId] = assistantId
 
-            // Build completion messages from the updated history (includes tool call context)
             let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
+            let webSearchEnabled = isWebSearchEnabled
 
             let task = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -1308,7 +1566,7 @@ final class AppState {
                         model: model.id,
                         messages: completionMsgs,
                         files: nil,
-                        webSearch: self.isWebSearchEnabled
+                        webSearch: webSearchEnabled
                     )
                     var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
@@ -1316,7 +1574,7 @@ final class AppState {
                         if Task.isCancelled { break }
                         switch delta {
                         case .content(let text):
-                            self.streamingContent += text
+                            self.streamingContentByChat[chatId, default: ""] += text
                         case .toolCall(let tc):
                             let tcIdx = tc.index ?? 0
                             var entry = toolCallAccumulator[tcIdx] ?? (id: "", type: "function", name: "", arguments: "")
@@ -1329,11 +1587,12 @@ final class AppState {
                             break
                         }
 
+                        let currentContent = self.streamingContentByChat[chatId] ?? ""
                         var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
                             guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
                             return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
                         }
-                        let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                        let parsedFromContent = Self.parseToolCallDetails(from: currentContent)
                         for parsed in parsedFromContent {
                             if let i = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
                                 completedToolCalls[i] = parsed
@@ -1342,32 +1601,34 @@ final class AppState {
                             }
                         }
 
-                        if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                        var messages = self.getStreamingMessages(chatId: chatId)
+                        if let mIdx = messages.lastIndex(where: { $0.id == assistantId }) {
                             var updated = ChatMessage(
                                 id: assistantId,
                                 role: "assistant",
-                                content: self.streamingContent,
+                                content: currentContent,
                                 model: model.id,
                                 timestamp: Date().timeIntervalSince1970,
-                                parentId: self.chatMessages.count >= 2 ? self.chatMessages[self.chatMessages.count - 2].id : nil,
+                                parentId: parentMsgId,
                                 childrenIds: nil
                             )
                             if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
-                            // Preserve statusHistory from Socket.IO events
-                            updated.statusHistory = self.chatMessages[idx].statusHistory
-                            self.chatMessages[idx] = updated
+                            updated.statusHistory = messages[mIdx].statusHistory
+                            messages[mIdx] = updated
+                            self.setStreamingMessages(chatId: chatId, messages: messages)
                         }
                     }
 
-                    // Finalize tool call statuses
-                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                        var finalMsg = self.chatMessages[idx]
+                    var messages = self.getStreamingMessages(chatId: chatId)
+                    if let mIdx = messages.lastIndex(where: { $0.id == assistantId }) {
+                        var finalMsg = messages[mIdx]
                         if var toolCalls = finalMsg.toolCalls {
                             for i in toolCalls.indices where toolCalls[i].status == .executing || toolCalls[i].status == .pending {
                                 toolCalls[i].status = .completed
                             }
                             finalMsg.toolCalls = toolCalls
-                            self.chatMessages[idx] = finalMsg
+                            messages[mIdx] = finalMsg
+                            self.setStreamingMessages(chatId: chatId, messages: messages)
                         }
                     }
                 } catch {
@@ -1375,24 +1636,18 @@ final class AppState {
                         self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
                     }
                 }
-            }
-            streamingTask = task
-            await task.value
 
-            isStreaming = false
-            streamingContent = ""
-            streamingTask = nil
+                self.endStreaming(chatId: chatId)
 
-            // Save to server
-            if let convId = selectedConversationID {
-                messageCache[convId] = chatMessages
-                let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+                // Save to server and refresh sidebar
+                let finalMessages = self.messageCache[chatId] ?? []
+                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
                     .map { String($0.content.prefix(100)) } ?? "New Chat"
-                let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-                Task {
-                    _ = try? await client.updateChat(id: convId, blob: blob)
-                }
+                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                _ = try? await client.updateChat(id: chatId, blob: blob)
+                await self.loadConversations(silent: true)
             }
+            streamingTaskByChat[chatId] = task
         } else {
             // Just save the edit without re-streaming
             if let convId = selectedConversationID {
@@ -1418,6 +1673,7 @@ final class AppState {
         let message = chatMessages[idx]
         guard message.role == "assistant" else { return }
         guard !isStreaming else { return }
+        guard let chatId = selectedConversationID else { return }
 
         // Remove the assistant message and any messages after it
         chatMessages = Array(chatMessages.prefix(idx))
@@ -1425,8 +1681,8 @@ final class AppState {
         guard let model = selectedModel, let client else { return }
 
         let assistantId = UUID().uuidString
-        isStreaming = true
-        streamingContent = ""
+        let parentMsgId = chatMessages.last?.id
+        beginStreaming(chatId: chatId)
 
         let assistantMsg = ChatMessage(
             id: assistantId,
@@ -1434,12 +1690,15 @@ final class AppState {
             content: "",
             model: model.id,
             timestamp: Date().timeIntervalSince1970,
-            parentId: chatMessages.last?.id,
+            parentId: parentMsgId,
             childrenIds: nil
         )
         chatMessages.append(assistantMsg)
+        messageCache[chatId] = chatMessages
+        streamingMessageIdByChat[chatId] = assistantId
 
         let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
+        let webSearchEnabled = isWebSearchEnabled
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -1448,7 +1707,7 @@ final class AppState {
                     model: model.id,
                     messages: completionMsgs,
                     files: nil,
-                    webSearch: self.isWebSearchEnabled
+                    webSearch: webSearchEnabled
                 )
                 var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
@@ -1456,7 +1715,7 @@ final class AppState {
                     if Task.isCancelled { break }
                     switch delta {
                     case .content(let text):
-                        self.streamingContent += text
+                        self.streamingContentByChat[chatId, default: ""] += text
                     case .toolCall(let tc):
                         let tcIdx = tc.index ?? 0
                         var entry = toolCallAccumulator[tcIdx] ?? (id: "", type: "function", name: "", arguments: "")
@@ -1469,11 +1728,12 @@ final class AppState {
                         break
                     }
 
+                    let currentContent = self.streamingContentByChat[chatId] ?? ""
                     var completedToolCalls: [ToolCall] = toolCallAccumulator.sorted(by: { $0.key < $1.key }).compactMap { (_, entry) in
                         guard !entry.id.isEmpty, !entry.name.isEmpty else { return nil }
                         return ToolCall(id: entry.id, type: entry.type, function: ToolCall.ToolCallComplete(name: entry.name, arguments: entry.arguments), status: .executing)
                     }
-                    let parsedFromContent = Self.parseToolCallDetails(from: self.streamingContent)
+                    let parsedFromContent = Self.parseToolCallDetails(from: currentContent)
                     for parsed in parsedFromContent {
                         if let i = completedToolCalls.firstIndex(where: { $0.id == parsed.id }) {
                             completedToolCalls[i] = parsed
@@ -1482,32 +1742,34 @@ final class AppState {
                         }
                     }
 
-                    if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
+                    var messages = self.getStreamingMessages(chatId: chatId)
+                    if let mIdx = messages.lastIndex(where: { $0.id == assistantId }) {
                         var updated = ChatMessage(
                             id: assistantId,
                             role: "assistant",
-                            content: self.streamingContent,
+                            content: currentContent,
                             model: model.id,
                             timestamp: Date().timeIntervalSince1970,
-                            parentId: self.chatMessages.count >= 2 ? self.chatMessages[self.chatMessages.count - 2].id : nil,
+                            parentId: parentMsgId,
                             childrenIds: nil
                         )
                         if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
-                        // Preserve statusHistory from Socket.IO events
-                        updated.statusHistory = self.chatMessages[idx].statusHistory
-                        self.chatMessages[idx] = updated
+                        updated.statusHistory = messages[mIdx].statusHistory
+                        messages[mIdx] = updated
+                        self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
 
-                // Finalize tool call statuses
-                if let idx = self.chatMessages.lastIndex(where: { $0.id == assistantId }) {
-                    var finalMsg = self.chatMessages[idx]
+                var messages = self.getStreamingMessages(chatId: chatId)
+                if let mIdx = messages.lastIndex(where: { $0.id == assistantId }) {
+                    var finalMsg = messages[mIdx]
                     if var toolCalls = finalMsg.toolCalls {
                         for i in toolCalls.indices where toolCalls[i].status == .executing || toolCalls[i].status == .pending {
                             toolCalls[i].status = .completed
                         }
                         finalMsg.toolCalls = toolCalls
-                        self.chatMessages[idx] = finalMsg
+                        messages[mIdx] = finalMsg
+                        self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
             } catch {
@@ -1515,25 +1777,17 @@ final class AppState {
                     self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
                 }
             }
-        }
-        streamingTask = task
-        await task.value
 
-        isStreaming = false
-        streamingContent = ""
-        streamingTask = nil
+            self.endStreaming(chatId: chatId)
 
-        // Save to server
-        if let convId = selectedConversationID {
-            messageCache[convId] = chatMessages
-            let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
+            let finalMessages = self.messageCache[chatId] ?? []
+            let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
                 .map { String($0.content.prefix(100)) } ?? "New Chat"
-            let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-            Task {
-                _ = try? await client.updateChat(id: convId, blob: blob)
-            }
+            let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+            _ = try? await client.updateChat(id: chatId, blob: blob)
+            await self.loadConversations(silent: true)
         }
-        Task { await loadConversations(silent: true) }
+        streamingTaskByChat[chatId] = task
     }
 
     // MARK: - Text-to-Speech
@@ -2313,6 +2567,8 @@ final class AppState {
             }
         }
 
+        guard let chatId = selectedConversationID else { return }
+
         // Pick a response based on keywords
         let lowerText = text.lowercased()
         let response = Self.demoResponses.first(where: { pair in
@@ -2321,8 +2577,7 @@ final class AppState {
 
         // Simulate streaming
         let assistantId = UUID().uuidString
-        isStreaming = true
-        streamingContent = ""
+        beginStreaming(chatId: chatId)
 
         let assistantMsg = ChatMessage(
             id: assistantId,
@@ -2338,15 +2593,16 @@ final class AppState {
         // Stream character by character with variable speed
         for char in response {
             // Check if streaming was cancelled
-            guard isStreaming else { break }
+            guard streamingChatIDs.contains(chatId) else { break }
 
-            streamingContent += String(char)
+            streamingContentByChat[chatId, default: ""] += String(char)
+            let currentContent = streamingContentByChat[chatId] ?? ""
 
             if let idx = chatMessages.lastIndex(where: { $0.id == assistantId }) {
                 chatMessages[idx] = ChatMessage(
                     id: assistantId,
                     role: "assistant",
-                    content: streamingContent,
+                    content: currentContent,
                     model: model.id,
                     timestamp: Date().timeIntervalSince1970,
                     parentId: userMsg.id,
@@ -2366,13 +2622,8 @@ final class AppState {
             try? await Task.sleep(nanoseconds: delay)
         }
 
-        isStreaming = false
-        streamingContent = ""
-
-        // Update cache
-        if let convId = selectedConversationID {
-            messageCache[convId] = chatMessages
-        }
+        endStreaming(chatId: chatId)
+        messageCache[chatId] = chatMessages
     }
 
     /// Send a message in the mini chat in demo mode with simulated streaming.
@@ -2441,13 +2692,26 @@ final class AppState {
         let config = configManager.load()
         servers = config.servers
         activeServerID = config.activeServerID
+        pinnedModelIDs = config.pinnedModelIDs
+        // selectedModelID and defaultModelID are restored in loadModels()
+        _persistedSelectedModelID = config.selectedModelID
+        _persistedDefaultModelID = config.defaultModelID
     }
 
     private func saveServers() {
         let config = ConfigManager.Config(
             servers: servers,
-            activeServerID: activeServerID
+            activeServerID: activeServerID,
+            selectedModelID: selectedModel?.id,
+            defaultModelID: defaultModelID,
+            pinnedModelIDs: pinnedModelIDs
         )
         configManager.save(config)
+    }
+
+    /// Save just the model preferences without touching server data.
+    /// Called when the user changes model selection, default, or pins.
+    func saveModelPreferences() {
+        saveServers()
     }
 }
