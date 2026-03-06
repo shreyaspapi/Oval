@@ -32,6 +32,23 @@ actor OpenWebUIClient {
 
     // MARK: - Auth / User
 
+    /// Validate the current token by calling the session endpoint.
+    /// Returns true if the token is still valid (200), false if expired/invalid (401/403).
+    func validateToken() async -> Bool {
+        guard let url = URL(string: "\(baseURL)/api/v1/auths/") else { return false }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.allHTTPHeaderFields = authHeader
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            if let http = resp as? HTTPURLResponse {
+                return http.statusCode == 200
+            }
+            return false
+        } catch {
+            return false
+        }
+    }
+
     /// Sign in with email + password. Returns a SignInResponse with JWT token.
     /// This is a static method because we don't have a token yet.
     static func signIn(baseURL: String, email: String, password: String) async throws -> SignInResponse {

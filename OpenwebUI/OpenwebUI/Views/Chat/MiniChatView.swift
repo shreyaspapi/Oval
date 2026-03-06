@@ -251,46 +251,9 @@ struct MiniChatView: View {
     // MARK: - Model Picker Popover
 
     private var miniModelPicker: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if appState.models.isEmpty {
-                Text("No models available")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(12)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(appState.models) { model in
-                            let isSelected = model.id == appState.selectedModel?.id
-                            Button {
-                                appState.selectedModel = model
-                                showModelPicker = false
-                            } label: {
-                                HStack {
-                                    Text(model.displayName)
-                                        .font(.callout)
-                                        .foregroundStyle(AppColors.textPrimary)
-                                    Spacer()
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.caption)
-                                            .foregroundStyle(AppColors.accentBlue)
-                                    }
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(isSelected ? AppColors.selectedBg : .clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(6)
-                }
-                .frame(maxHeight: 300)
-            }
-        }
-        .frame(width: 280)
+        ModelPickerContent(appState: appState, onSelect: {
+            showModelPicker = false
+        })
     }
 
     // MARK: - Message List

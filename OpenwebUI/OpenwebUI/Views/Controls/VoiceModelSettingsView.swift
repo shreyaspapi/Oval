@@ -67,6 +67,9 @@ struct VoiceModelSettingsView: View {
     // MARK: - Model Row
 
     private func modelRow(entry: RAModelCatalogEntry, isSelected: Bool, onSelect: @escaping () -> Void) -> some View {
+        // While the SDK is still checking states, use whatever we pre-loaded
+        // from disk (which is accurate for downloaded/notDownloaded). The
+        // isCheckingModelStates flag prevents flashing wrong UI.
         let state = raService.modelStates[entry.id] ?? .notDownloaded
 
         return HStack(spacing: 12) {
@@ -188,18 +191,29 @@ struct VoiceModelSettingsView: View {
             }
 
         case .notDownloaded:
-            Button("Download") {
-                Task {
-                    await raService.downloadModel(id: entry.id)
-                    // Auto-select after download
-                    if entry.category == .stt {
-                        await raService.selectSTTModel(entry.id)
-                    } else {
-                        await raService.selectTTSModel(entry.id)
+            // While SDK is still initializing, show a checking indicator
+            // instead of a premature "Download" button
+            if raService.isCheckingModelStates && raService.isSDKReady == false {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text("Checking...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Button("Download") {
+                    Task {
+                        await raService.downloadModel(id: entry.id)
+                        // Auto-select after download
+                        if entry.category == .stt {
+                            await raService.selectSTTModel(entry.id)
+                        } else {
+                            await raService.selectTTSModel(entry.id)
+                        }
                     }
                 }
+                .controlSize(.small)
             }
-            .controlSize(.small)
 
         case .error(let msg):
             VStack(alignment: .trailing, spacing: 4) {
