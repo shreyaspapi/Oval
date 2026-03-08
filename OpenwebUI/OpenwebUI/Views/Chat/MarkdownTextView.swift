@@ -208,7 +208,8 @@ struct MarkdownTextView: View {
                    let _ = bracketContent.range(of: #"^\d[\d,\s]*$"#, options: .regularExpression),
                    sources != nil, !(sources?.isEmpty ?? true) {
                     let indices = parseCitationIndices(bracketContent)
-                    if !indices.isEmpty && indices.allSatisfy({ sourceURL(at: $0) != nil }) {
+                    // Render as citation badge if we have valid indices within the sources range
+                    if !indices.isEmpty, let srcs = sources, indices.allSatisfy({ $0 >= 1 && $0 <= srcs.count }) {
                         result.append(buildCitationBadge(indices: indices, overrideURL: nil))
                         remaining = remaining[remaining.index(after: closeBracket)...]
                         continue
