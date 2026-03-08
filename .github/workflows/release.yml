@@ -62,11 +62,27 @@ jobs:
 
       - name: Install Git LFS
         run: |
-          brew install git-lfs
+          brew install git-lfs || true
           git lfs install
 
       - name: Resolve Swift packages
         run: |
+          # First pass: resolve/clone all packages (LFS files will be pointers)
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" 2>&1 || true
+
+          # Fetch actual LFS binaries for runanywhere-sdks
+          RA_CHECKOUT="$RUNNER_TEMP/spm/checkouts/runanywhere-sdks"
+          if [ -d "$RA_CHECKOUT" ]; then
+            echo "Pulling Git LFS objects for runanywhere-sdks..."
+            cd "$RA_CHECKOUT"
+            git lfs pull
+            cd -
+          fi
+
+          # Second pass: resolve again now that LFS binaries are present
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
