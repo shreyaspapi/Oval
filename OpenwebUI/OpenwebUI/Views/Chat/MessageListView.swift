@@ -35,6 +35,10 @@ struct MessageListView: View {
                                 onStopSpeaking: {
                                     appState.stopSpeaking()
                                 },
+                                onFollowUp: { text in
+                                    appState.messageInput = text
+                                    Task { await appState.sendMessage() }
+                                },
                                 isSpeakingThis: appState.ttsManager.speakingMessageId == message.id && appState.ttsManager.isSpeaking
                             )
                             .id(message.id)

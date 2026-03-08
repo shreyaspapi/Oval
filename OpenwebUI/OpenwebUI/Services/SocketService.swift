@@ -1,6 +1,9 @@
 import Combine
 import Foundation
+import os.log
 import SocketIO
+
+private let socketLog = Logger(subsystem: "com.oval.app", category: "socket")
 
 /// Manages the Socket.IO connection to the Open WebUI server.
 /// Receives real-time events (status updates, streaming content, sources)
@@ -13,11 +16,20 @@ final class SocketService: ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var sessionId: String?
 
-    // MARK: - Event Callback
+    // MARK: - Event Callbacks
 
-    /// Called when a status/chat event is received for a specific message.
-    /// Parameters: (chatId, messageId, eventType, eventData)
-    var onEvent: ((_ chatId: String, _ messageId: String, _ type: String, _ data: [String: Any]) -> Void)?
+    /// Called when a chat event is received (from "events" or "chat-events" channels).
+    /// Parameters: (chatId, messageId, eventType, eventData, ackCallback)
+    /// The ack callback can be used to send acknowledgements back to the server (e.g. for tool confirmation dialogs).
+    var onEvent: ((_ chatId: String, _ messageId: String, _ type: String, _ data: [String: Any], _ ack: (([Any]) -> Void)?) -> Void)?
+
+    /// Called when a channel event is received (from "events:channel" or "channel-events").
+    /// Parameters: (channelId, messageId, eventType, eventData, ackCallback)
+    var onChannelEvent: ((_ channelId: String, _ messageId: String, _ type: String, _ data: [String: Any], _ ack: (([Any]) -> Void)?) -> Void)?
+
+    /// Called when the socket reconnects with a new session ID.
+    /// Active streaming contexts should update their session reference.
+    var onReconnect: ((_ newSessionId: String) -> Void)?
 
     // MARK: - Private
 
@@ -26,6 +38,7 @@ final class SocketService: ObservableObject {
     private var serverURL: String?
     private var token: String?
     private var heartbeatTimer: Timer?
+    private var hasTriedPollingFallback = false
 
     // MARK: - Connect
 
@@ -88,6 +101,7 @@ final class SocketService: ObservableObject {
                 guard let self else { return }
                 self.isConnected = true
                 self.sessionId = socket.sid
+                self.hasTriedPollingFallback = false
 
                 // Send user-join to authenticate and join rooms
                 socket.emit("user-join", ["auth": ["token": token]])
@@ -111,13 +125,48 @@ final class SocketService: ObservableObject {
                 self.isConnected = true
                 self.sessionId = socket.sid
                 socket.emit("user-join", ["auth": ["token": token]])
+                self.startHeartbeat()
+                // Notify listeners of new session ID (for active streaming contexts)
+                if let sid = socket.sid { self.onReconnect?(sid) }
             }
         }
 
-        // Listen for the "events" channel — all status/streaming events come here
-        socket.on("events") { [weak self] data, _ in
+        // Connection error — try falling back from WebSocket to polling
+        socket.on(clientEvent: .error) { [weak self] data, _ in
             Task { @MainActor in
-                self?.handleEvent(data)
+                guard let self, !self.hasTriedPollingFallback else { return }
+                self.hasTriedPollingFallback = true
+                // Reconfigure manager to allow polling fallback
+                self.manager?.config.insert(.forceWebsockets(false))
+                socketLog.warning("[Oval] Socket.IO connection error, retrying with polling fallback")
+            }
+        }
+
+        // Chat events — primary channel
+        socket.on("events") { [weak self] data, ack in
+            Task { @MainActor in
+                self?.handleChatEvent(data, ack: ack)
+            }
+        }
+
+        // Chat events — alternate channel name (some OWUI versions use this)
+        socket.on("chat-events") { [weak self] data, ack in
+            Task { @MainActor in
+                self?.handleChatEvent(data, ack: ack)
+            }
+        }
+
+        // Channel events — for group/channel messaging
+        socket.on("events:channel") { [weak self] data, ack in
+            Task { @MainActor in
+                self?.handleChannelEvent(data, ack: ack)
+            }
+        }
+
+        // Channel events — alternate channel name
+        socket.on("channel-events") { [weak self] data, ack in
+            Task { @MainActor in
+                self?.handleChannelEvent(data, ack: ack)
             }
         }
     }
@@ -133,18 +182,67 @@ final class SocketService: ObservableObject {
         }
     }
 
+    // MARK: - Ack Wrapper
+
+    /// Wraps a SocketAckEmitter into a simple closure that consumers can call.
+    /// Returns nil if the server doesn't expect an acknowledgement.
+    private func wrapAck(_ ack: SocketAckEmitter) -> (([Any]) -> Void)? {
+        guard ack.expected else { return nil }
+        return { items in ack.with(items) }
+    }
+
     // MARK: - Event Parsing
 
-    private func handleEvent(_ data: [Any]) {
-        guard let payload = data.first as? [String: Any],
-              let chatId = payload["chat_id"] as? String,
-              let messageId = payload["message_id"] as? String,
-              let eventData = payload["data"] as? [String: Any],
-              let eventType = eventData["type"] as? String
-        else { return }
+    /// Extract a string value from nested dictionaries, checking both snake_case and camelCase keys.
+    /// Searches top-level, then data.*, then data.data.* like Conduit does.
+    private static func deepExtract(_ key: String, camelKey: String? = nil, from payload: [String: Any]) -> String? {
+        // Top-level
+        if let v = payload[key] as? String { return v }
+        if let ck = camelKey, let v = payload[ck] as? String { return v }
+        // data.*
+        if let d = payload["data"] as? [String: Any] {
+            if let v = d[key] as? String { return v }
+            if let ck = camelKey, let v = d[ck] as? String { return v }
+            // data.data.*
+            if let dd = d["data"] as? [String: Any] {
+                if let v = dd[key] as? String { return v }
+                if let ck = camelKey, let v = dd[ck] as? String { return v }
+            }
+        }
+        return nil
+    }
 
-        let innerData = eventData["data"] as? [String: Any] ?? [:]
-        onEvent?(chatId, messageId, eventType, innerData)
+    private func handleChatEvent(_ data: [Any], ack: SocketAckEmitter) {
+        guard let payload = data.first as? [String: Any] else { return }
+
+        // Deep extraction of IDs — checks top-level, data.*, data.data.* with both snake/camel keys
+        let chatId = Self.deepExtract("chat_id", camelKey: "chatId", from: payload)
+        let messageId = Self.deepExtract("message_id", camelKey: "messageId", from: payload) ?? ""
+
+        guard let chatId else { return }
+
+        let eventData = payload["data"] as? [String: Any] ?? payload
+        let eventType = eventData["type"] as? String ?? payload["type"] as? String ?? "unknown"
+
+        let innerData = eventData["data"] as? [String: Any] ?? eventData
+        let ackFn = wrapAck(ack)
+        onEvent?(chatId, messageId, eventType, innerData, ackFn)
+    }
+
+    private func handleChannelEvent(_ data: [Any], ack: SocketAckEmitter) {
+        guard let payload = data.first as? [String: Any] else { return }
+
+        let channelId = Self.deepExtract("channel_id", camelKey: "channelId", from: payload)
+        let messageId = Self.deepExtract("message_id", camelKey: "messageId", from: payload)
+
+        guard let channelId, let messageId else { return }
+
+        let eventData = payload["data"] as? [String: Any] ?? payload
+        let eventType = eventData["type"] as? String ?? payload["type"] as? String ?? "unknown"
+
+        let innerData = eventData["data"] as? [String: Any] ?? eventData
+        let ackFn = wrapAck(ack)
+        onChannelEvent?(channelId, messageId, eventType, innerData, ackFn)
     }
 
     // MARK: - Parse Status Event

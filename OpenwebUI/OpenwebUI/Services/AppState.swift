@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AppKit
+import UniformTypeIdentifiers
 import os.log
 
 private let ovalLog = Logger(subsystem: "com.oval.app", category: "chat")
@@ -129,6 +130,13 @@ final class AppState {
     /// Per-conversation streaming message IDs (for Socket.IO event routing).
     private var streamingMessageIdByChat: [String: String] = [:]
 
+    /// Per-conversation watchdog timers that detect stalled streams.
+    /// If no events arrive within the timeout, streaming is ended gracefully.
+    private var watchdogTimerByChat: [String: Task<Void, Never>] = [:]
+
+    /// Watchdog timeout in seconds — if no streaming event arrives within this period, end the stream.
+    private let streamWatchdogTimeout: TimeInterval = 90
+
     /// Per-conversation cached messages — used when user switches away from a streaming chat.
     /// The streaming task updates this instead of `chatMessages` when the user navigates away.
     private var streamingMessagesCache: [String: [ChatMessage]] = [:]
@@ -157,6 +165,7 @@ final class AppState {
     private func beginStreaming(chatId: String) {
         streamingChatIDs.insert(chatId)
         streamingContentByChat[chatId] = ""
+        startWatchdog(chatId: chatId)
     }
 
     /// End streaming for a specific conversation.
@@ -166,6 +175,7 @@ final class AppState {
         streamingTaskByChat.removeValue(forKey: chatId)
         streamingMessageIdByChat.removeValue(forKey: chatId)
         streamingMessagesCache.removeValue(forKey: chatId)
+        cancelWatchdog(chatId: chatId)
     }
 
     /// Stop streaming for the currently viewed conversation.
@@ -178,6 +188,93 @@ final class AppState {
     func stopStreaming(chatId: String) {
         streamingTaskByChat[chatId]?.cancel()
         endStreaming(chatId: chatId)
+    }
+
+    // MARK: - Stream Watchdog
+
+    /// Start a watchdog timer for a streaming conversation.
+    /// If no events arrive within `streamWatchdogTimeout`, the stream is ended gracefully.
+    private func startWatchdog(chatId: String) {
+        cancelWatchdog(chatId: chatId)
+        watchdogTimerByChat[chatId] = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(self?.streamWatchdogTimeout ?? 90))
+            guard !Task.isCancelled else { return }
+            guard let self, self.streamingChatIDs.contains(chatId) else { return }
+            ovalLog.warning("[Oval] Stream watchdog fired for chat \(chatId) — ending stalled stream")
+            self.toastManager.show("Response timed out", style: .warning)
+            self.stopStreaming(chatId: chatId)
+        }
+    }
+
+    /// Reset the watchdog timer (called on every incoming streaming event).
+    private func resetWatchdog(chatId: String) {
+        guard streamingChatIDs.contains(chatId) else { return }
+        startWatchdog(chatId: chatId)
+    }
+
+    /// Cancel the watchdog timer for a conversation.
+    private func cancelWatchdog(chatId: String) {
+        watchdogTimerByChat[chatId]?.cancel()
+        watchdogTimerByChat.removeValue(forKey: chatId)
+    }
+
+    // MARK: - Reconnection Recovery
+
+    /// After a socket reconnection, poll the server for the current chat state.
+    /// If the server has longer content for the streaming assistant message, adopt it.
+    /// This recovers content that was missed during the disconnection.
+    private func attemptReconnectionRecovery(chatId: String) {
+        guard let client else { return }
+        guard let streamingMsgId = streamingMessageIdByChat[chatId] else { return }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Wait briefly for the server to process any pending events
+            try? await Task.sleep(for: .milliseconds(500))
+            guard self.streamingChatIDs.contains(chatId) else { return }
+
+            do {
+                let chatResponse = try await client.getChat(id: chatId)
+                guard let history = chatResponse.chat?.history else { return }
+                let serverMessages = history.linearMessages()
+
+                // Find the streaming assistant message on the server
+                guard let serverMsg = serverMessages.last(where: { $0.id == streamingMsgId }) else { return }
+
+                // Compare content length — adopt server's content if it's longer
+                let localContent = self.streamingContentByChat[chatId] ?? ""
+                if serverMsg.content.count > localContent.count {
+                    ovalLog.info("[Oval] Reconnection recovery: adopting server content (\(serverMsg.content.count) chars vs local \(localContent.count) chars)")
+                    self.streamingContentByChat[chatId] = serverMsg.content
+
+                    // Update the local message
+                    var messages = self.getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == streamingMsgId }) {
+                        var updated = messages[idx]
+                        updated = ChatMessage(
+                            id: updated.id,
+                            role: updated.role,
+                            content: serverMsg.content,
+                            model: updated.model,
+                            timestamp: updated.timestamp,
+                            parentId: updated.parentId,
+                            childrenIds: updated.childrenIds
+                        )
+                        updated.toolCalls = messages[idx].toolCalls
+                        updated.statusHistory = messages[idx].statusHistory
+                        updated.sources = messages[idx].sources
+                        updated.codeExecutions = messages[idx].codeExecutions
+                        updated.followUps = messages[idx].followUps
+                        updated.usage = messages[idx].usage
+                        updated.messageError = messages[idx].messageError
+                        messages[idx] = updated
+                        self.setStreamingMessages(chatId: chatId, messages: messages)
+                    }
+                }
+            } catch {
+                ovalLog.warning("[Oval] Reconnection recovery failed for chat \(chatId): \(error.localizedDescription)")
+            }
+        }
     }
 
     /// Whether a specific conversation is streaming (for sidebar indicators).
@@ -233,6 +330,36 @@ final class AppState {
     // MARK: - Features
 
     var isWebSearchEnabled: Bool = false
+
+    // MARK: - Server Tool Dialogs (ack-based)
+
+    /// Active confirmation dialog request from a server tool (e.g. "Are you sure you want to delete?")
+    var pendingConfirmation: ToolConfirmationRequest?
+
+    /// Active input dialog request from a server tool (e.g. "Enter API key:")
+    var pendingInput: ToolInputRequest?
+
+    /// A confirmation dialog requested by a server tool via Socket.IO ack.
+    struct ToolConfirmationRequest: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+        let confirmText: String
+        let cancelText: String
+        let ack: ([Any]) -> Void
+    }
+
+    /// A text input dialog requested by a server tool via Socket.IO ack.
+    struct ToolInputRequest: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+        let placeholder: String
+        let initialValue: String
+        let confirmText: String
+        let cancelText: String
+        let ack: ([Any]) -> Void
+    }
 
     // MARK: - Demo Mode
 
@@ -770,20 +897,37 @@ final class AppState {
     /// Wire up the Socket.IO event handler to update messages with status events
     /// and streaming content received via the real-time channel.
     private func setupSocketEventHandler() {
-        socketService.onEvent = { [weak self] chatId, messageId, eventType, data in
+        socketService.onEvent = { [weak self] chatId, messageId, eventType, data, ack in
             Task { @MainActor in
-                self?.handleSocketEvent(chatId: chatId, messageId: messageId, type: eventType, data: data)
+                self?.handleSocketEvent(chatId: chatId, messageId: messageId, type: eventType, data: data, ack: ack)
+                // Reset watchdog on any incoming event for this streaming chat
+                self?.resetWatchdog(chatId: chatId)
+            }
+        }
+
+        socketService.onReconnect = { [weak self] newSessionId in
+            Task { @MainActor in
+                guard let self else { return }
+                ovalLog.info("[Oval] Socket.IO reconnected with new sessionId: \(newSessionId)")
+                // Attempt to recover missed content for any active streaming chats
+                for chatId in self.streamingChatIDs {
+                    self.attemptReconnectionRecovery(chatId: chatId)
+                }
             }
         }
     }
 
-    private func handleSocketEvent(chatId: String, messageId: String, type: String, data: [String: Any]) {
+    private func handleSocketEvent(chatId: String, messageId: String, type: String, data: [String: Any], ack: (([Any]) -> Void)? = nil) {
         // Resolve streaming message ID for this chat (per-conversation)
         let streamingMsgId = streamingMessageIdByChat[chatId]
 
+        // Message ID validation: ignore events targeted at a different message
+        let isValidMessage = messageId.isEmpty || streamingMsgId == nil || messageId == streamingMsgId
+
         switch type {
-        case "status":
-            // Web search progress, knowledge search, etc.
+
+        // ── Status updates (web search progress, knowledge search, etc.) ──
+        case "status", "event:status":
             guard let statusEvent = SocketService.parseStatusEvent(from: data) else { return }
             if let msgId = streamingMsgId {
                 var messages = getStreamingMessages(chatId: chatId)
@@ -801,32 +945,96 @@ final class AppState {
                 }
             }
 
+        // ── Main streaming content via Socket.IO ──
         case "chat:completion":
-            // Streaming content via Socket.IO
-            if let done = data["done"] as? Bool, done {
-                socketStreamContinuation?.yield(.done)
-                socketStreamContinuation?.finish()
-                socketStreamContinuation = nil
-                return
-            }
-            if let content = data["content"] as? String, !content.isEmpty {
-                socketStreamContinuation?.yield(.content(content))
+            guard isValidMessage else { return }
+
+            // 1. Process usage statistics
+            if let usageData = data["usage"] as? [String: Any], !usageData.isEmpty {
+                if let msgId = streamingMsgId {
+                    var messages = getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                        var msg = messages[idx]
+                        msg.usage = TokenUsage(
+                            prompt_tokens: usageData["prompt_tokens"] as? Int,
+                            completion_tokens: usageData["completion_tokens"] as? Int,
+                            total_tokens: usageData["total_tokens"] as? Int
+                        )
+                        messages[idx] = msg
+                        setStreamingMessages(chatId: chatId, messages: messages)
+                    }
+                }
             }
 
-        case "message":
-            // Direct content append
-            if let content = data["content"] as? String {
-                socketStreamContinuation?.yield(.content(content))
+            // 2. Process sources/citations inline
+            if let rawSources = data["sources"] ?? data["citations"] {
+                if let sourcesArray = rawSources as? [[String: Any]] {
+                    for sourceData in sourcesArray {
+                        if let sourceRef = ChatSourceReference.fromSocketPayload(sourceData) {
+                            appendSource(sourceRef, toChatId: chatId, messageId: streamingMsgId)
+                        }
+                    }
+                }
             }
 
-        case "replace":
-            // Full content replacement
-            if let content = data["content"] as? String {
+            // 3. Process tool_calls (flat format)
+            if let toolCallsData = data["tool_calls"] as? [[String: Any]] {
+                for tcData in toolCallsData {
+                    let chunk = ToolCallChunk(
+                        index: tcData["index"] as? Int,
+                        id: tcData["id"] as? String,
+                        type: tcData["type"] as? String,
+                        function: {
+                            guard let fn = tcData["function"] as? [String: Any] else { return nil }
+                            return ToolCallFunction(
+                                name: fn["name"] as? String,
+                                arguments: fn["arguments"] as? String
+                            )
+                        }()
+                    )
+                    socketStreamContinuation?.yield(.toolCall(chunk))
+                }
+            }
+
+            // 4. Process choices (OpenAI-style streaming format — incremental deltas)
+            var hadChoicesContent = false
+            if let choices = data["choices"] as? [[String: Any]], let firstChoice = choices.first {
+                if let delta = firstChoice["delta"] as? [String: Any] {
+                    if let content = delta["content"] as? String, !content.isEmpty {
+                        socketStreamContinuation?.yield(.content(content))
+                        hadChoicesContent = true
+                    }
+                    if let toolCalls = delta["tool_calls"] as? [[String: Any]] {
+                        for tcData in toolCalls {
+                            let chunk = ToolCallChunk(
+                                index: tcData["index"] as? Int,
+                                id: tcData["id"] as? String,
+                                type: tcData["type"] as? String,
+                                function: {
+                                    guard let fn = tcData["function"] as? [String: Any] else { return nil }
+                                    return ToolCallFunction(
+                                        name: fn["name"] as? String,
+                                        arguments: fn["arguments"] as? String
+                                    )
+                                }()
+                            )
+                            socketStreamContinuation?.yield(.toolCall(chunk))
+                        }
+                        hadChoicesContent = true
+                    }
+                }
+            }
+
+            // 5. Process flat content — this is the FULL accumulated content from the server,
+            //    NOT an incremental delta. Replace (don't append) the message content.
+            //    Only process if choices didn't already provide content (avoid double-counting).
+            if !hadChoicesContent, let content = data["content"] as? String, !content.isEmpty {
+                // Replace the streaming content entirely (server sends full text so far)
                 streamingContentByChat[chatId] = content
                 if let msgId = streamingMsgId {
                     var messages = getStreamingMessages(chatId: chatId)
                     if let idx = messages.lastIndex(where: { $0.id == msgId }) {
-                        let msg = messages[idx]
+                        var msg = messages[idx]
                         var updated = ChatMessage(
                             id: msg.id,
                             role: msg.role,
@@ -836,17 +1044,296 @@ final class AppState {
                             parentId: msg.parentId,
                             childrenIds: msg.childrenIds
                         )
-                        updated.statusHistory = msg.statusHistory
                         updated.toolCalls = msg.toolCalls
-                        updated.toolCallId = msg.toolCallId
+                        updated.statusHistory = msg.statusHistory
+                        updated.sources = msg.sources
+                        updated.codeExecutions = msg.codeExecutions
+                        updated.followUps = msg.followUps
+                        updated.usage = msg.usage
+                        updated.messageError = msg.messageError
                         messages[idx] = updated
                         setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
             }
 
+            // 6. Check done LAST (after processing all data in this event)
+            if let done = data["done"] as? Bool, done {
+                socketStreamContinuation?.yield(.done)
+                socketStreamContinuation?.finish()
+                socketStreamContinuation = nil
+            }
+
+        // ── Incremental content append ──
+        case "message", "chat:message:delta", "event:message:delta":
+            guard isValidMessage else { return }
+            if let content = data["content"] as? String, !content.isEmpty {
+                socketStreamContinuation?.yield(.content(content))
+            }
+
+        // ── Full content replacement ──
+        case "replace", "chat:message":
+            guard isValidMessage else { return }
+            if let content = data["content"] as? String {
+                streamingContentByChat[chatId] = content
+                if let msgId = streamingMsgId {
+                    var messages = getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                        var msg = messages[idx]
+                        let updated = ChatMessage(
+                            id: msg.id,
+                            role: msg.role,
+                            content: content,
+                            model: msg.model,
+                            timestamp: msg.timestamp,
+                            parentId: msg.parentId,
+                            childrenIds: msg.childrenIds
+                        )
+                        msg = updated
+                        msg.statusHistory = messages[idx].statusHistory
+                        msg.toolCalls = messages[idx].toolCalls
+                        msg.toolCallId = messages[idx].toolCallId
+                        msg.sources = messages[idx].sources
+                        msg.usage = messages[idx].usage
+                        messages[idx] = msg
+                        setStreamingMessages(chatId: chatId, messages: messages)
+                    }
+                }
+            }
+
+        // ── Source / Citation events ──
+        case "source", "citation":
+            // Check if this is a code_execution sub-type
+            if let sourceType = data["type"] as? String, sourceType == "code_execution" {
+                if let codeExec = ChatCodeExecution.fromSocketPayload(data) {
+                    if let msgId = streamingMsgId {
+                        var messages = getStreamingMessages(chatId: chatId)
+                        if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                            var msg = messages[idx]
+                            var execs = msg.codeExecutions ?? []
+                            // Upsert by ID
+                            if let existingIdx = execs.firstIndex(where: { $0.id == codeExec.id }) {
+                                execs[existingIdx] = codeExec
+                            } else {
+                                execs.append(codeExec)
+                            }
+                            msg.codeExecutions = execs
+                            messages[idx] = msg
+                            setStreamingMessages(chatId: chatId, messages: messages)
+                        }
+                    }
+                }
+            } else {
+                if let sourceRef = ChatSourceReference.fromSocketPayload(data) {
+                    appendSource(sourceRef, toChatId: chatId, messageId: streamingMsgId)
+                }
+            }
+
+        // ── Error on assistant message — stop streaming ──
+        case "chat:message:error":
+            var errorContent = ""
+            if let err = data["error"] as? [String: Any] {
+                errorContent = err["content"] as? String ?? ""
+            } else if let err = data["error"] as? String {
+                errorContent = err
+            } else if let msg = data["message"] as? String {
+                errorContent = msg
+            }
+            if let msgId = streamingMsgId {
+                var messages = getStreamingMessages(chatId: chatId)
+                if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                    var msg = messages[idx]
+                    msg.messageError = ChatMessageError(content: errorContent.isEmpty ? nil : errorContent)
+                    // Remove incomplete knowledge_search statuses
+                    msg.statusHistory = msg.statusHistory?.filter { $0.action != "knowledge_search" || $0.done }
+                    messages[idx] = msg
+                    setStreamingMessages(chatId: chatId, messages: messages)
+                }
+            }
+            socketStreamContinuation?.yield(.done)
+            socketStreamContinuation?.finish()
+            socketStreamContinuation = nil
+
+        // ── Cancel all tasks ──
+        case "chat:tasks:cancel":
+            socketStreamContinuation?.yield(.done)
+            socketStreamContinuation?.finish()
+            socketStreamContinuation = nil
+
+        // ── Follow-up suggestions ──
+        case "chat:message:follow_ups":
+            if let followUpsRaw = data["follow_ups"] ?? data["followUps"] {
+                var suggestions: [String] = []
+                if let arr = followUpsRaw as? [Any] {
+                    suggestions = arr.compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                } else if let single = followUpsRaw as? String, !single.isEmpty {
+                    suggestions = [single.trimmingCharacters(in: .whitespacesAndNewlines)]
+                }
+                let targetId = streamingMsgId ?? messageId
+                if !targetId.isEmpty && !suggestions.isEmpty {
+                    var messages = getStreamingMessages(chatId: chatId)
+                    if let idx = messages.lastIndex(where: { $0.id == targetId }) {
+                        var msg = messages[idx]
+                        msg.followUps = suggestions
+                        messages[idx] = msg
+                        setStreamingMessages(chatId: chatId, messages: messages)
+                    }
+                }
+            }
+
+        // ── Real-time title update from server ──
+        case "chat:title":
+            if let title = data["title"] as? String ?? (data.isEmpty ? nil : "\(data)") as? String,
+               !title.isEmpty {
+                // Update the conversation title in the sidebar
+                if let idx = conversations.firstIndex(where: { $0.id == chatId }) {
+                    conversations[idx] = ChatListItem(
+                        id: conversations[idx].id,
+                        title: title,
+                        updated_at: conversations[idx].updated_at,
+                        created_at: conversations[idx].created_at,
+                        pinned: conversations[idx].pinned,
+                        folder_id: conversations[idx].folder_id
+                    )
+                }
+            }
+
+        // ── Server-sent notification ──
+        case "notification":
+            let notifType = data["type"] as? String ?? "info"
+            let content = data["content"] as? String ?? ""
+            if !content.isEmpty {
+                let style: ToastItem.Style = notifType == "error" ? .error : (notifType == "warning" || notifType == "warn") ? .warning : .success
+                toastManager.show(content, style: style)
+            }
+
+        // ── Execute tool event ──
+        case "execute:tool":
+            let name = data["name"] as? String ?? "tool"
+            let toolBlock = "\n<details type=\"tool_calls\" done=\"false\" name=\"\(name)\"><summary>Executing...</summary>\n</details>\n"
+            socketStreamContinuation?.yield(.content(toolBlock))
+
+        // ── File/image attachments from server ──
+        case "chat:message:files", "files", "event:tool":
+            // Extract files from the payload and attach to the message
+            if let msgId = streamingMsgId {
+                var messages = getStreamingMessages(chatId: chatId)
+                if let idx = messages.lastIndex(where: { $0.id == msgId }) {
+                    var msg = messages[idx]
+                    var currentFiles = msg.serverFiles ?? []
+                    // Extract from data["files"] or data itself
+                    let filesToAdd: [[String: Any]]
+                    if let f = data["files"] as? [[String: Any]] {
+                        filesToAdd = f
+                    } else if let f = data["result"] as? [[String: Any]] {
+                        filesToAdd = f
+                    } else {
+                        filesToAdd = []
+                    }
+                    currentFiles.append(contentsOf: filesToAdd)
+                    msg.serverFiles = currentFiles
+                    messages[idx] = msg
+                    setStreamingMessages(chatId: chatId, messages: messages)
+                }
+            }
+
+        // ── Confirmation dialog (ack-based) ──
+        case "confirmation":
+            guard let ack else { break }
+            let title = data["title"] as? String ?? "Confirm"
+            let message = data["message"] as? String ?? ""
+            let confirmText = data["confirm_text"] as? String ?? "Confirm"
+            let cancelText = data["cancel_text"] as? String ?? "Cancel"
+            pendingConfirmation = ToolConfirmationRequest(
+                title: title,
+                message: message,
+                confirmText: confirmText,
+                cancelText: cancelText,
+                ack: ack
+            )
+
+        // ── Text input dialog (ack-based) ──
+        case "input":
+            guard let ack else { break }
+            let title = data["title"] as? String ?? "Input Required"
+            let message = data["message"] as? String ?? ""
+            let placeholder = data["placeholder"] as? String ?? ""
+            let initialValue = data["value"] as? String ?? ""
+            let confirmText = data["confirm_text"] as? String ?? "Submit"
+            let cancelText = data["cancel_text"] as? String ?? "Cancel"
+            pendingInput = ToolInputRequest(
+                title: title,
+                message: message,
+                placeholder: placeholder,
+                initialValue: initialValue,
+                confirmText: confirmText,
+                cancelText: cancelText,
+                ack: ack
+            )
+
+        // ── Client-side execute request (not supported — return error via ack) ──
+        case "execute":
+            if let ack {
+                let description = data["description"] as? String
+                let errorMsg = (description?.isEmpty == false) ? description! : "Client-side execute events are not supported."
+                ack([["error": errorMsg]])
+                toastManager.show(errorMsg, style: .warning)
+            }
+
+        // ── Chat tags updated ──
+        case "chat:tags":
+            // Notification only — we don't currently track tags locally
+            break
+
         default:
             break
+        }
+    }
+
+    // MARK: - Socket Event Helpers
+
+    /// Append a source reference to the streaming message in a conversation.
+    private func appendSource(_ source: ChatSourceReference, toChatId chatId: String, messageId: String?) {
+        guard let msgId = messageId else { return }
+        var messages = getStreamingMessages(chatId: chatId)
+        guard let idx = messages.lastIndex(where: { $0.id == msgId }) else { return }
+        var msg = messages[idx]
+        var sources = msg.sources ?? []
+        // Deduplicate by ID
+        if !sources.contains(where: { $0.id == source.id }) {
+            sources.append(source)
+        }
+        msg.sources = sources
+        messages[idx] = msg
+        setStreamingMessages(chatId: chatId, messages: messages)
+    }
+
+    /// Mark any remaining `done == false` status entries as done.
+    /// Called as a safety net when streaming finishes, so spinners don't persist
+    /// if the server never sent the final `done: true` status event.
+    private func finalizeIncompleteStatuses(chatId: String, messageId: String) {
+        var messages = getStreamingMessages(chatId: chatId)
+        guard let idx = messages.lastIndex(where: { $0.id == messageId }) else { return }
+        var msg = messages[idx]
+        guard var history = msg.statusHistory, !history.isEmpty else { return }
+        var changed = false
+        for i in history.indices where !history[i].done {
+            history[i] = StatusEvent(
+                action: history[i].action,
+                description: history[i].description,
+                done: true,
+                error: history[i].error,
+                queries: history[i].queries,
+                urls: history[i].urls,
+                items: history[i].items
+            )
+            changed = true
+        }
+        if changed {
+            msg.statusHistory = history
+            messages[idx] = msg
+            setStreamingMessages(chatId: chatId, messages: messages)
         }
     }
 
@@ -980,7 +1467,9 @@ final class AppState {
             id: old.id,
             title: old.title,
             updated_at: Date().timeIntervalSince1970,
-            created_at: old.created_at
+            created_at: old.created_at,
+            pinned: old.pinned,
+            folder_id: old.folder_id
         )
         conversations.remove(at: idx)
         conversations.insert(updated, at: 0)
@@ -1017,11 +1506,14 @@ final class AppState {
 
         if isDemoMode {
             if let idx = conversations.firstIndex(where: { $0.id == id }) {
+                let old = conversations[idx]
                 conversations[idx] = ChatListItem(
                     id: id,
                     title: title,
-                    updated_at: conversations[idx].updated_at,
-                    created_at: conversations[idx].created_at
+                    updated_at: old.updated_at,
+                    created_at: old.created_at,
+                    pinned: old.pinned,
+                    folder_id: old.folder_id
                 )
             }
             return
@@ -1069,6 +1561,122 @@ final class AppState {
             await loadConversations()
         } catch {
             toastManager.show("Failed to delete conversation", style: .error)
+        }
+    }
+
+    // MARK: - Chat Context Menu Actions
+
+    /// Share a chat — creates a shareable link. Copies the share URL to clipboard.
+    func shareConversation(_ id: String) async {
+        guard let client else { return }
+        do {
+            let response = try await client.shareChat(id: id)
+            if let shareId = response.share_id {
+                let shareURL = "\(client.baseURL)/s/\(shareId)"
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(shareURL, forType: .string)
+                toastManager.show("Share link copied to clipboard", style: .success)
+            }
+        } catch {
+            toastManager.show("Failed to share: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Clone (duplicate) a chat.
+    func cloneConversation(_ id: String) async {
+        guard let client else { return }
+        do {
+            let cloned = try await client.cloneChat(id: id)
+            await loadConversations(silent: true)
+            // Navigate to the cloned chat
+            suppressConversationSelection = true
+            selectedConversationID = cloned.id
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                suppressConversationSelection = false
+            }
+            await loadChatMessages(cloned.id)
+            toastManager.show("Chat cloned", style: .success)
+        } catch {
+            toastManager.show("Failed to clone: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Toggle pin status for a chat.
+    func togglePinConversation(_ id: String) async {
+        guard let client else { return }
+        do {
+            let response = try await client.toggleChatPinned(id: id)
+            let isPinned = response.pinned ?? false
+            // Update local state
+            if let idx = conversations.firstIndex(where: { $0.id == id }) {
+                conversations[idx].pinned = isPinned
+            }
+            toastManager.show(isPinned ? "Chat pinned" : "Chat unpinned", style: .success)
+        } catch {
+            toastManager.show("Failed to toggle pin: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Toggle archive status for a chat. Archived chats are removed from the sidebar.
+    func archiveConversation(_ id: String) async {
+        guard let client else { return }
+        do {
+            _ = try await client.toggleChatArchived(id: id)
+            // Remove from sidebar (archived chats don't show in main list)
+            conversations.removeAll { $0.id == id }
+            if selectedConversationID == id {
+                selectedConversationID = nil
+                chatMessages = []
+            }
+            messageCache.removeValue(forKey: id)
+            toastManager.show("Chat archived", style: .success)
+        } catch {
+            toastManager.show("Failed to archive: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Download/export a chat as JSON. Opens a save panel.
+    func downloadConversation(_ id: String) async {
+        guard let client else { return }
+        do {
+            let chat = try await client.getChat(id: id)
+            let data = try JSONEncoder().encode([chat])
+
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = "chat-export-\(id).json"
+            panel.allowedContentTypes = [.json]
+            panel.canCreateDirectories = true
+
+            let result = await panel.begin()
+            if result == .OK, let url = panel.url {
+                try data.write(to: url)
+                toastManager.show("Chat exported", style: .success)
+            }
+        } catch {
+            toastManager.show("Failed to export: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Move a chat to a folder.
+    func moveConversation(_ id: String, toFolder folderId: String?) async {
+        guard let client else { return }
+        do {
+            _ = try await client.moveChatToFolder(id: id, folderId: folderId)
+            await loadConversations(silent: true)
+            toastManager.show("Chat moved", style: .success)
+        } catch {
+            toastManager.show("Failed to move: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Load available folders for the Move submenu.
+    func loadFolders() async -> [ChatFolder] {
+        guard let client else { return [] }
+        do {
+            return try await client.listFolders()
+        } catch {
+            return []
         }
     }
 
@@ -1288,17 +1896,36 @@ final class AppState {
 
         let webSearchEnabled = isWebSearchEnabled
 
+        // Capture Socket.IO session ID so the server routes events through the socket
+        // instead of SSE. This is critical for native tool calling — the server sends
+        // tool execution status and the follow-up model response via Socket.IO events.
+        let socketSessionId = socketService.isConnected ? socketService.sessionId : nil
+
         // Wrap streaming in a cancellable task — runs in background even if user switches chats
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let fileRefs = uploadedFileRefs.isEmpty ? nil : uploadedFileRefs
+
+                // When Socket.IO is connected, pass sessionId and chatId so the server
+                // streams via Socket.IO events. This enables multi-phase tool call flows
+                // where the server executes tools and re-invokes the model.
+                let continuationRef = socketSessionId != nil ? SocketStreamContinuationRef() : nil
                 let stream = await client.streamChat(
                     model: model.id,
                     messages: completionMsgs,
                     files: fileRefs,
-                    webSearch: webSearchEnabled
+                    webSearch: webSearchEnabled,
+                    sessionId: socketSessionId,
+                    chatId: socketSessionId != nil ? chatId : nil,
+                    messageId: assistantId,
+                    parentId: userMsg.id,
+                    socketContinuationRef: continuationRef
                 )
+                // Wire the Socket.IO continuation after streamChat populates it
+                if let ref = continuationRef {
+                    self.socketStreamContinuation = ref.continuation
+                }
                 var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
                 for try await delta in stream {
@@ -1315,7 +1942,8 @@ final class AppState {
                         if let args = tc.function?.arguments { entry.arguments += args }
                         toolCallAccumulator[idx] = entry
                     case .done:
-                        break
+                        // Reset accumulator between phases (tool call → final response)
+                        toolCallAccumulator.removeAll()
                     }
 
                     let currentContent = self.streamingContentByChat[chatId] ?? ""
@@ -1354,6 +1982,11 @@ final class AppState {
                             updated.toolCalls = completedToolCalls
                         }
                         updated.statusHistory = messages[idx].statusHistory
+                        updated.sources = messages[idx].sources
+                        updated.codeExecutions = messages[idx].codeExecutions
+                        updated.followUps = messages[idx].followUps
+                        updated.usage = messages[idx].usage
+                        updated.messageError = messages[idx].messageError
                         messages[idx] = updated
                         self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
@@ -1374,6 +2007,9 @@ final class AppState {
                         self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
+
+                // Mark any incomplete status entries as done (safety net)
+                self.finalizeIncompleteStatuses(chatId: chatId, messageId: assistantId)
             } catch {
                 if !Task.isCancelled {
                     self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
@@ -1384,7 +2020,20 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            // ── Step 3: Save final state to server ──
+            // ── Notify server that streaming completed (triggers filters, follow-ups, etc.) ──
+            let completedMessages = self.getStreamingMessages(chatId: chatId)
+            let simplifiedMsgs = completedMessages.suffix(2).map {
+                ["role": $0.role, "content": $0.content, "id": $0.id]
+            }
+            await client.sendChatCompleted(
+                chatId: chatId,
+                messageId: assistantId,
+                messages: simplifiedMsgs,
+                model: model.id,
+                sessionId: socketSessionId ?? UUID().uuidString
+            )
+
+            // ── Save final state to server ──
             let finalMessages = self.getStreamingMessages(chatId: chatId)
             self.messageCache[chatId] = finalMessages
 
@@ -1458,7 +2107,14 @@ final class AppState {
                 files: msg.files,
                 toolCalls: msg.toolCalls,
                 toolCallId: msg.toolCallId,
-                statusHistory: msg.statusHistory?.map { StatusEventCodable(from: $0) }
+                statusHistory: msg.statusHistory?.map { StatusEventCodable(from: $0) },
+                sources: msg.sources,
+                codeExecutions: msg.codeExecutions,
+                followUps: msg.followUps,
+                usage: msg.usage,
+                messageError: msg.messageError,
+                done: msg.role == "assistant" ? true : nil,
+                modelIdx: msg.role == "assistant" ? 0 : nil
             )
             historyDict[msg.id] = blobMsg
             flatMessages.append(blobMsg)
@@ -1478,7 +2134,14 @@ final class AppState {
                 files: nil,
                 toolCalls: nil,
                 toolCallId: nil,
-                statusHistory: nil
+                statusHistory: nil,
+                sources: nil,
+                codeExecutions: nil,
+                followUps: nil,
+                usage: nil,
+                messageError: nil,
+                done: false,
+                modelIdx: 0
             )
             historyDict[aId] = placeholder
             flatMessages.append(placeholder)
@@ -1497,7 +2160,14 @@ final class AppState {
                     files: entry.files,
                     toolCalls: entry.toolCalls,
                     toolCallId: entry.toolCallId,
-                    statusHistory: entry.statusHistory
+                    statusHistory: entry.statusHistory,
+                    sources: entry.sources,
+                    codeExecutions: entry.codeExecutions,
+                    followUps: entry.followUps,
+                    usage: entry.usage,
+                    messageError: entry.messageError,
+                    done: entry.done,
+                    modelIdx: entry.modelIdx
                 )
                 historyDict[lastMsg.id] = updated
             }
@@ -1506,7 +2176,11 @@ final class AppState {
         let currentId = flatMessages.last?.id
         let history = ChatBlobHistory(messages: historyDict, currentId: currentId)
 
-        return ChatBlob(title: title, history: history, messages: flatMessages)
+        // Collect unique model IDs from assistant messages
+        let modelIds = Array(Set(chatMessages.compactMap { $0.role == "assistant" ? $0.model : nil }))
+
+        return ChatBlob(title: title, history: history, messages: flatMessages,
+                        models: modelIds.isEmpty ? nil : modelIds)
     }
 
     // MARK: - Edit Message
@@ -1555,19 +2229,30 @@ final class AppState {
             chatMessages.append(assistantMsg)
             messageCache[chatId] = chatMessages
             streamingMessageIdByChat[chatId] = assistantId
+            bumpConversationToTop(chatId: chatId)
 
             let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
             let webSearchEnabled = isWebSearchEnabled
+            let editSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
 
             let task = Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
+                    let editContinuationRef = editSocketSessionId != nil ? SocketStreamContinuationRef() : nil
                     let stream = await client.streamChat(
                         model: model.id,
                         messages: completionMsgs,
                         files: nil,
-                        webSearch: webSearchEnabled
+                        webSearch: webSearchEnabled,
+                        sessionId: editSocketSessionId,
+                        chatId: editSocketSessionId != nil ? chatId : nil,
+                        messageId: assistantId,
+                        parentId: parentMsgId,
+                        socketContinuationRef: editContinuationRef
                     )
+                    if let ref = editContinuationRef {
+                        self.socketStreamContinuation = ref.continuation
+                    }
                     var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
                     for try await delta in stream {
@@ -1584,7 +2269,8 @@ final class AppState {
                             if let args = tc.function?.arguments { entry.arguments += args }
                             toolCallAccumulator[tcIdx] = entry
                         case .done:
-                            break
+                            // Reset accumulator between phases (tool call → final response)
+                            toolCallAccumulator.removeAll()
                         }
 
                         let currentContent = self.streamingContentByChat[chatId] ?? ""
@@ -1614,6 +2300,11 @@ final class AppState {
                             )
                             if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
                             updated.statusHistory = messages[mIdx].statusHistory
+                            updated.sources = messages[mIdx].sources
+                            updated.codeExecutions = messages[mIdx].codeExecutions
+                            updated.followUps = messages[mIdx].followUps
+                            updated.usage = messages[mIdx].usage
+                            updated.messageError = messages[mIdx].messageError
                             messages[mIdx] = updated
                             self.setStreamingMessages(chatId: chatId, messages: messages)
                         }
@@ -1631,6 +2322,9 @@ final class AppState {
                             self.setStreamingMessages(chatId: chatId, messages: messages)
                         }
                     }
+
+                    // Mark any incomplete status entries as done (safety net)
+                    self.finalizeIncompleteStatuses(chatId: chatId, messageId: assistantId)
                 } catch {
                     if !Task.isCancelled {
                         self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
@@ -1638,6 +2332,20 @@ final class AppState {
                 }
 
                 self.endStreaming(chatId: chatId)
+                self.socketStreamContinuation = nil
+
+                // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+                let completedMessages = self.getStreamingMessages(chatId: chatId)
+                let simplifiedMsgs = completedMessages.suffix(2).map {
+                    ["role": $0.role, "content": $0.content, "id": $0.id]
+                }
+                await client.sendChatCompleted(
+                    chatId: chatId,
+                    messageId: assistantId,
+                    messages: simplifiedMsgs,
+                    model: model.id,
+                    sessionId: editSocketSessionId ?? UUID().uuidString
+                )
 
                 // Save to server and refresh sidebar
                 let finalMessages = self.messageCache[chatId] ?? []
@@ -1696,19 +2404,30 @@ final class AppState {
         chatMessages.append(assistantMsg)
         messageCache[chatId] = chatMessages
         streamingMessageIdByChat[chatId] = assistantId
+        bumpConversationToTop(chatId: chatId)
 
         let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
         let webSearchEnabled = isWebSearchEnabled
+        let regenSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
+                let regenContinuationRef = regenSocketSessionId != nil ? SocketStreamContinuationRef() : nil
                 let stream = await client.streamChat(
                     model: model.id,
                     messages: completionMsgs,
                     files: nil,
-                    webSearch: webSearchEnabled
+                    webSearch: webSearchEnabled,
+                    sessionId: regenSocketSessionId,
+                    chatId: regenSocketSessionId != nil ? chatId : nil,
+                    messageId: assistantId,
+                    parentId: parentMsgId,
+                    socketContinuationRef: regenContinuationRef
                 )
+                if let ref = regenContinuationRef {
+                    self.socketStreamContinuation = ref.continuation
+                }
                 var toolCallAccumulator: [Int: (id: String, type: String, name: String, arguments: String)] = [:]
 
                 for try await delta in stream {
@@ -1725,7 +2444,8 @@ final class AppState {
                         if let args = tc.function?.arguments { entry.arguments += args }
                         toolCallAccumulator[tcIdx] = entry
                     case .done:
-                        break
+                        // Reset accumulator between phases (tool call → final response)
+                        toolCallAccumulator.removeAll()
                     }
 
                     let currentContent = self.streamingContentByChat[chatId] ?? ""
@@ -1755,6 +2475,11 @@ final class AppState {
                         )
                         if !completedToolCalls.isEmpty { updated.toolCalls = completedToolCalls }
                         updated.statusHistory = messages[mIdx].statusHistory
+                        updated.sources = messages[mIdx].sources
+                        updated.codeExecutions = messages[mIdx].codeExecutions
+                        updated.followUps = messages[mIdx].followUps
+                        updated.usage = messages[mIdx].usage
+                        updated.messageError = messages[mIdx].messageError
                         messages[mIdx] = updated
                         self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
@@ -1772,6 +2497,9 @@ final class AppState {
                         self.setStreamingMessages(chatId: chatId, messages: messages)
                     }
                 }
+
+                // Mark any incomplete status entries as done (safety net)
+                self.finalizeIncompleteStatuses(chatId: chatId, messageId: assistantId)
             } catch {
                 if !Task.isCancelled {
                     self.toastManager.show("Stream error: \(error.localizedDescription)", style: .error)
@@ -1779,6 +2507,20 @@ final class AppState {
             }
 
             self.endStreaming(chatId: chatId)
+            self.socketStreamContinuation = nil
+
+            // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+            let completedMessages = self.getStreamingMessages(chatId: chatId)
+            let simplifiedMsgs = completedMessages.suffix(2).map {
+                ["role": $0.role, "content": $0.content, "id": $0.id]
+            }
+            await client.sendChatCompleted(
+                chatId: chatId,
+                messageId: assistantId,
+                messages: simplifiedMsgs,
+                model: model.id,
+                sessionId: regenSocketSessionId ?? UUID().uuidString
+            )
 
             let finalMessages = self.messageCache[chatId] ?? []
             let fallbackTitle = finalMessages.first(where: { $0.role == "user" })

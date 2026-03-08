@@ -13,6 +13,7 @@ struct MessageBubbleView: View {
     var onRegenerate: ((String) -> Void)?                // (messageId)
     var onSpeak: ((String, String) -> Void)?             // (content, messageId)
     var onStopSpeaking: (() -> Void)?
+    var onFollowUp: ((String) -> Void)?                  // (followUpText) — send as new message
     var isSpeakingThis: Bool = false
 
     @State private var isEditing = false
@@ -216,12 +217,24 @@ struct MessageBubbleView: View {
                     }
                 }
 
+                // Code execution results (from Socket.IO execute:tool events)
+                if let codeExecs = message.codeExecutions, !codeExecs.isEmpty {
+                    ForEach(codeExecs, id: \.id) { exec in
+                        CodeExecutionView(execution: exec)
+                    }
+                }
+
                 // Reasoning/thinking blocks (parsed from content)
                 let parsed = parseReasoningBlocks(strippedContent)
                 if !parsed.reasoning.isEmpty {
                     ForEach(Array(parsed.reasoning.enumerated()), id: \.offset) { _, block in
                         ReasoningBlockView(block: block, isStreaming: isStreaming)
                     }
+                }
+
+                // Error display (from chat:message:error events)
+                if let error = message.messageError, let errorContent = error.content, !errorContent.isEmpty {
+                    MessageErrorBanner(content: errorContent)
                 }
 
                 // Message content (with reasoning and tool call HTML stripped)
@@ -236,7 +249,12 @@ struct MessageBubbleView: View {
                     }
                     .padding(.top, 4)
                 } else if !parsed.visibleContent.isEmpty {
-                    MarkdownTextView(content: parsed.visibleContent)
+                    MarkdownTextView(content: parsed.visibleContent, sources: message.sources)
+                }
+
+                // Sources / citations (from Socket.IO source events)
+                if let sources = message.sources, !sources.isEmpty {
+                    SourcesView(sources: sources)
                 }
 
                 // Action buttons (copy, regenerate, play)
@@ -261,8 +279,23 @@ struct MessageBubbleView: View {
                                 onRegenerate?(message.id)
                             }
                         }
+
+                        // Token usage (subtle inline display)
+                        if let usage = message.usage, let total = usage.total_tokens, total > 0 {
+                            Text("\(total) tokens")
+                                .font(.system(size: 10))
+                                .foregroundStyle(AppColors.textTertiary.opacity(0.7))
+                                .padding(.leading, 4)
+                        }
                     }
                     .padding(.top, 4)
+                }
+
+                // Follow-up suggestions (tappable chips)
+                if let followUps = message.followUps, !followUps.isEmpty, isLastAssistant, !isStreaming {
+                    FollowUpChipsView(suggestions: followUps) { text in
+                        onFollowUp?(text)
+                    }
                 }
             }
             .contextMenu {
@@ -815,5 +848,262 @@ private struct CopyButton: View {
         }
         .buttonStyle(.plain)
         .help("Copy message")
+    }
+}
+
+// MARK: - Sources / Citations View
+
+private struct SourcesView: View {
+    let sources: [ChatSourceReference]
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 11))
+                    Text("\(sources.count) source\(sources.count == 1 ? "" : "s")")
+                        .font(.system(size: 11, weight: .medium))
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9))
+                }
+                .foregroundStyle(AppColors.accentBlue)
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(sources, id: \.id) { source in
+                        sourceRow(source)
+                    }
+                }
+                .padding(.leading, 4)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    @ViewBuilder
+    private func sourceRow(_ source: ChatSourceReference) -> some View {
+        if let urlString = source.url, let url = URL(string: urlString) {
+            Link(destination: url) {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "link")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppColors.accentBlue)
+                        .padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(source.title ?? url.host ?? urlString)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(AppColors.accentBlue)
+                            .lineLimit(1)
+                        if let snippet = source.snippet {
+                            Text(snippet)
+                                .font(.system(size: 10))
+                                .foregroundStyle(AppColors.textTertiary)
+                                .lineLimit(2)
+                        }
+                    }
+                }
+                .padding(6)
+                .background(AppColors.fileAttachmentBg.opacity(0.6))
+                .cornerRadius(6)
+            }
+        } else {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppColors.textTertiary)
+                    .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(source.title ?? "Source")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.textPrimary)
+                        .lineLimit(1)
+                    if let snippet = source.snippet {
+                        Text(snippet)
+                            .font(.system(size: 10))
+                            .foregroundStyle(AppColors.textTertiary)
+                            .lineLimit(2)
+                    }
+                }
+            }
+            .padding(6)
+            .background(AppColors.fileAttachmentBg.opacity(0.6))
+            .cornerRadius(6)
+        }
+    }
+}
+
+// MARK: - Message Error Banner
+
+private struct MessageErrorBanner: View {
+    let content: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(AppColors.red500)
+            Text(content)
+                .font(.system(size: 12))
+                .foregroundStyle(AppColors.red500)
+                .textSelection(.enabled)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColors.red500.opacity(0.1))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(AppColors.red500.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Code Execution View
+
+private struct CodeExecutionView: View {
+    let execution: ChatCodeExecution
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 11))
+                        .foregroundStyle(statusColor)
+                    Text(execution.name ?? "Code Execution")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.textSecondary)
+                    if let lang = execution.language {
+                        Text("(\(lang))")
+                            .font(.system(size: 10))
+                            .foregroundStyle(AppColors.textTertiary)
+                    }
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundStyle(AppColors.textTertiary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    // Code block
+                    if let code = execution.code, !code.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("CODE")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(AppColors.textTertiary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                Text(code)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(AppColors.textPrimary)
+                                    .textSelection(.enabled)
+                            }
+                            .padding(6)
+                            .background(AppColors.codeBlockBg)
+                            .cornerRadius(4)
+                        }
+                    }
+
+                    // Output
+                    if let result = execution.result {
+                        if let output = result.output, !output.isEmpty {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("OUTPUT")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(AppColors.textTertiary)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    Text(output)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(AppColors.emerald600)
+                                        .textSelection(.enabled)
+                                }
+                                .padding(6)
+                                .background(AppColors.codeBlockBg)
+                                .cornerRadius(4)
+                            }
+                        }
+
+                        if let error = result.error, !error.isEmpty {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("ERROR")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(AppColors.red500)
+                                Text(error)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(AppColors.red500)
+                                    .textSelection(.enabled)
+                                    .padding(6)
+                                    .background(AppColors.red500.opacity(0.08))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+                .transition(.opacity)
+            }
+        }
+        .background(AppColors.fileAttachmentBg.opacity(0.8))
+        .cornerRadius(8)
+    }
+
+    private var statusIcon: String {
+        if execution.result?.error != nil { return "xmark.circle.fill" }
+        if execution.result != nil { return "checkmark.circle.fill" }
+        return "gearshape.fill"
+    }
+
+    private var statusColor: Color {
+        if execution.result?.error != nil { return AppColors.red500 }
+        if execution.result != nil { return AppColors.emerald600 }
+        return AppColors.textTertiary
+    }
+}
+
+// MARK: - Follow-Up Chips View
+
+private struct FollowUpChipsView: View {
+    let suggestions: [String]
+    let onTap: (String) -> Void
+
+    var body: some View {
+        FlowLayout(spacing: 6) {
+            ForEach(suggestions, id: \.self) { suggestion in
+                Button {
+                    onTap(suggestion)
+                } label: {
+                    Text(suggestion)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.accentBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(AppColors.accentBlue.opacity(0.1))
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(AppColors.accentBlue.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 4)
     }
 }

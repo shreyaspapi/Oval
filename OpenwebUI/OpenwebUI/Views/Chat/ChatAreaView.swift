@@ -50,6 +50,38 @@ struct ChatAreaView: View {
             handleDrop(providers)
             return true
         }
+        // Server tool confirmation dialog (ack-based)
+        .alert(
+            appState.pendingConfirmation?.title ?? "Confirm",
+            isPresented: Binding(
+                get: { appState.pendingConfirmation != nil },
+                set: { if !$0 { appState.pendingConfirmation = nil } }
+            )
+        ) {
+            Button(appState.pendingConfirmation?.cancelText ?? "Cancel", role: .cancel) {
+                appState.pendingConfirmation?.ack([false])
+                appState.pendingConfirmation = nil
+            }
+            Button(appState.pendingConfirmation?.confirmText ?? "Confirm") {
+                appState.pendingConfirmation?.ack([true])
+                appState.pendingConfirmation = nil
+            }
+        } message: {
+            if let msg = appState.pendingConfirmation?.message, !msg.isEmpty {
+                Text(msg)
+            }
+        }
+        // Server tool text input dialog (ack-based)
+        .sheet(item: $appState.pendingInput) { request in
+            ToolInputSheet(request: request) { result in
+                if let text = result {
+                    request.ack([text])
+                } else {
+                    request.ack([NSNull()])
+                }
+                appState.pendingInput = nil
+            }
+        }
     }
 
     // MARK: - Drag & Drop
@@ -136,5 +168,64 @@ private struct WelcomeView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Tool Input Sheet
+
+/// A sheet presented when a server tool requests text input via Socket.IO ack.
+private struct ToolInputSheet: View {
+    let request: AppState.ToolInputRequest
+    let onComplete: (String?) -> Void
+
+    @State private var text: String = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(request.title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+
+            if !request.message.isEmpty {
+                Text(request.message)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            TextField(
+                request.placeholder.isEmpty ? "Enter a value" : request.placeholder,
+                text: $text
+            )
+            .textFieldStyle(.roundedBorder)
+            .onSubmit {
+                submit()
+            }
+
+            HStack {
+                Spacer()
+                Button(request.cancelText) {
+                    onComplete(nil)
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button(request.confirmText) {
+                    submit()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 400)
+        .onAppear {
+            text = request.initialValue
+        }
+    }
+
+    private func submit() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        onComplete(trimmed.isEmpty ? nil : trimmed)
+        dismiss()
     }
 }
