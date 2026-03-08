@@ -5,6 +5,30 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.5.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.5.0</h2>
+                <ul>
+                    <li><strong>Tool calls & streaming fixes</strong> — Full Socket.IO event handling (18+ event types) matching Conduit feature parity. Tool confirmation/input dialogs, code execution results, follow-up chips.</li>
+                    <li><strong>Clickable citations</strong> — Citation references [1], [2] are now clickable with source URL links and domain labels.</li>
+                    <li><strong>Status indicators</strong> — Real-time status updates during tool execution (searching, generating, etc.) with proper SwiftUI diffing.</li>
+                    <li><strong>Content duplication fix</strong> — Fixed bug where flat chat:completion content was appended instead of replaced, causing doubled text.</li>
+                    <li><strong>Sources panel</strong> — Collapsible sources/citations view below messages.</li>
+                    <li><strong>Stream resilience</strong> — 90-second watchdog timer, reconnection recovery, chat completed API call.</li>
+                    <li><strong>Developer ID signed</strong> — App is now properly signed with Developer ID and notarized for seamless updates.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Mar 2026 02:00:00 +0000</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.5.0/Oval-1.5.0.dmg"
+                sparkle:edSignature="cfQt2UKEX6LhYT2LcBEUZHv9RyHDO9lm/IQV9hCjBk3hoBa3OAWNJobZfdWD8P0mHTlgfgu0tsM1JqGGjK4cDg=="
+                length="35680707"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.4.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.4.0</h2>
