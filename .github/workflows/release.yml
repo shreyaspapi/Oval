@@ -60,6 +60,11 @@ jobs:
           # Add keychain to the search list
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
 
+      - name: Install Git LFS
+        run: |
+          brew install git-lfs
+          git lfs install
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
