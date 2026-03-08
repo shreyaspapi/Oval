@@ -1,0 +1,223 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  SCHEME: OpenwebUI
+  PROJECT: OpenwebUI/OpenwebUI.xcodeproj
+  APP_NAME: Oval
+  BUNDLE_ID: com.shreyas.oval
+
+jobs:
+  build-sign-release:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install the Developer ID certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create a temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the Developer ID Application certificate
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Allow codesign to access the keychain
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add keychain to the search list
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm"
+
+      - name: Build for release
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
+            -destination 'generic/platform=macOS' \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.TEAM_ID }}" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp" \
+            MARKETING_VERSION="${{ steps.version.outputs.VERSION }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+
+      - name: Export the app
+        run: |
+          cat > "$RUNNER_TEMP/export.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>teamID</key>
+            <string>${{ secrets.TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Developer ID Application</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export"
+
+      - name: Notarize the app
+        env:
+          APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          APP_PATH="$RUNNER_TEMP/export/$APP_NAME.app"
+
+          # Create a ZIP for notarization submission
+          ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/$APP_NAME.zip"
+
+          # Submit for notarization and wait
+          xcrun notarytool submit "$RUNNER_TEMP/$APP_NAME.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait --timeout 600
+
+          # Staple the notarization ticket to the app
+          xcrun stapler staple "$APP_PATH"
+
+      - name: Create DMG
+        run: |
+          APP_PATH="$RUNNER_TEMP/export/$APP_NAME.app"
+          DMG_NAME="$APP_NAME-${{ steps.version.outputs.VERSION }}.dmg"
+          DMG_PATH="$RUNNER_TEMP/$DMG_NAME"
+
+          # Create a nice DMG with Applications symlink
+          DMG_STAGING="$RUNNER_TEMP/dmg-staging"
+          mkdir -p "$DMG_STAGING"
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+          ln -s /Applications "$DMG_STAGING/Applications"
+
+          hdiutil create -volname "$APP_NAME" \
+            -srcfolder "$DMG_STAGING" \
+            -ov -format UDZO \
+            "$DMG_PATH"
+
+          # Notarize the DMG as well
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "${{ secrets.NOTARIZE_APPLE_ID }}" \
+            --password "${{ secrets.NOTARIZE_PASSWORD }}" \
+            --team-id "${{ secrets.TEAM_ID }}" \
+            --wait --timeout 600
+
+          xcrun stapler staple "$DMG_PATH"
+
+          echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
+          echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_ENV"
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          # Extract section between ## [VERSION] and the next ## [
+          NOTES=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release $APP_NAME v$VERSION"
+          fi
+          # Write to file to preserve multiline
+          echo "$NOTES" > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "$DMG_PATH" \
+            --title "$APP_NAME v${{ steps.version.outputs.VERSION }}" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Update appcast.xml for Sparkle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DMG_SIZE=$(stat -f%z "$DMG_PATH")
+          DATE=$(date -R)
+          DMG_URL="https://github.com/shreyaspapi/Oval/releases/download/v${VERSION}/${DMG_NAME}"
+
+          # Generate EdDSA signature if key is available
+          SIGNATURE=""
+          if [ -n "${{ secrets.SPARKLE_EDDSA_KEY }}" ]; then
+            echo "${{ secrets.SPARKLE_EDDSA_KEY }}" > "$RUNNER_TEMP/sparkle_key"
+            SIGNATURE=$(./bin/sign_update "$DMG_PATH" -f "$RUNNER_TEMP/sparkle_key" 2>/dev/null || echo "")
+            rm -f "$RUNNER_TEMP/sparkle_key"
+          fi
+
+          # Build the enclosure attributes
+          ENCLOSURE="url=\"$DMG_URL\" sparkle:version=\"${{ github.run_number }}\" sparkle:shortVersionString=\"$VERSION\" length=\"$DMG_SIZE\" type=\"application/octet-stream\""
+          if [ -n "$SIGNATURE" ]; then
+            ENCLOSURE="$ENCLOSURE sparkle:edSignature=\"$SIGNATURE\""
+          fi
+
+          # Update appcast.xml — insert new item after <channel>
+          ITEM="\\
+            <item>\\
+              <title>Version $VERSION</title>\\
+              <pubDate>$DATE</pubDate>\\
+              <enclosure $ENCLOSURE />\\
+            </item>"
+
+          sed -i '' "/<channel>/a\\
+          $ITEM" appcast.xml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "Update appcast.xml for v$VERSION" || true
+          git push origin HEAD:main || true
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true

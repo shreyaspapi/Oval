@@ -10,12 +10,14 @@ struct ToastItem: Identifiable, Equatable {
         case success
         case error
         case info
+        case warning
 
         var iconName: String {
             switch self {
             case .success: return "checkmark.circle.fill"
             case .error: return "xmark.circle.fill"
             case .info: return "info.circle.fill"
+            case .warning: return "exclamationmark.triangle.fill"
             }
         }
 
@@ -24,6 +26,7 @@ struct ToastItem: Identifiable, Equatable {
             case .success: return AppColors.green400
             case .error: return AppColors.red500
             case .info: return AppColors.textSecondary
+            case .warning: return .orange
             }
         }
     }

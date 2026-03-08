@@ -3,6 +3,12 @@ import os.log
 
 private nonisolated(unsafe) let clientLog = Logger(subsystem: "com.oval.app", category: "client")
 
+/// Thread-safe reference wrapper for passing the Socket.IO stream continuation
+/// from inside `streamChat` back to the caller (AppState).
+final class SocketStreamContinuationRef: @unchecked Sendable {
+    var continuation: AsyncThrowingStream<OpenWebUIClient.StreamDelta, Error>.Continuation?
+}
+
 /// HTTP client for the Open WebUI API.
 /// Handles auth, models, chats, and streaming chat completions.
 actor OpenWebUIClient {
@@ -158,6 +164,53 @@ actor OpenWebUIClient {
         _ = try await URLSession.shared.data(for: req)
     }
 
+    // MARK: - Chat Actions
+
+    /// Share a chat — creates or updates a shared copy. Returns the chat with `share_id` set.
+    func shareChat(id: String) async throws -> ChatResponse {
+        try await post("/api/v1/chats/\(id)/share", body: EmptyBody())
+    }
+
+    /// Remove sharing for a chat.
+    func unshareChat(id: String) async throws {
+        guard let url = URL(string: "\(baseURL)/api/v1/chats/\(id)/share") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.allHTTPHeaderFields = authHeader
+        _ = try await URLSession.shared.data(for: req)
+    }
+
+    /// Clone a chat. Returns the newly created clone.
+    func cloneChat(id: String) async throws -> ChatResponse {
+        try await post("/api/v1/chats/\(id)/clone", body: EmptyBody())
+    }
+
+    /// Toggle pin status for a chat.
+    func toggleChatPinned(id: String) async throws -> ChatResponse {
+        try await post("/api/v1/chats/\(id)/pin", body: EmptyBody())
+    }
+
+    /// Toggle archive status for a chat.
+    func toggleChatArchived(id: String) async throws -> ChatResponse {
+        try await post("/api/v1/chats/\(id)/archive", body: EmptyBody())
+    }
+
+    /// List pinned chats.
+    func listPinnedChats() async throws -> [ChatListItem] {
+        try await get("/api/v1/chats/pinned")
+    }
+
+    /// Move a chat to a folder (or remove from folder if folderId is nil).
+    func moveChatToFolder(id: String, folderId: String?) async throws -> ChatResponse {
+        let body = MoveChatToFolderRequest(folder_id: folderId)
+        return try await post("/api/v1/chats/\(id)/folder", body: body)
+    }
+
+    /// List all folders for the current user.
+    func listFolders() async throws -> [ChatFolder] {
+        try await get("/api/v1/folders/")
+    }
+
     // MARK: - File Upload
 
     /// Upload a file to the server. Returns a FileUploadResponse with the server-side file ID.
@@ -209,6 +262,9 @@ actor OpenWebUIClient {
     /// When `sessionId` and `chatId` are provided, the server routes events through
     /// Socket.IO instead of SSE. The HTTP response is just `{"status": true}` and
     /// all actual content arrives via the Socket.IO "events" channel.
+    ///
+    /// - Parameter socketContinuationRef: When using Socket.IO, this reference is populated
+    ///   with the stream continuation so the caller can wire it to the Socket.IO event handler.
     func streamChat(
         model: String,
         messages: [CompletionMessage],
@@ -216,12 +272,22 @@ actor OpenWebUIClient {
         files: [CompletionFileRef]? = nil,
         webSearch: Bool = false,
         sessionId: String? = nil,
-        chatId: String? = nil
+        chatId: String? = nil,
+        messageId: String? = nil,
+        parentId: String? = nil,
+        socketContinuationRef: SocketStreamContinuationRef? = nil
     ) -> AsyncThrowingStream<StreamDelta, Error> {
         let urlString = "\(baseURL)/api/chat/completions"
         let key = apiKey
 
         return AsyncThrowingStream { continuation in
+            // For Socket.IO path: set the continuation SYNCHRONOUSLY before any async work.
+            // This prevents the race condition where Socket.IO events arrive before
+            // the continuation is wired.
+            if sessionId != nil && chatId != nil {
+                socketContinuationRef?.continuation = continuation
+            }
+
             Task {
                 guard let url = URL(string: urlString) else {
                     continuation.finish(throwing: URLError(.badURL))
@@ -243,17 +309,22 @@ actor OpenWebUIClient {
                     files: files,
                     features: features,
                     session_id: sessionId,
-                    chat_id: chatId
+                    chat_id: chatId,
+                    id: messageId,
+                    parent_id: parentId,
+                    // Always include parent_message to prevent NoneType on OWUI 0.6.42+
+                    parent_message: sessionId != nil ? [:] : nil,
+                    stream_options: StreamOptions(include_usage: true)
                 )
                 req.httpBody = try? JSONEncoder().encode(body)
 
                 do {
                     if sessionId != nil && chatId != nil {
-                        // Socket.IO path: server returns immediately with {"status": true}
-                        // All content arrives via Socket.IO events — just fire the request
+                        // Socket.IO path: continuation already set synchronously above.
+                        // Server returns immediately with {"status": true}.
+                        // All content arrives via Socket.IO events.
                         let (data, response) = try await URLSession.shared.data(for: req)
                         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                            // Try to get error message
                             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                                let detail = json["detail"] as? String {
                                 continuation.finish(throwing: NSError(domain: "OpenWebUI", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: detail]))
@@ -263,7 +334,7 @@ actor OpenWebUIClient {
                             return
                         }
                         // Don't finish — AppState will finish the stream when Socket.IO
-                        // sends the completion event
+                        // sends the completion done event
                     } else {
                         // SSE path: read the streaming response line by line
                         let (bytes, response) = try await URLSession.shared.bytes(for: req)
@@ -310,6 +381,32 @@ actor OpenWebUIClient {
                 }
             }
         }
+    }
+
+    // MARK: - Chat Completed
+
+    /// Notify the server that streaming has finished. This triggers server-side
+    /// post-completion filters, follow-up generation, and other hooks.
+    func sendChatCompleted(
+        chatId: String,
+        messageId: String,
+        messages: [[String: String]],
+        model: String,
+        sessionId: String
+    ) async {
+        guard let url = URL(string: "\(baseURL)/api/chat/completed") else { return }
+        var req = URLRequest(url: url, timeoutInterval: 15)
+        req.httpMethod = "POST"
+        req.allHTTPHeaderFields = authHeader
+        let body = ChatCompletedRequest(
+            model: model,
+            messages: messages,
+            chat_id: chatId,
+            session_id: sessionId,
+            id: messageId
+        )
+        req.httpBody = try? JSONEncoder().encode(body)
+        _ = try? await URLSession.shared.data(for: req)
     }
 
     // MARK: - Generic Helpers
