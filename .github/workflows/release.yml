@@ -24,7 +24,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app || sudo xcode-select -s /Applications/Xcode.app
+        run: |
+          # Use Xcode 16.2 — Xcode 16.3+ ships macOS 15.4 SDK which has a breaking
+          # change in compression_stream() init that runanywhere-sdks hasn't adapted to
+          sudo xcode-select -s /Applications/Xcode_16.2.app
 
       - name: Extract version from tag
         id: version
