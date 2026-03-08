@@ -65,28 +65,23 @@ jobs:
           brew install git-lfs || true
           git lfs install
 
+      - name: Pre-clone LFS dependencies
+        env:
+          GIT_LFS_SKIP_SMUDGE: "0"
+        run: |
+          # Pre-clone runanywhere-sdks with full LFS objects so SPM finds real binaries
+          SPM_DIR="$RUNNER_TEMP/spm"
+          mkdir -p "$SPM_DIR/checkouts"
+          git clone --depth 1 https://github.com/RunanywhereAI/runanywhere-sdks.git "$SPM_DIR/checkouts/runanywhere-sdks"
+          echo "LFS files in checkout:"
+          find "$SPM_DIR/checkouts/runanywhere-sdks" -name "*.xcframework" -type d | head -10
+
       - name: Resolve Swift packages
         run: |
-          # Let xcodebuild resolve packages to its default location first
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT" \
-            -scheme "$SCHEME" 2>&1 || true
-
-          # Find and fix LFS pointers in runanywhere-sdks checkout
-          RA_DIR=$(find ~/Library/Developer/Xcode/DerivedData -path "*/checkouts/runanywhere-sdks" -type d 2>/dev/null | head -1)
-          if [ -n "$RA_DIR" ]; then
-            echo "Found runanywhere-sdks at: $RA_DIR"
-            cd "$RA_DIR"
-            git lfs install
-            git lfs pull
-            cd -
-            echo "LFS pull complete"
-          fi
-
-          # Second resolve pass with LFS binaries in place
-          xcodebuild -resolvePackageDependencies \
-            -project "$PROJECT" \
-            -scheme "$SCHEME"
+            -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm"
 
       - name: Build for release
         run: |
@@ -95,6 +90,7 @@ jobs:
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
             -destination 'generic/platform=macOS' \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
