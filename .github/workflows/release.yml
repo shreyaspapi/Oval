@@ -67,26 +67,26 @@ jobs:
 
       - name: Resolve Swift packages
         run: |
-          # First pass: resolve/clone all packages (LFS files will be pointers)
+          # Let xcodebuild resolve packages to its default location first
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" 2>&1 || true
+            -scheme "$SCHEME" 2>&1 || true
 
-          # Fetch actual LFS binaries for runanywhere-sdks
-          RA_CHECKOUT="$RUNNER_TEMP/spm/checkouts/runanywhere-sdks"
-          if [ -d "$RA_CHECKOUT" ]; then
-            echo "Pulling Git LFS objects for runanywhere-sdks..."
-            cd "$RA_CHECKOUT"
+          # Find and fix LFS pointers in runanywhere-sdks checkout
+          RA_DIR=$(find ~/Library/Developer/Xcode/DerivedData -path "*/checkouts/runanywhere-sdks" -type d 2>/dev/null | head -1)
+          if [ -n "$RA_DIR" ]; then
+            echo "Found runanywhere-sdks at: $RA_DIR"
+            cd "$RA_DIR"
+            git lfs install
             git lfs pull
             cd -
+            echo "LFS pull complete"
           fi
 
-          # Second pass: resolve again now that LFS binaries are present
+          # Second resolve pass with LFS binaries in place
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm"
+            -scheme "$SCHEME"
 
       - name: Build for release
         run: |
@@ -95,7 +95,6 @@ jobs:
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
-            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
             -destination 'generic/platform=macOS' \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
