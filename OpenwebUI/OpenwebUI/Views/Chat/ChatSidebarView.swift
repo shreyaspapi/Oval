@@ -12,6 +12,7 @@ struct ChatSidebarView: View {
     @State private var deleteTarget: String?
     @State private var renameTarget: String?
     @State private var renameText: String = ""
+    @State private var folders: [ChatFolder] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -70,13 +71,69 @@ struct ChatSidebarView: View {
                                 ConversationRow(conversation: conversation, isStreaming: appState.isChatStreaming(conversation.id))
                                 .tag(conversation.id)
                                 .contextMenu {
-                                    Button("Rename...") {
+                                    Button {
+                                        Task { await appState.shareConversation(conversation.id) }
+                                    } label: {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
+
+                                    Button {
+                                        Task { await appState.downloadConversation(conversation.id) }
+                                    } label: {
+                                        Label("Download", systemImage: "arrow.down.circle")
+                                    }
+
+                                    Button {
                                         renameText = conversation.title
                                         renameTarget = conversation.id
+                                    } label: {
+                                        Label("Rename", systemImage: "pencil")
                                     }
+
                                     Divider()
-                                    Button("Delete", role: .destructive) {
+
+                                    Button {
+                                        Task { await appState.togglePinConversation(conversation.id) }
+                                    } label: {
+                                        Label(conversation.isPinned ? "Unpin" : "Pin", systemImage: conversation.isPinned ? "bookmark.slash" : "bookmark")
+                                    }
+
+                                    Button {
+                                        Task { await appState.cloneConversation(conversation.id) }
+                                    } label: {
+                                        Label("Clone", systemImage: "doc.on.doc")
+                                    }
+
+                                    if !folders.isEmpty {
+                                        Menu {
+                                            ForEach(folders) { folder in
+                                                Button(folder.name) {
+                                                    Task { await appState.moveConversation(conversation.id, toFolder: folder.id) }
+                                                }
+                                            }
+                                            if conversation.folder_id != nil {
+                                                Divider()
+                                                Button("Remove from folder") {
+                                                    Task { await appState.moveConversation(conversation.id, toFolder: nil) }
+                                                }
+                                            }
+                                        } label: {
+                                            Label("Move", systemImage: "folder")
+                                        }
+                                    }
+
+                                    Button {
+                                        Task { await appState.archiveConversation(conversation.id) }
+                                    } label: {
+                                        Label("Archive", systemImage: "archivebox")
+                                    }
+
+                                    Divider()
+
+                                    Button(role: .destructive) {
                                         deleteTarget = conversation.id
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
@@ -118,6 +175,9 @@ struct ChatSidebarView: View {
             .scrollContentBackground(.hidden)
         }
         .background(AppColors.sidebarBg)
+        .task {
+            folders = await appState.loadFolders()
+        }
         .onChange(of: appState.selectedConversationID) { _, newId in
             guard !appState.suppressConversationSelection else { return }
             if let id = newId {
