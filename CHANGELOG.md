@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-03-09
+
+### Fixed
+
+- **Thinking content rendering**: Reasoning/thinking blocks now correctly decode HTML entities (`&#x27;`, `&gt;`, etc.) and strip extraneous blockquote markers (`>`), fixing garbled display of model reasoning output ([#5](https://github.com/shreyaspapi/Oval/issues/5))
+
 ## [1.5.0] - 2026-03-09
 
 ### Fixed
