@@ -376,7 +376,7 @@ struct MessageBubbleView: View {
             if let summaryRange = reasoningContent.range(of: #"<summary>.*?</summary>"#, options: .regularExpression) {
                 reasoningContent.removeSubrange(summaryRange)
             }
-            reasoningContent = reasoningContent.trimmingCharacters(in: .whitespacesAndNewlines)
+            reasoningContent = Self.cleanReasoningContent(reasoningContent)
 
             blocks.insert(ReasoningBlock(
                 summary: summary,
@@ -400,7 +400,7 @@ struct MessageBubbleView: View {
             if let summaryRange = reasoningContent.range(of: #"<summary>.*?</summary>"#, options: .regularExpression) {
                 reasoningContent.removeSubrange(summaryRange)
             }
-            reasoningContent = reasoningContent.trimmingCharacters(in: .whitespacesAndNewlines)
+            reasoningContent = Self.cleanReasoningContent(reasoningContent)
 
             blocks.append(ReasoningBlock(
                 summary: "Thinking",
@@ -414,6 +414,38 @@ struct MessageBubbleView: View {
 
         visible = visible.trimmingCharacters(in: .whitespacesAndNewlines)
         return ParsedContent(reasoning: blocks, visibleContent: visible)
+    }
+
+    /// Clean reasoning content extracted from `<details type="reasoning">` blocks.
+    /// The server may HTML-encode entities (e.g. `&#x27;` for `'`, `&gt;` for `>`)
+    /// and wrap lines in blockquotes (`> `). This decodes entities and strips
+    /// blockquote markers so the plain text displays correctly.
+    private static func cleanReasoningContent(_ raw: String) -> String {
+        var text = raw
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+
+        // Strip leading blockquote markers ("> " or ">") from each line.
+        // The server sometimes wraps reasoning text in markdown blockquotes.
+        let lines = text.components(separatedBy: "\n")
+        let cleaned = lines.map { line -> String in
+            var l = line
+            // Strip one level of blockquote: "> text" → "text", ">text" → "text"
+            if l.hasPrefix("> ") {
+                l = String(l.dropFirst(2))
+            } else if l.hasPrefix(">") && !l.hasPrefix(">>") {
+                l = String(l.dropFirst(1))
+            }
+            return l
+        }
+        text = cleaned.joined(separator: "\n")
+
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Image Grid
