@@ -11,6 +11,10 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 
 [**Download**](https://github.com/shreyaspapi/Oval/releases/latest) · [**Report Bug**](https://github.com/shreyaspapi/Oval/issues/new?template=bug_report.yml) · [**Request Feature**](https://github.com/shreyaspapi/Oval/issues/new?template=feature_request.yml)
 
+<br>
+
+[![Oval Demo](https://img.youtube.com/vi/Ynw8NVhw9KM/maxresdefault.jpg)](https://www.youtube.com/watch?v=Ynw8NVhw9KM)
+
 </div>
 
 ## Features
