@@ -5,6 +5,24 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.5.1</title>
+            <description><![CDATA[
+                <h2>What's New in v1.5.1</h2>
+                <ul>
+                    <li><strong>Fix thinking content rendering</strong> — Reasoning/thinking blocks now correctly decode HTML entities and strip extraneous blockquote markers, fixing garbled display of model reasoning output.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Mar 2026 08:00:00 +0000</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.5.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.5.1/Oval-1.5.1.dmg"
+                sparkle:edSignature="Nbcq0aaldHpIP5MU2cbQaqpHXYp6VPjJz6UWlFqm9FWNyU0T+LgyMdw8uYQ1rkrMSFXYYYySC4JyzpRMUzEjBg=="
+                length="35697183"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.5.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.5.0</h2>
