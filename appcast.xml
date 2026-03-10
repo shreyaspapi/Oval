@@ -5,6 +5,27 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.6.3</title>
+            <description><![CDATA[
+                <h2>What is New in v1.6.3</h2>
+                <ul>
+<li><strong>Added</strong></li>
+<li><strong>Support section in Settings</strong> — Buy Me a Coffee, GitHub Sponsors, and Star on GitHub buttons in Settings > General</li>
+<li><strong>Sponsors section in README</strong> — Badge links and placeholder for listing GitHub sponsors</li>
+<li><strong>Blank issue template</strong> — Users can now file custom issues without a template</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Mar 2026 17:52:35 +0000</pubDate>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.6.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.6.3/Oval-v1.6.3.dmg"
+                sparkle:edSignature="aoyO+9NIYDwutNHTCbwDI2YnsXAa83mGulSBgh4zdx6MJNeoRI+GHlK5DS7lHvM3YqCImMZ+uiH+nuvKfa4IAQ=="
+                length="35884332"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.6.2</title>
             <description><![CDATA[
                 <h2>What is New in v1.6.2</h2>
