@@ -5,6 +5,25 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.6.1</title>
+            <description><![CDATA[
+                <h2>What's New in v1.6.1</h2>
+                <ul>
+                    <li><strong>Fix Sparkle auto-update</strong> — Added sandbox entitlements required by Sparkle 2 so auto-updates work correctly.</li>
+                    <li><strong>Xcode 26 build compatibility</strong> — Added RAG linker stubs for Xcode 26.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 10 Mar 2026 12:00:00 +0000</pubDate>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>1.6.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.6.1/Oval-v1.6.1.dmg"
+                sparkle:edSignature="/MRVLPnuR/b6ekBVPQSrEh86PZMkroQmuI1L9O65WCOCzKUk8x5u0vVg3nz6/jXfOFNwr2A6MJ/D8+p0fhXgBQ=="
+                length="35919079"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.6.0</title>
             <description><![CDATA[
                 <h2>What's New in v1.6.0</h2>
