@@ -5,6 +5,29 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.6.0</title>
+            <description><![CDATA[
+                <h2>What's New in v1.6.0</h2>
+                <ul>
+                    <li><strong>Customizable hotkeys</strong> — Global keyboard shortcuts (Quick Chat, Toggle Window, Paste to Chat) can now be changed in Settings > General > Keyboard Shortcuts.</li>
+                    <li><strong>Shortcut recorder</strong> — Click any shortcut field to record a new key combination interactively; press Esc to cancel.</li>
+                    <li><strong>Per-shortcut reset</strong> — Each shortcut has a reset button to restore its factory default.</li>
+                    <li><strong>Persistent preferences</strong> — Custom hotkeys are saved to config.json and restored on launch.</li>
+                    <li><strong>Dynamic tray labels</strong> — Menu bar shortcut hints update to reflect configured bindings.</li>
+                    <li><strong>Bug fix</strong> — Removed hardcoded keyboard shortcut that caused Ctrl+Space to trigger even after reassignment.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 10 Mar 2026 10:00:00 +0000</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.6.0/Oval-v1.6.0.dmg"
+                sparkle:edSignature="sfBnEOAI62dNYMRsKv6JKFwNR6jcMVJF1/bQr8GfDhriWaTStGHsxPfzYKhyME8GoxlDhqKkXrPLlGfl1TtpBA=="
+                length="35918029"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.5.1</title>
             <description><![CDATA[
                 <h2>What's New in v1.5.1</h2>
