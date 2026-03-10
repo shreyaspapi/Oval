@@ -12,6 +12,9 @@ final class ConfigManager {
         var selectedModelID: String?      // Last-used model ID (restored on launch)
         var defaultModelID: String?       // User's explicit default model (fallback if selected is gone)
         var pinnedModelIDs: [String] = [] // Pinned/favorite model IDs shown in the sidebar
+
+        // Hotkey preferences
+        var hotkeyPreferences: HotkeyPreferences?
     }
 
     private let fileManager = FileManager.default
