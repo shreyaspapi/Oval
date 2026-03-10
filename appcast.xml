@@ -5,6 +5,27 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.7.0</title>
+            <description><![CDATA[
+                <h2>What is New in v1.7.0</h2>
+                <ul>
+<li><strong>Added</strong></li>
+<li><strong>Full localization</strong> — All UI strings localized across 10 languages — English, German, French, Italian, Spanish, Dutch, Russian, Simplified Chinese, Traditional Chinese, and Korean</li>
+<li><strong>In-app language picker</strong> — New Language section in Settings lets you switch the app language without changing macOS system language (requires restart to apply)</li>
+<li><strong>Localized strings files</strong> — Complete `.lproj/Localizable.strings` for all 10 languages covering menus, toolbar, connect/login screen, sidebar, chat input, voice mode, live transcription, message bubbles, settings, and about views</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Mar 2026 20:40:13 +0000</pubDate>
+            <sparkle:version>12</sparkle:version>
+            <sparkle:shortVersionString>1.7.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.7.0/Oval-v1.7.0.dmg"
+                sparkle:edSignature="DmtwaKRH4q8aWMYL2yzCi2qafSDKvF53wIgCvLxYEoqTuhobBoSoJD4nRpULBbIR2StjufY39m7v1tSfRpUTBQ=="
+                length="36002917"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.6.3</title>
             <description><![CDATA[
                 <h2>What is New in v1.6.3</h2>
