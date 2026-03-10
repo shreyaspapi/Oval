@@ -92,3 +92,13 @@ struct rac_rag_result_stub rac_rag_query(void *pipeline, struct rac_rag_query_st
 
 void rac_rag_result_free(void *result) {
 }
+
+// ---------- RAG Backend Registration ----------
+
+int32_t rac_backend_rag_register(int priority) {
+    return -1;
+}
+
+void* rac_rag_pipeline_create_standalone(struct rac_rag_config_stub config) {
+    return NULL;
+}
