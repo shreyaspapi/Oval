@@ -1,0 +1,365 @@
+/* ── App / Window ── */
+"app.name" = "Oval";
+
+/* ── Toolbar ── */
+"toolbar.toggleSidebar" = "Seitenleiste umschalten";
+"toolbar.toggleSidebar.help" = "Seitenleiste umschalten (Ctrl+Cmd+S)";
+"toolbar.newChat" = "Neuer Chat";
+"toolbar.newChat.help" = "Neuer Chat (Cmd+N)";
+
+/* ── Menu – File ── */
+"menu.newChat" = "Neuer Chat";
+"menu.quickChat" = "Schnell-Chat";
+"menu.liveTranscription" = "Live-Transkription";
+"menu.stopTranscription" = "Transkription stoppen";
+
+/* ── Menu – Edit ── */
+"menu.find" = "Suchen...";
+"menu.copyLastResponse" = "Letzte Antwort kopieren";
+
+/* ── Menu – View ── */
+"menu.hideSidebar" = "Seitenleiste ausblenden";
+"menu.showSidebar" = "Seitenleiste einblenden";
+"menu.alwaysOnTop" = "Immer im Vordergrund";
+
+/* ── Menu – App ── */
+"menu.checkForUpdates" = "Nach Updates suchen...";
+"menu.openServerInBrowser" = "Server im Browser öffnen";
+
+/* ── Menu – Help ── */
+"menu.ovalDocumentation" = "Oval Dokumentation";
+"menu.githubRepository" = "GitHub Repository";
+"menu.reportIssue" = "Problem melden";
+
+/* ── Connect / Login screen ── */
+"connect.title" = "Oval";
+"connect.subtitle" = "Mit deinem Server anmelden, um zu starten.";
+"connect.serverURL" = "Server-URL";
+"connect.email" = "E-Mail";
+"connect.password" = "Passwort";
+"connect.apiKey" = "API-Schlüssel";
+"connect.sso" = "SSO";
+"connect.emailTab" = "E-Mail";
+"connect.apiKeyTab" = "API-Schlüssel";
+"connect.ssoTab" = "SSO";
+"connect.emailPrompt" = "E-Mail-Adresse eingeben";
+"connect.passwordPrompt" = "Passwort eingeben";
+"connect.apiKeyHint" = "API-Schlüssel unter Einstellungen > Konto > API-Schlüssel";
+"connect.ssoDescription" = "Mit dem OAuth/SSO-Anbieter deines Servers anmelden. Ein Browserfenster öffnet sich zur Authentifizierung.";
+"connect.openSSOLogin" = "SSO-Anmeldung öffnen";
+"connect.signIn" = "Anmelden";
+"connect.connecting" = "Verbinde...";
+"connect.errorEnterURL" = "Bitte Server-URL eingeben";
+
+/* ── Add Server sheet ── */
+"addServer.title" = "Server hinzufügen";
+"addServer.serverName" = "Servername";
+"addServer.serverNamePlaceholder" = "Mein Server";
+"addServer.serverURL" = "Server-URL";
+"addServer.serverURLPlaceholder" = "http://localhost:8080";
+"addServer.authentication" = "Authentifizierung";
+"addServer.emailOption" = "E-Mail";
+"addServer.apiKeyOption" = "API-Schlüssel";
+"addServer.email" = "E-Mail";
+"addServer.password" = "Passwort";
+"addServer.apiKeyPlaceholder" = "API-Schlüssel (sk-...)";
+"addServer.apiKeyHint" = "Einstellungen > Konto > API-Schlüssel";
+"addServer.cancel" = "Abbrechen";
+"addServer.connecting" = "Verbinde...";
+"addServer.addServer" = "Server hinzufügen";
+"addServer.errorEnterURL" = "Bitte Server-URL eingeben";
+"addServer.errorEnterEmail" = "E-Mail eingeben";
+"addServer.errorEnterPassword" = "Passwort eingeben";
+"addServer.errorEnterAPIKey" = "API-Schlüssel eingeben";
+"addServer.ssoNote" = "SSO wird auf dem Anmeldebildschirm konfiguriert";
+
+/* ── Server Rail ── */
+"serverRail.addServer.help" = "Server hinzufügen";
+"serverRail.copyServerURL" = "Server-URL kopieren";
+"serverRail.removeServer" = "Server entfernen";
+
+/* ── Sidebar ── */
+"sidebar.searchPlaceholder" = "Gespräche suchen";
+"sidebar.noConversations" = "Keine Gespräche";
+"sidebar.noResults" = "Keine Ergebnisse";
+"sidebar.loadMore" = "Mehr laden...";
+"sidebar.pinnedModels" = "ANGEHEFTETE MODELLE";
+"sidebar.settings.help" = "Einstellungen (Cmd+,)";
+"sidebar.userFallback" = "Benutzer";
+
+/* ── Sidebar – context menu ── */
+"sidebar.menu.share" = "Teilen";
+"sidebar.menu.download" = "Herunterladen";
+"sidebar.menu.rename" = "Umbenennen";
+"sidebar.menu.pin" = "Anheften";
+"sidebar.menu.unpin" = "Lösen";
+"sidebar.menu.clone" = "Duplizieren";
+"sidebar.menu.move" = "Verschieben";
+"sidebar.menu.removeFromFolder" = "Aus Ordner entfernen";
+"sidebar.menu.archive" = "Archivieren";
+"sidebar.menu.delete" = "Löschen";
+
+/* ── Sidebar – delete dialog ── */
+"sidebar.deleteChat.title" = "Chat löschen";
+"sidebar.deleteChat.confirm" = "Löschen";
+"sidebar.deleteChat.cancel" = "Abbrechen";
+"sidebar.deleteChat.message" = "Dieses Gespräch wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.";
+
+/* ── Sidebar – rename dialog ── */
+"sidebar.rename.title" = "Gespräch umbenennen";
+"sidebar.rename.titlePlaceholder" = "Titel";
+"sidebar.rename.confirm" = "Umbenennen";
+"sidebar.rename.cancel" = "Abbrechen";
+"sidebar.rename.message" = "Neuen Titel für dieses Gespräch eingeben.";
+
+/* ── Conversation time groups ── */
+"time.today" = "Heute";
+"time.yesterday" = "Gestern";
+"time.previous7Days" = "Letzte 7 Tage";
+"time.previous30Days" = "Letzte 30 Tage";
+
+/* ── Pinned models context menu ── */
+"pinnedModel.unpin" = "Von Seitenleiste lösen";
+"pinnedModel.select" = "Modell auswählen";
+"pinnedModel.setDefault" = "Als Standard festlegen";
+
+/* ── Model Selector ── */
+"model.selectModel" = "Modell auswählen";
+"model.searchPlaceholder" = "Modelle suchen...";
+"model.noModels" = "Keine Modelle verfügbar";
+"model.noMatchingModels" = "Keine passenden Modelle";
+"model.filterAll" = "Alle";
+"model.filterLocal" = "Lokal";
+"model.filterExternal" = "Extern";
+"model.setAsDefault" = "Als Standard festlegen";
+"model.defaultModel" = "Standardmodell";
+"model.pinToSidebar" = "In Seitenleiste anheften";
+"model.unpin" = "Lösen";
+"model.loadedInMemory.help" = "Modell im Speicher geladen";
+"model.defaultModel.help" = "Standardmodell";
+"model.unpinFromSidebar" = "Von Seitenleiste lösen";
+"model.removeAsDefault" = "Als Standard entfernen";
+"model.copyModelID" = "Modell-ID kopieren";
+"model.modelIDCopied" = "Modell-ID kopiert";
+
+/* ── Chat Input ── */
+"input.placeholder" = "Nachricht senden";
+"input.listening" = "Höre zu...";
+"input.attach.help" = "Datei oder Bild anhängen";
+"input.search.label" = "Suchen";
+"input.webSearch.enable.help" = "Websuche aktivieren";
+"input.webSearch.disable.help" = "Websuche deaktivieren";
+"input.mic.start.help" = "Sprache zu Text";
+"input.mic.stop.help" = "Zuhören stoppen";
+"input.voiceMode.help" = "Sprachkonversationsmodus";
+"input.transcription.start.help" = "Live-Transkription (Cmd+Shift+T)";
+"input.transcription.stop.help" = "Live-Transkription stoppen";
+"input.footer" = "Oval kann Fehler machen. Wichtige Informationen prüfen.";
+"input.attachFiles.title" = "Dateien anhängen";
+"input.attachFiles.message" = "Bilder oder Dateien für die Nachricht auswählen";
+
+/* ── Message Bubble ── */
+"message.edit.help" = "Nachricht bearbeiten";
+"message.copy.menu" = "Kopieren";
+"message.edit.menu" = "Bearbeiten";
+"message.cancel" = "Abbrechen";
+"message.save" = "Speichern";
+"message.saveAndSubmit" = "Speichern & Senden";
+"message.copyMessage.menu" = "Nachricht kopieren";
+"message.stopSpeaking.menu" = "Sprechen stoppen";
+"message.readAloud.menu" = "Vorlesen";
+"message.regenerate.menu" = "Antwort neu generieren";
+"message.stopSpeaking.help" = "Sprechen stoppen";
+"message.readAloud.help" = "Vorlesen";
+"message.regenerate.help" = "Antwort neu generieren";
+"message.copyMessage.help" = "Nachricht kopieren";
+"message.tokens" = "%lld Token";
+
+/* ── Reasoning block ── */
+"reasoning.thinking" = "Denke nach...";
+"reasoning.thought" = "Gedacht";
+"reasoning.thoughtLessThanSecond" = "Weniger als eine Sekunde gedacht";
+"reasoning.thoughtSeconds" = "%lld Sekunde gedacht";
+"reasoning.thoughtSeconds.plural" = "%lld Sekunden gedacht";
+"reasoning.thoughtMinutes" = "%lld Minute gedacht";
+"reasoning.thoughtMinutes.plural" = "%lld Minuten gedacht";
+
+/* ── Tool call ── */
+"toolCall.executing" = "Ausführen ";
+"toolCall.viewResult" = "Ergebnis von ";
+"toolCall.executed" = "Ausgeführt ";
+"toolCall.failed" = "Fehlgeschlagen: ";
+"toolCall.input" = "EINGABE";
+"toolCall.output" = "AUSGABE";
+
+/* ── Code execution ── */
+"codeExecution.default" = "Codeausführung";
+"codeExecution.code" = "CODE";
+"codeExecution.output" = "AUSGABE";
+"codeExecution.error" = "FEHLER";
+
+/* ── Sources ── */
+"sources.singular" = "%lld Quelle";
+"sources.plural" = "%lld Quellen";
+"sources.fallback" = "Quelle";
+
+/* ── Mini Chat ── */
+"miniChat.askAnything" = "Frag mich etwas";
+"miniChat.close.help" = "Schließen (Esc)";
+"miniChat.copyLastResponse.help" = "Letzte Antwort kopieren";
+"miniChat.newChat.help" = "Neuer Chat";
+"miniChat.attach.help" = "Anhängen";
+"miniChat.webSearch.help" = "Websuche";
+"miniChat.selectModel.help" = "Modell auswählen";
+"miniChat.voiceInput.help" = "Spracheingabe";
+"miniChat.modelFallback" = "Modell";
+"miniChat.thinking" = "Denke nach...";
+"miniChat.copy.help" = "Kopieren";
+
+/* ── Voice Mode ── */
+"voice.tapToStart" = "Tippen zum Starten";
+"voice.tapToEnd" = "Tippen zum Beenden";
+"voice.listening" = "Höre zu...";
+"voice.transcribing" = "Transkribiere...";
+"voice.thinking" = "Denke nach...";
+"voice.speaking" = "Spreche...";
+"voice.error" = "Fehler";
+"voice.modelsNeeded" = "Sprachmodelle erforderlich";
+"voice.downloadDescription" = "STT & TTS Modelle herunterladen (~140 MB)";
+"voice.downloadModels" = "Modelle herunterladen";
+
+/* ── Realtime Transcription ── */
+"transcription.title" = "Live-Transkription";
+"transcription.live" = "LIVE";
+"transcription.modelNotLoaded" = "Modell nicht geladen";
+"transcription.stop" = "Stopp";
+"transcription.start" = "Start";
+"transcription.speakersOn" = "Sprecher aktiv";
+"transcription.speakers" = "Sprecher";
+"transcription.loading" = "Lade...";
+"transcription.speaker.enable.help" = "Sprecheridentifikation aktivieren (lädt ~100 MB Modelle)";
+"transcription.speaker.disable.help" = "Sprecheridentifikation deaktivieren";
+"transcription.speakerCount.singular" = "%lld Sprecher";
+"transcription.speakerCount.plural" = "%lld Sprecher";
+"transcription.copied" = "Kopiert";
+"transcription.copy" = "Kopieren";
+
+/* ── Notifications ── */
+"notification.connected.title" = "Verbunden";
+"notification.connected.body" = "Oval-Server unter %@ ist erreichbar.";
+"notification.unreachable.title" = "Server nicht erreichbar";
+"notification.unreachable.body" = "Oval unter %@ nicht erreichbar.";
+
+/* ── General Settings ── */
+"settings.general.title" = "Allgemein";
+"settings.section.server" = "Server";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "Nicht verbunden";
+"settings.server.version" = "Version";
+"settings.server.status" = "Status";
+"settings.server.online" = "Online";
+"settings.server.unreachable" = "Nicht erreichbar";
+"settings.section.behavior" = "Verhalten";
+"settings.behavior.launchAtLogin" = "Bei Anmeldung starten";
+"settings.behavior.alwaysOnTop" = "Immer im Vordergrund";
+"settings.section.shortcuts" = "Tastaturkürzel";
+"settings.shortcut.quickChat" = "Schnell-Chat";
+"settings.shortcut.quickChat.value" = "Ctrl + Leertaste";
+"settings.shortcut.toggleWindow" = "Fenster umschalten";
+"settings.shortcut.toggleWindow.value" = "Ctrl + Opt + Leertaste";
+"settings.shortcut.pasteToChat" = "In Chat einfügen";
+"settings.shortcut.pasteToChat.value" = "Ctrl + Shift + V";
+"settings.shortcut.copyResponse" = "Antwort kopieren";
+"settings.shortcut.copyResponse.value" = "Cmd + Shift + C";
+"settings.section.cache" = "Cache";
+"settings.cache.clearTitle" = "Nachrichten-Cache leeren";
+"settings.cache.clearDescription" = "Alle Gespräche vom Server neu laden";
+"settings.cache.clear" = "Leeren";
+"settings.cache.cleared" = "Geleert";
+"settings.section.connection" = "Verbindung";
+"settings.connection.openInBrowser" = "Im Browser öffnen";
+"settings.connection.openInBrowserDescription" = "Server-Weboberfläche öffnen";
+"settings.connection.open" = "Öffnen";
+"settings.connection.disconnect" = "Trennen";
+"settings.connection.disconnectDescription" = "Zum Verbindungsbildschirm zurückkehren";
+"settings.connection.disconnectConfirm" = "Verbindung zu diesem Server wirklich trennen?";
+"settings.connection.disconnectCancel" = "Abbrechen";
+
+/* ── Voice Model Settings ── */
+"settings.voice.title" = "Sprache";
+"settings.voice.engine" = "Sprach-Engine";
+"settings.voice.engineName" = "Engine";
+"settings.voice.engineValue" = "RunAnywhere (Gerät)";
+"settings.voice.status" = "Status";
+"settings.voice.statusReady" = "Bereit";
+"settings.voice.statusModelsNeeded" = "Modelle erforderlich";
+"settings.voice.statusInitializing" = "Initialisiere...";
+"settings.voice.stt" = "Sprache-zu-Text";
+"settings.voice.tts" = "Text-zu-Sprache";
+"settings.voice.about" = "Info";
+"settings.voice.aboutText" = "Sprachmodelle laufen vollständig auf dem Gerät für Datenschutz und niedrige Latenz. Nach dem Download laden sie automatisch. Die gewählte TTS-Stimme wird auch für den Wiedergabe-Button in Chat-Nachrichten verwendet.";
+"settings.voice.stateReady" = "Bereit";
+"settings.voice.stateDownloaded" = "Heruntergeladen";
+"settings.voice.stateSelect" = "Auswählen";
+"settings.voice.stateDownload" = "Herunterladen";
+"settings.voice.stateChecking" = "Prüfe...";
+"settings.voice.stateLoading" = "Lade...";
+"settings.voice.stateExtracting" = "Entpacke...";
+"settings.voice.stateStarting" = "Starte...";
+"settings.voice.stateDownloaded.label" = "%@ heruntergeladen";
+"settings.voice.retry" = "Erneut versuchen";
+
+/* ── About Settings ── */
+"settings.about.title" = "Info";
+"settings.about.version" = "Version";
+"settings.about.appVersion" = "App-Version";
+"settings.about.seeWhatsNew" = "Neuerungen ansehen";
+"settings.about.community" = "Community";
+"settings.about.discord" = "Discord";
+"settings.about.twitter" = "Twitter / X";
+"settings.about.github" = "GitHub";
+"settings.about.twemojiCredit" = "Twemoji-Grafiken von Twitter/X, lizenziert unter CC-BY 4.0.";
+"settings.about.copyright" = "Copyright (c) %@ Oval";
+"settings.about.allRightsReserved" = "Alle Rechte vorbehalten.";
+
+/* ── Settings tab labels ── */
+"settings.tab.general" = "Allgemein";
+"settings.tab.voice" = "Sprache";
+"settings.tab.about" = "Info";
+
+/* ── SSO ── */
+"sso.title" = "SSO-Anmeldung";
+"sso.cancel" = "Abbrechen";
+
+/* ── Review Testing ── */
+"review.title" = "Review-Test";
+"review.close" = "Schließen";
+"review.demoTitle" = "Demo-Modus ausprobieren";
+"review.demoDescription" = "Die App mit Beispieldaten erleben – kein Server erforderlich.";
+"review.launchDemo" = "Demo starten";
+"review.demoNote" = "Demo-Modus simuliert Streaming-Antworten lokal.\nNachricht eingeben zum Testen.";
+"review.appInfo" = "App-Info";
+"review.appName" = "App-Name";
+"review.appNameValue" = "Oval";
+"review.version" = "Version";
+"review.macos" = "macOS";
+"review.architecture" = "Architektur";
+"review.sandbox" = "Sandbox";
+"review.sandboxYes" = "Ja";
+"review.sandboxNo" = "Nein";
+"review.quickConnect" = "Schnellverbindung (Optional)";
+"review.quickConnectDescription" = "Bei vorhandenem Open WebUI-Server URL und API-Schlüssel eingeben.";
+"review.serverURL" = "Server-URL";
+"review.apiKey" = "API-Schlüssel";
+"review.connect" = "Verbinden";
+"review.connecting" = "Verbinde...";
+"review.connectedNoModels" = "Verbunden, aber keine Modelle gefunden";
+"review.connected" = "Verbunden (%lld Modelle)";
+"review.featureChecklist" = "Funktionsliste";
+"review.permissions" = "Erforderliche Berechtigungen";
+"review.archSilicon" = "Apple Silicon (arm64)";
+"review.archIntel" = "Intel (x86_64)";
+"review.archUnknown" = "Unbekannt";
+
+/* ── Conversations (general) ── */
+"conversations.label" = "Gespräche";
