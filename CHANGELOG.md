@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-03-10
+
+### Fixed
+
+- **Sparkle auto-update in sandbox**: Added `SUEnableInstallerLauncherService` and mach-lookup entitlements required by Sparkle 2 for sandboxed apps ([#11](https://github.com/shreyaspapi/Oval/issues/11))
+- **Xcode 26 build compatibility**: Added RAG linker stubs (`rac_backend_rag_register`, `rac_rag_pipeline_create_standalone`) so the project builds with Xcode 26
+
 ## [1.6.0] - 2026-03-10
 
 ### Added
