@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-03-10
+
+### Added
+
+- **Support section in Settings**: Buy Me a Coffee, GitHub Sponsors, and Star on GitHub buttons in Settings > General
+- **Sponsors section in README**: Badge links and placeholder for listing GitHub sponsors
+- **Blank issue template**: Users can now file custom issues without a template
+
 ## [1.6.2] - 2026-03-10
 
 ### Added
