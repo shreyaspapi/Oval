@@ -444,6 +444,11 @@ final class AppState {
         didSet { LaunchAtLoginManager.setEnabled(launchAtLogin) }
     }
 
+    // MARK: - Hotkey Preferences
+
+    /// User-customizable global hotkey bindings. Persisted in config.json.
+    var hotkeyPreferences: HotkeyPreferences = .defaults
+
     // MARK: - Dependencies
 
     private let configManager: ConfigManager
@@ -546,6 +551,7 @@ final class AppState {
     // MARK: - Hotkey Setup
 
     private func setupHotkeys() {
+        hotkeyManager.bindings = hotkeyPreferences
         hotkeyManager.onToggleMiniWindow = { [weak self] in
             self?.miniChatWindowManager.toggle()
         }
@@ -556,6 +562,14 @@ final class AppState {
             self?.miniChatWindowManager.showWithClipboard()
         }
         hotkeyManager.start()
+    }
+
+    /// Called when the user changes a hotkey in Settings. Persists and re-registers.
+    func applyHotkeyChanges() {
+        hotkeyManager.bindings = hotkeyPreferences
+        hotkeyManager.restart()
+        saveServers() // persist to config.json
+        trayManager.updateMenu() // refresh tray shortcut labels
     }
 
     private func toggleMainWindow() {
@@ -3438,6 +3452,8 @@ final class AppState {
         // selectedModelID and defaultModelID are restored in loadModels()
         _persistedSelectedModelID = config.selectedModelID
         _persistedDefaultModelID = config.defaultModelID
+        // Restore hotkey preferences (fall back to defaults for existing configs)
+        hotkeyPreferences = config.hotkeyPreferences ?? .defaults
     }
 
     private func saveServers() {
@@ -3446,7 +3462,8 @@ final class AppState {
             activeServerID: activeServerID,
             selectedModelID: selectedModel?.id,
             defaultModelID: defaultModelID,
-            pinnedModelIDs: pinnedModelIDs
+            pinnedModelIDs: pinnedModelIDs,
+            hotkeyPreferences: hotkeyPreferences
         )
         configManager.save(config)
     }

@@ -69,10 +69,9 @@ struct OpenwebUIApp: App {
 
                 Divider()
 
-                Button("Quick Chat") {
+                Button("Quick Chat  \(appState.hotkeyPreferences.quickChat.displayString)") {
                     appState.miniChatWindowManager.toggle()
                 }
-                .keyboardShortcut(" ", modifiers: .control)
 
                 Divider()
 
