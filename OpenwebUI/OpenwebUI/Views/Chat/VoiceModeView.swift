@@ -216,12 +216,12 @@ struct VoiceModeView: View {
 
     private var stateLabel: String {
         switch vm.sessionState {
-        case .idle:         return "Tap to start"
-        case .listening:    return "Listening..."
-        case .transcribing: return "Transcribing..."
-        case .thinking:     return "Thinking..."
-        case .speaking:     return "Speaking..."
-        case .error:        return "Error"
+        case .idle:         return String(localized: "voiceMode.stateIdle")
+        case .listening:    return String(localized: "voiceMode.stateListening")
+        case .transcribing: return String(localized: "voiceMode.stateTranscribing")
+        case .thinking:     return String(localized: "voiceMode.stateThinking")
+        case .speaking:     return String(localized: "voiceMode.stateSpeaking")
+        case .error:        return String(localized: "voiceMode.stateError")
         }
     }
 
@@ -229,11 +229,11 @@ struct VoiceModeView: View {
 
     private var setupPrompt: some View {
         VStack(spacing: 12) {
-            Text("Voice models needed")
+            Text("voiceMode.modelsNeeded")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(AppColors.textPrimary)
 
-            Text("Download STT & TTS models (~140 MB)")
+            Text("voiceMode.downloadDescription")
                 .font(.system(size: 11))
                 .foregroundStyle(AppColors.textTertiary)
                 .multilineTextAlignment(.center)
@@ -259,7 +259,7 @@ struct VoiceModeView: View {
                         }
                     }
                 } label: {
-                    Text("Download Models")
+                    Text("voiceMode.downloadButton")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AppColors.sendButtonIcon)
                         .padding(.horizontal, 18)
@@ -312,7 +312,7 @@ struct VoiceModeView: View {
             }
             .buttonStyle(.plain)
 
-            Text(vm.isActive ? "Tap to end" : "Tap to start")
+            Text(vm.isActive ? String(localized: "voiceMode.tapToEnd") : String(localized: "voiceMode.tapToStart"))
                 .font(.system(size: 10))
                 .foregroundStyle(AppColors.textTertiary)
         }

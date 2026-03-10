@@ -32,7 +32,7 @@ struct ChatInputView: View {
                                 .onAppear { pulsingDot = true }
                                 .onDisappear { pulsingDot = false }
 
-                            Text(appState.speechManager.transcript.isEmpty ? "Listening..." : appState.speechManager.transcript)
+                            Text(appState.speechManager.transcript.isEmpty ? String(localized: "chatInput.listening") : appState.speechManager.transcript)
                                 .font(AppFont.body(size: 13))
                                 .foregroundStyle(AppColors.textSecondary)
                                 .lineLimit(2)
@@ -57,7 +57,7 @@ struct ChatInputView: View {
                     // Text area with paste interception
                     ZStack(alignment: .topLeading) {
                         if appState.messageInput.isEmpty && appState.pendingAttachments.isEmpty && !appState.speechManager.isListening {
-                            Text("Send a message")
+                            Text("chatInput.placeholder")
                                 .font(.system(size: 14))
                                 .foregroundStyle(AppColors.textPlaceholder)
                                 .padding(.top, 1)
@@ -93,7 +93,7 @@ struct ChatInputView: View {
                                 .contentShape(Circle())
                         }
                         .buttonStyle(.plain)
-                        .help("Attach file or image")
+                        .help(String(localized: "chatInput.attachHelp"))
 
                         // Web search toggle
                         Button {
@@ -104,8 +104,8 @@ struct ChatInputView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "globe")
                                     .font(.system(size: 15, weight: .medium))
-                                if appState.isWebSearchEnabled {
-                                    Text("Search")
+                        if appState.isWebSearchEnabled {
+                                Text("chatInput.searchLabel")
                                         .font(.system(size: 12, weight: .medium))
                                 }
                             }
@@ -117,7 +117,7 @@ struct ChatInputView: View {
                             .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
-                        .help(appState.isWebSearchEnabled ? "Disable web search" : "Enable web search")
+                        .help(appState.isWebSearchEnabled ? String(localized: "chatInput.webSearchDisable") : String(localized: "chatInput.webSearchEnable"))
 
                         // Speech-to-text toggle
                         Button {
@@ -146,7 +146,7 @@ struct ChatInputView: View {
                                 .animation(.easeInOut(duration: 0.15), value: appState.speechManager.isListening)
                         }
                         .buttonStyle(.plain)
-                        .help(appState.speechManager.isListening ? "Stop listening" : "Speech to text")
+                        .help(appState.speechManager.isListening ? String(localized: "chatInput.stopListening") : String(localized: "chatInput.speechToText"))
 
                         // Voice conversation mode (on-device STT/TTS)
                         Button {
@@ -161,7 +161,7 @@ struct ChatInputView: View {
                                 .contentShape(Circle())
                         }
                         .buttonStyle(.plain)
-                        .help("Voice conversation mode")
+                        .help(String(localized: "chatInput.voiceMode"))
 
                         // Live transcription (realtime captions)
                         Button {
@@ -177,7 +177,7 @@ struct ChatInputView: View {
                                 .animation(.easeInOut(duration: 0.15), value: appState.isRealtimeTranscriptionActive)
                         }
                         .buttonStyle(.plain)
-                        .help(appState.isRealtimeTranscriptionActive ? "Stop live transcription" : "Live transcription (Cmd+Shift+T)")
+                        .help(appState.isRealtimeTranscriptionActive ? String(localized: "chatInput.stopLiveTranscription") : String(localized: "chatInput.liveTranscription"))
 
                         Spacer()
 
@@ -237,7 +237,7 @@ struct ChatInputView: View {
             .padding(.top, 8)
 
             // Footer
-            Text("Oval can make mistakes. Check important info.")
+            Text("chatInput.disclaimer")
                 .font(AppFont.caption(size: 11))
                 .foregroundStyle(AppColors.textTertiary)
                 .padding(.bottom, 8)
@@ -275,8 +275,8 @@ struct ChatInputView: View {
             UTType("org.openxmlformats.spreadsheetml.sheet") ?? .data,
             .data
         ]
-        panel.title = "Attach Files"
-        panel.message = "Select images or files to send with your message"
+        panel.title = String(localized: "chatInput.attachFilesTitle")
+        panel.message = String(localized: "chatInput.attachFilesMessage")
 
         guard panel.runModal() == .OK else { return }
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-03-11
+
+### Added
+
+- **Full localization**: All UI strings localized across 10 languages — English, German, French, Italian, Spanish, Dutch, Russian, Simplified Chinese, Traditional Chinese, and Korean
+- **In-app language picker**: New Language section in Settings lets you switch the app language without changing macOS system language (requires restart to apply)
+- **Localized strings files**: Complete `.lproj/Localizable.strings` for all 10 languages covering menus, toolbar, connect/login screen, sidebar, chat input, voice mode, live transcription, message bubbles, settings, and about views
+
 ## [1.6.3] - 2026-03-10
 
 ### Added

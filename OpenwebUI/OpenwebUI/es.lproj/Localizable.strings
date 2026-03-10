@@ -1,0 +1,291 @@
+/* Localizable.strings — Spanish (es)
+   Oval macOS App
+*/
+
+"app.name" = "Oval";
+"ok" = "Aceptar";
+"cancel" = "Cancelar";
+"delete" = "Eliminar";
+"rename" = "Cambiar nombre";
+"save" = "Guardar";
+"close" = "Cerrar";
+"done" = "Listo";
+"back" = "Atrás";
+"retry" = "Reintentar";
+"copy" = "Copiar";
+"copied" = "Copiado";
+"share" = "Compartir";
+"download" = "Descargar";
+"select" = "Seleccionar";
+"open" = "Abrir";
+"start" = "Iniciar";
+"stop" = "Detener";
+"clear" = "Limpiar";
+"cleared" = "Limpiado";
+
+"menu.newChat" = "Nuevo chat";
+"menu.quickChat" = "Chat rápido  %@";
+"menu.stopTranscription" = "Detener transcripción";
+"menu.liveTranscription" = "Transcripción en vivo";
+"menu.find" = "Buscar...";
+"menu.copyLastResponse" = "Copiar última respuesta";
+"menu.hideSidebar" = "Ocultar barra lateral";
+"menu.showSidebar" = "Mostrar barra lateral";
+"menu.alwaysOnTop" = "Siempre visible";
+"menu.openServerInBrowser" = "Abrir servidor en el navegador";
+"menu.ovalDocumentation" = "Documentación de Oval";
+"menu.githubRepository" = "Repositorio de GitHub";
+"menu.reportAnIssue" = "Reportar un problema";
+
+"toolbar.toggleSidebar" = "Alternar barra lateral";
+"toolbar.toggleSidebarHelp" = "Alternar barra lateral (Ctrl+Cmd+S)";
+"toolbar.newChat" = "Nuevo chat";
+"toolbar.newChatHelp" = "Nuevo chat (Cmd+N)";
+
+"connect.subtitle" = "Inicia sesión en tu servidor para comenzar.";
+"connect.serverURL" = "URL del servidor";
+"connect.email" = "Correo electrónico";
+"connect.apiKey" = "Clave API";
+"connect.sso" = "SSO";
+"connect.emailPrompt" = "Introduce tu correo electrónico";
+"connect.passwordPrompt" = "Introduce tu contraseña";
+"connect.ssoDescription" = "Inicia sesión a través del proveedor OAuth/SSO de tu servidor. Se abrirá una ventana del navegador para completar la autenticación.";
+"connect.openSSOLogin" = "Abrir inicio de sesión SSO";
+"connect.apiKeyPrompt" = "sk-...";
+"connect.apiKeyHint" = "Encuentra tu clave API en Ajustes > Cuenta > Claves API";
+"connect.connecting" = "Conectando...";
+"connect.signIn" = "Iniciar sesión";
+"connect.errorNoServerURL" = "Por favor, introduce una URL del servidor";
+
+"addServer.title" = "Añadir servidor";
+"addServer.serverName" = "Nombre del servidor";
+"addServer.serverNamePrompt" = "Mi servidor";
+"addServer.serverURL" = "URL del servidor";
+"addServer.authentication" = "Autenticación";
+"addServer.emailLabel" = "Correo electrónico";
+"addServer.passwordLabel" = "Contraseña";
+"addServer.apiKeyLabel" = "Clave API (sk-...)";
+"addServer.apiKeyHint" = "Ajustes > Cuenta > Claves API";
+"addServer.connecting" = "Conectando...";
+"addServer.addButton" = "Añadir servidor";
+"addServer.errorNoServerURL" = "Por favor, introduce una URL del servidor";
+"addServer.errorNoEmail" = "Introduce tu correo electrónico";
+"addServer.errorNoPassword" = "Introduce tu contraseña";
+"addServer.errorNoAPIKey" = "Introduce tu clave API";
+"addServer.errorSSOLogin" = "SSO está configurado en la pantalla de inicio de sesión";
+
+"sidebar.searchPlaceholder" = "Buscar conversaciones";
+"sidebar.noConversations" = "Sin conversaciones";
+"sidebar.noResults" = "Sin resultados";
+"sidebar.loadMore" = "Cargar más...";
+"sidebar.settingsHelp" = "Ajustes (Cmd+,)";
+"sidebar.pinnedModels" = "MODELOS FIJADOS";
+
+"sidebar.group.today" = "Hoy";
+"sidebar.group.yesterday" = "Ayer";
+"sidebar.group.prev7Days" = "Últimos 7 días";
+"sidebar.group.prev30Days" = "Últimos 30 días";
+"sidebar.group.conversations" = "Conversaciones";
+
+"conversation.share" = "Compartir";
+"conversation.download" = "Descargar";
+"conversation.rename" = "Cambiar nombre";
+"conversation.pin" = "Fijar";
+"conversation.unpin" = "Desfijar";
+"conversation.clone" = "Duplicar";
+"conversation.removeFromFolder" = "Quitar de la carpeta";
+"conversation.move" = "Mover";
+"conversation.archive" = "Archivar";
+"conversation.delete" = "Eliminar";
+
+"pinnedModel.unpinFromSidebar" = "Desfijar de la barra lateral";
+"pinnedModel.selectModel" = "Seleccionar modelo";
+"pinnedModel.setAsDefault" = "Establecer como predeterminado";
+
+"deleteChat.title" = "Eliminar chat";
+"deleteChat.message" = "¿Eliminar esta conversación? Esta acción no se puede deshacer.";
+
+"renameChat.title" = "Cambiar nombre de conversación";
+"renameChat.message" = "Introduce un nuevo título para esta conversación.";
+"renameChat.fieldLabel" = "Título";
+
+"chatInput.placeholder" = "Enviar un mensaje";
+"chatInput.searchLabel" = "Buscar";
+"chatInput.listening" = "Escuchando...";
+"chatInput.disclaimer" = "Oval puede cometer errores. Verifica la información importante.";
+"chatInput.attachHelp" = "Adjuntar archivo o imagen";
+"chatInput.webSearchEnable" = "Activar búsqueda web";
+"chatInput.webSearchDisable" = "Desactivar búsqueda web";
+"chatInput.stopListening" = "Dejar de escuchar";
+"chatInput.speechToText" = "Voz a texto";
+"chatInput.voiceMode" = "Modo conversación de voz";
+"chatInput.stopLiveTranscription" = "Detener transcripción en vivo";
+"chatInput.liveTranscription" = "Transcripción en vivo (Cmd+Shift+T)";
+"chatInput.attachFilesTitle" = "Adjuntar archivos";
+"chatInput.attachFilesMessage" = "Selecciona imágenes o archivos para enviar con tu mensaje";
+
+"chatArea.dropFilesTitle" = "Suelta los archivos aquí";
+"chatArea.dropFilesSubtitle" = "Imágenes, documentos y otros archivos";
+"chatArea.welcomeMessage" = "¿Cómo puedo ayudarte hoy?";
+
+"miniChat.placeholder" = "Pregunta lo que quieras";
+"miniChat.thinking" = "Pensando...";
+"miniChat.closeHelp" = "Cerrar (Esc)";
+"miniChat.copyLastResponse" = "Copiar última respuesta";
+"miniChat.newChat" = "Nuevo chat";
+"miniChat.attachHelp" = "Adjuntar";
+"miniChat.webSearchHelp" = "Búsqueda web";
+"miniChat.selectModelHelp" = "Seleccionar modelo";
+"miniChat.voiceInputHelp" = "Entrada de voz";
+"miniChat.copyHelp" = "Copiar";
+"miniChat.modelFallback" = "Modelo";
+
+"voiceMode.modelsNeeded" = "Se necesitan modelos de voz";
+"voiceMode.downloadDescription" = "Descargar modelos STT y TTS (~140 MB)";
+"voiceMode.downloadButton" = "Descargar modelos";
+"voiceMode.stateIdle" = "Toca para iniciar";
+"voiceMode.stateListening" = "Escuchando...";
+"voiceMode.stateTranscribing" = "Transcribiendo...";
+"voiceMode.stateThinking" = "Pensando...";
+"voiceMode.stateSpeaking" = "Hablando...";
+"voiceMode.stateError" = "Error";
+"voiceMode.tapToEnd" = "Toca para terminar";
+"voiceMode.tapToStart" = "Toca para iniciar";
+
+"transcription.title" = "Transcripción en vivo";
+"transcription.live" = "EN VIVO";
+"transcription.modelNotLoaded" = "Modelo no cargado";
+"transcription.stop" = "Detener";
+"transcription.start" = "Iniciar";
+"transcription.speakers" = "Hablantes";
+"transcription.speakersOn" = "Hablantes activos";
+"transcription.loading" = "Cargando...";
+"transcription.disableSpeakers" = "Desactivar identificación de hablantes";
+"transcription.enableSpeakers" = "Activar identificación de hablantes (descarga ~100 MB de modelos)";
+"transcription.speakerCount.one" = "1 hablante";
+"transcription.speakerCount.other" = "%lld hablantes";
+"transcription.copy" = "Copiar";
+"transcription.copied" = "Copiado";
+
+"message.code" = "CÓDIGO";
+"message.output" = "SALIDA";
+"message.error" = "ERROR";
+"message.input" = "ENTRADA";
+"message.executing" = "Ejecutando ...";
+"message.viewResult" = "Ver resultado de %@";
+"message.executed" = "%@ ejecutado";
+"message.failed" = "Error: %@";
+"message.tokens" = "%lld tokens";
+"message.sources.one" = "1 fuente";
+"message.sources.other" = "%lld fuentes";
+"message.copyHelp" = "Copiar mensaje";
+"message.editHelp" = "Editar mensaje";
+"message.regenerateHelp" = "Regenerar respuesta";
+"message.editAction" = "Editar";
+"message.saveAndSubmit" = "Guardar y enviar";
+"message.copyMessage" = "Copiar mensaje";
+"message.stopSpeaking" = "Detener lectura";
+"message.readAloud" = "Leer en voz alta";
+"message.regenerateResponse" = "Regenerar respuesta";
+"message.thinking" = "Pensando...";
+"message.thought" = "Pensado";
+"message.thoughtLessThanSecond" = "Pensado en menos de un segundo";
+"message.thoughtSeconds.one" = "Pensado durante 1 segundo";
+"message.thoughtSeconds.other" = "Pensado durante %lld segundos";
+"message.thoughtMinutes.one" = "Pensado durante 1 minuto";
+"message.thoughtMinutes.other" = "Pensado durante %lld minutos";
+"message.executingPrefix" = "Ejecutando ";
+"message.viewResultPrefix" = "Ver resultado de ";
+"message.executedPrefix" = "Ejecutado ";
+"message.failedPrefix" = "Error: ";
+
+// MARK: - Settings — Language
+"settings.section.language" = "Idioma";
+"settings.language.label" = "Idioma";
+"settings.language.system" = "Predeterminado del sistema";
+"settings.language.restartTitle" = "Reinicio necesario";
+"settings.language.restartMessage" = "La aplicación debe reiniciarse para aplicar el nuevo idioma.";
+"settings.language.restartNow" = "Reiniciar ahora";
+"settings.language.restartLater" = "Más tarde";
+
+"settings.section.server" = "Servidor";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "No conectado";
+"settings.server.version" = "Versión";
+"settings.server.status" = "Estado";
+"settings.server.online" = "En línea";
+"settings.server.unreachable" = "No alcanzable";
+
+"settings.section.behavior" = "Comportamiento";
+"settings.behavior.launchAtLogin" = "Iniciar al entrar";
+"settings.behavior.alwaysOnTop" = "Siempre visible";
+
+"settings.section.shortcuts" = "Atajos de teclado";
+"settings.shortcuts.quickChat" = "Chat rápido";
+"settings.shortcuts.toggleWindow" = "Alternar ventana";
+"settings.shortcuts.pasteToChat" = "Pegar en chat";
+"settings.shortcuts.copyResponse" = "Copiar respuesta";
+"settings.shortcuts.copyResponseValue" = "Cmd + Shift + C";
+"settings.shortcuts.resetHelp" = "Restablecer al predeterminado";
+
+"settings.section.cache" = "Caché";
+"settings.cache.clearTitle" = "Limpiar caché de mensajes";
+"settings.cache.clearSubtitle" = "Recargar todas las conversaciones desde el servidor";
+"settings.cache.clear" = "Limpiar";
+"settings.cache.cleared" = "Limpiado";
+
+"settings.section.support" = "Apoya Oval";
+"settings.support.buyMeCoffeeTitle" = "Invítame a un café";
+"settings.support.buyMeCoffeeSubtitle" = "Apoya el desarrollo con una donación única";
+"settings.support.donateButton" = "Donar";
+"settings.support.githubSponsorsTitle" = "GitHub Sponsors";
+"settings.support.githubSponsorsSubtitle" = "Conviértete en un patrocinador recurrente en GitHub";
+"settings.support.sponsorButton" = "Patrocinar";
+"settings.support.starGithubTitle" = "Estrella en GitHub";
+"settings.support.starGithubSubtitle" = "Ayuda a otros a descubrir Oval";
+"settings.support.starButton" = "Estrella";
+
+"settings.section.connection" = "Conexión";
+"settings.connection.openInBrowserTitle" = "Abrir en el navegador";
+"settings.connection.openInBrowserSubtitle" = "Abrir la interfaz web del servidor";
+"settings.connection.openButton" = "Abrir";
+"settings.connection.disconnectTitle" = "Desconectar";
+"settings.connection.disconnectSubtitle" = "Volver a la pantalla de conexión";
+"settings.connection.disconnectButton" = "Desconectar";
+"settings.connection.disconnectConfirm" = "¿Desconectarse de este servidor?";
+
+"voice.section.engine" = "Motor de voz";
+"voice.engine.label" = "Motor";
+"voice.engine.name" = "RunAnywhere (En el dispositivo)";
+"voice.engine.status" = "Estado";
+"voice.engine.ready" = "Listo";
+"voice.engine.modelsNeeded" = "Modelos necesarios";
+"voice.engine.initializing" = "Inicializando...";
+"voice.engine.description" = "Los modelos de voz se ejecutan completamente en el dispositivo para privacidad y baja latencia. Una vez descargados, se cargan automáticamente en cada inicio.";
+
+"voice.section.stt" = "Voz a texto";
+"voice.section.tts" = "Texto a voz";
+"voice.section.about" = "Acerca de";
+
+"voice.model.ready" = "Listo";
+"voice.model.downloaded" = "Descargado";
+"voice.model.extracting" = "Extrayendo...";
+"voice.model.starting" = "Iniciando...";
+"voice.model.loading" = "Cargando...";
+"voice.model.checking" = "Verificando...";
+"voice.model.downloadButton" = "Descargar";
+"voice.model.selectButton" = "Seleccionar";
+"voice.model.downloaded.bytes" = "%@ descargado";
+
+"about.section.version" = "Versión";
+"about.appVersion" = "Versión de la app";
+"about.seeWhatsNew" = "Ver novedades";
+"about.section.community" = "Comunidad";
+"about.discord" = "Discord";
+"about.twitter" = "Twitter / X";
+"about.github" = "GitHub";
+"about.twemojiCredit" = "Gráficos Twemoji de Twitter/X, con licencia CC-BY 4.0.";
+"about.copyright" = "Copyright (c) %@ Oval";
+"about.allRightsReserved" = "Todos los derechos reservados.";
+
+"sso.title" = "Inicio de sesión SSO";

@@ -93,7 +93,7 @@ struct MessageBubbleView: View {
             if !isEditing && !isStreaming {
                 HStack(spacing: 4) {
                     // Edit button
-                    ActionButton(icon: "pencil", help: "Edit message") {
+                    ActionButton(icon: "pencil", help: String(localized: "message.editHelp")) {
                         editText = message.content
                         isEditing = true
                     }
@@ -102,11 +102,11 @@ struct MessageBubbleView: View {
             }
         }
         .contextMenu {
-            Button("Copy") {
+            Button(String(localized: "copy")) {
                 copyToClipboard(message.content)
             }
             if onEdit != nil {
-                Button("Edit") {
+                Button(String(localized: "message.editAction")) {
                     editText = message.content
                     isEditing = true
                 }
@@ -132,7 +132,7 @@ struct MessageBubbleView: View {
                 )
 
             HStack(spacing: 8) {
-                Button("Cancel") {
+                Button(String(localized: "cancel")) {
                     isEditing = false
                     editText = ""
                 }
@@ -144,7 +144,7 @@ struct MessageBubbleView: View {
                 .background(AppColors.hoverBg)
                 .clipShape(Capsule())
 
-                Button("Save") {
+                Button(String(localized: "save")) {
                     let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
                         onEdit?(message.id, trimmed, false)
@@ -160,7 +160,7 @@ struct MessageBubbleView: View {
                 .background(AppColors.hoverBg)
                 .clipShape(Capsule())
 
-                Button("Save & Submit") {
+                Button(String(localized: "message.saveAndSubmit")) {
                     let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
                         onEdit?(message.id, trimmed, true)
@@ -264,25 +264,25 @@ struct MessageBubbleView: View {
 
                         // Play / Stop TTS
                         if isSpeakingThis {
-                            ActionButton(icon: "stop.fill", help: "Stop speaking") {
+                            ActionButton(icon: "stop.fill", help: String(localized: "chatInput.stopListening")) {
                                 onStopSpeaking?()
                             }
                         } else {
-                            ActionButton(icon: "speaker.wave.2", help: "Read aloud") {
+                            ActionButton(icon: "speaker.wave.2", help: String(localized: "chatInput.speechToText")) {
                                 onSpeak?(message.content, message.id)
                             }
                         }
 
                         // Regenerate (only on last assistant message)
                         if isLastAssistant {
-                            ActionButton(icon: "arrow.counterclockwise", help: "Regenerate response") {
+                            ActionButton(icon: "arrow.counterclockwise", help: String(localized: "message.regenerateHelp")) {
                                 onRegenerate?(message.id)
                             }
                         }
 
                         // Token usage (subtle inline display)
                         if let usage = message.usage, let total = usage.total_tokens, total > 0 {
-                            Text("\(total) tokens")
+                            Text(String(format: String(localized: "message.tokens"), total))
                                 .font(.system(size: 10))
                                 .foregroundStyle(AppColors.textTertiary.opacity(0.7))
                                 .padding(.leading, 4)
@@ -299,11 +299,11 @@ struct MessageBubbleView: View {
                 }
             }
             .contextMenu {
-                Button("Copy Message") {
+                Button(String(localized: "message.copyMessage")) {
                     copyToClipboard(message.content)
                 }
                 if onSpeak != nil {
-                    Button(isSpeakingThis ? "Stop Speaking" : "Read Aloud") {
+                    Button(isSpeakingThis ? String(localized: "message.stopSpeaking") : String(localized: "message.readAloud")) {
                         if isSpeakingThis {
                             onStopSpeaking?()
                         } else {
@@ -312,7 +312,7 @@ struct MessageBubbleView: View {
                     }
                 }
                 if isLastAssistant, onRegenerate != nil {
-                    Button("Regenerate Response") {
+                    Button(String(localized: "message.regenerateResponse")) {
                         onRegenerate?(message.id)
                     }
                 }
@@ -601,19 +601,24 @@ private struct ReasoningBlockView: View {
 
     private var headerText: String {
         if !block.isDone {
-            return "Thinking..."
+            return String(localized: "message.thinking")
         }
         if let duration = block.duration, let seconds = Double(duration) {
             if seconds < 1 {
-                return "Thought for less than a second"
+                return String(localized: "message.thoughtLessThanSecond")
             } else if seconds < 60 {
-                return "Thought for \(Int(seconds)) second\(Int(seconds) == 1 ? "" : "s")"
+                let secs = Int(seconds)
+                return secs == 1
+                    ? String(localized: "message.thoughtSeconds.one")
+                    : String(format: String(localized: "message.thoughtSeconds.other"), secs)
             } else {
                 let minutes = Int(seconds) / 60
-                return "Thought for \(minutes) minute\(minutes == 1 ? "" : "s")"
+                return minutes == 1
+                    ? String(localized: "message.thoughtMinutes.one")
+                    : String(format: String(localized: "message.thoughtMinutes.other"), minutes)
             }
         }
-        return "Thought"
+        return String(localized: "message.thought")
     }
 }
 
@@ -704,22 +709,22 @@ private struct ToolCallView: View {
                 .font(AppFont.caption(size: 12).weight(.medium))
                 .foregroundStyle(AppColors.textSecondary)
         case .executing:
-            (Text("Executing ").foregroundStyle(AppColors.textTertiary)
+            (Text(String(localized: "message.executingPrefix")).foregroundStyle(AppColors.textTertiary)
              + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold()
              + Text("...").foregroundStyle(AppColors.textTertiary))
                 .font(AppFont.caption(size: 12))
         case .completed:
             if toolCall.result != nil {
-                (Text("View Result from ").foregroundStyle(AppColors.textTertiary)
+                (Text(String(localized: "message.viewResultPrefix")).foregroundStyle(AppColors.textTertiary)
                  + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
                     .font(AppFont.caption(size: 12))
             } else {
-                (Text("Executed ").foregroundStyle(AppColors.textTertiary)
+                (Text(String(localized: "message.executedPrefix")).foregroundStyle(AppColors.textTertiary)
                  + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
                     .font(AppFont.caption(size: 12))
             }
         case .error:
-            (Text("Failed: ").foregroundStyle(AppColors.red500)
+            (Text(String(localized: "message.failedPrefix")).foregroundStyle(AppColors.red500)
              + Text(toolCall.function.name).foregroundStyle(AppColors.textSecondary).bold())
                 .font(AppFont.caption(size: 12))
         }
@@ -729,7 +734,7 @@ private struct ToolCallView: View {
 
     private var inputSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("INPUT")
+            Text("message.input")
                 .font(.system(size: 10, weight: .medium))
                 .tracking(1)
                 .foregroundStyle(AppColors.textTertiary)
@@ -770,7 +775,7 @@ private struct ToolCallView: View {
 
     private func outputSection(_ result: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("OUTPUT")
+            Text("message.output")
                 .font(.system(size: 10, weight: .medium))
                 .tracking(1)
                 .foregroundStyle(AppColors.textTertiary)
@@ -879,7 +884,7 @@ private struct CopyButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Copy message")
+        .help(String(localized: "message.copyHelp"))
     }
 }
 
@@ -897,7 +902,7 @@ private struct SourcesView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 11))
-                    Text("\(sources.count) source\(sources.count == 1 ? "" : "s")")
+                    Text(sources.count == 1 ? String(localized: "message.sources.one") : String(format: String(localized: "message.sources.other"), sources.count))
                         .font(.system(size: 11, weight: .medium))
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 9))
@@ -1037,7 +1042,7 @@ private struct CodeExecutionView: View {
                     // Code block
                     if let code = execution.code, !code.isEmpty {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("CODE")
+                            Text("message.code")
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(AppColors.textTertiary)
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -1056,7 +1061,7 @@ private struct CodeExecutionView: View {
                     if let result = execution.result {
                         if let output = result.output, !output.isEmpty {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("OUTPUT")
+                                Text("message.output")
                                     .font(.system(size: 9, weight: .semibold))
                                     .foregroundStyle(AppColors.textTertiary)
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -1073,7 +1078,7 @@ private struct CodeExecutionView: View {
 
                         if let error = result.error, !error.isEmpty {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("ERROR")
+                                Text("message.error")
                                     .font(.system(size: 9, weight: .semibold))
                                     .foregroundStyle(AppColors.red500)
                                 Text(error)
