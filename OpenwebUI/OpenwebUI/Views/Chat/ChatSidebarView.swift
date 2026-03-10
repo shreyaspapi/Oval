@@ -21,7 +21,7 @@ struct ChatSidebarView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12))
                     .foregroundStyle(AppColors.textTertiary)
-                TextField("Search conversations", text: $appState.searchText)
+                TextField(String(localized: "sidebar.searchPlaceholder"), text: $appState.searchText)
                     .textFieldStyle(.plain)
                     .font(AppFont.body(size: 13))
                 if !appState.searchText.isEmpty {
@@ -61,7 +61,7 @@ struct ChatSidebarView: View {
                         Spacer()
                     }
                 } else if appState.filteredConversations.isEmpty {
-                    Text(appState.searchText.isEmpty ? "No conversations" : "No results")
+                    Text(appState.searchText.isEmpty ? String(localized: "sidebar.noConversations") : String(localized: "sidebar.noResults"))
                         .foregroundStyle(AppColors.textTertiary)
                         .font(AppFont.body(size: 13))
                 } else {
@@ -74,20 +74,20 @@ struct ChatSidebarView: View {
                                     Button {
                                         Task { await appState.shareConversation(conversation.id) }
                                     } label: {
-                                        Label("Share", systemImage: "square.and.arrow.up")
+                                        Label(String(localized: "conversation.share"), systemImage: "square.and.arrow.up")
                                     }
 
                                     Button {
                                         Task { await appState.downloadConversation(conversation.id) }
                                     } label: {
-                                        Label("Download", systemImage: "arrow.down.circle")
+                                        Label(String(localized: "conversation.download"), systemImage: "arrow.down.circle")
                                     }
 
                                     Button {
                                         renameText = conversation.title
                                         renameTarget = conversation.id
                                     } label: {
-                                        Label("Rename", systemImage: "pencil")
+                                        Label(String(localized: "conversation.rename"), systemImage: "pencil")
                                     }
 
                                     Divider()
@@ -95,13 +95,13 @@ struct ChatSidebarView: View {
                                     Button {
                                         Task { await appState.togglePinConversation(conversation.id) }
                                     } label: {
-                                        Label(conversation.isPinned ? "Unpin" : "Pin", systemImage: conversation.isPinned ? "bookmark.slash" : "bookmark")
+                                        Label(conversation.isPinned ? String(localized: "conversation.unpin") : String(localized: "conversation.pin"), systemImage: conversation.isPinned ? "bookmark.slash" : "bookmark")
                                     }
 
                                     Button {
                                         Task { await appState.cloneConversation(conversation.id) }
                                     } label: {
-                                        Label("Clone", systemImage: "doc.on.doc")
+                                        Label(String(localized: "conversation.clone"), systemImage: "doc.on.doc")
                                     }
 
                                     if !folders.isEmpty {
@@ -113,19 +113,19 @@ struct ChatSidebarView: View {
                                             }
                                             if conversation.folder_id != nil {
                                                 Divider()
-                                                Button("Remove from folder") {
+                                                Button(String(localized: "conversation.removeFromFolder")) {
                                                     Task { await appState.moveConversation(conversation.id, toFolder: nil) }
                                                 }
                                             }
                                         } label: {
-                                            Label("Move", systemImage: "folder")
+                                            Label(String(localized: "conversation.move"), systemImage: "folder")
                                         }
                                     }
 
                                     Button {
                                         Task { await appState.archiveConversation(conversation.id) }
                                     } label: {
-                                        Label("Archive", systemImage: "archivebox")
+                                        Label(String(localized: "conversation.archive"), systemImage: "archivebox")
                                     }
 
                                     Divider()
@@ -133,7 +133,7 @@ struct ChatSidebarView: View {
                                     Button(role: .destructive) {
                                         deleteTarget = conversation.id
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        Label(String(localized: "conversation.delete"), systemImage: "trash")
                                     }
                                 }
                             }
@@ -154,7 +154,7 @@ struct ChatSidebarView: View {
                                     ProgressView()
                                         .controlSize(.small)
                                 } else {
-                                    Button("Load more...") {
+                                    Button(String(localized: "sidebar.loadMore")) {
                                         Task { await appState.loadMoreConversations() }
                                     }
                                     .buttonStyle(.plain)
@@ -207,7 +207,7 @@ struct ChatSidebarView: View {
                             .foregroundStyle(AppColors.textSecondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Settings (Cmd+,)")
+                    .help(String(localized: "sidebar.settingsHelp"))
                 }
                 .padding(.horizontal, 14)
                 .frame(height: 60)
@@ -215,42 +215,42 @@ struct ChatSidebarView: View {
             .background(AppColors.sidebarBg)
         }
         .confirmationDialog(
-            "Delete Chat",
+            String(localized: "deleteChat.title"),
             isPresented: Binding(
                 get: { deleteTarget != nil },
                 set: { if !$0 { deleteTarget = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(String(localized: "conversation.delete"), role: .destructive) {
                 if let id = deleteTarget {
                     deleteTarget = nil
                     Task { await appState.deleteConversation(id) }
                 }
             }
-            Button("Cancel", role: .cancel) {
+            Button(String(localized: "cancel"), role: .cancel) {
                 deleteTarget = nil
             }
         } message: {
-            Text("Are you sure you want to delete this conversation? This action cannot be undone.")
+            Text("deleteChat.message")
         }
-        .alert("Rename Conversation", isPresented: Binding(
+        .alert(String(localized: "renameChat.title"), isPresented: Binding(
             get: { renameTarget != nil },
             set: { if !$0 { renameTarget = nil } }
         )) {
-            TextField("Title", text: $renameText)
-            Button("Rename") {
+            TextField(String(localized: "renameChat.fieldLabel"), text: $renameText)
+            Button(String(localized: "rename")) {
                 if let id = renameTarget {
                     let newTitle = renameText
                     renameTarget = nil
                     Task { await appState.renameConversation(id, newTitle: newTitle) }
                 }
             }
-            Button("Cancel", role: .cancel) {
+            Button(String(localized: "cancel"), role: .cancel) {
                 renameTarget = nil
             }
         } message: {
-            Text("Enter a new title for this conversation.")
+            Text("renameChat.message")
         }
     }
 
@@ -271,7 +271,7 @@ struct ChatSidebarView: View {
               let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: startOfToday),
               let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: startOfToday)
         else {
-            return [ConversationGroup(label: "Conversations", conversations: appState.filteredConversations)]
+            return [ConversationGroup(label: String(localized: "sidebar.group.conversations"), conversations: appState.filteredConversations)]
         }
 
         var today: [ChatListItem] = []
@@ -304,10 +304,10 @@ struct ChatSidebarView: View {
         }
 
         var groups: [ConversationGroup] = []
-        if !today.isEmpty { groups.append(ConversationGroup(label: "Today", conversations: today)) }
-        if !yesterday.isEmpty { groups.append(ConversationGroup(label: "Yesterday", conversations: yesterday)) }
-        if !prev7.isEmpty { groups.append(ConversationGroup(label: "Previous 7 Days", conversations: prev7)) }
-        if !prev30.isEmpty { groups.append(ConversationGroup(label: "Previous 30 Days", conversations: prev30)) }
+        if !today.isEmpty { groups.append(ConversationGroup(label: String(localized: "sidebar.group.today"), conversations: today)) }
+        if !yesterday.isEmpty { groups.append(ConversationGroup(label: String(localized: "sidebar.group.yesterday"), conversations: yesterday)) }
+        if !prev7.isEmpty { groups.append(ConversationGroup(label: String(localized: "sidebar.group.prev7Days"), conversations: prev7)) }
+        if !prev30.isEmpty { groups.append(ConversationGroup(label: String(localized: "sidebar.group.prev30Days"), conversations: prev30)) }
 
         // Sort older groups by date (most recent month first)
         let sortedOlderKeys = older.keys.sorted { a, b in
@@ -335,7 +335,7 @@ struct PinnedModelsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             // Section header
-            Text("PINNED MODELS")
+            Text("sidebar.pinnedModels")
                 .font(AppFont.semibold(size: 10))
                 .foregroundStyle(AppColors.textTertiary)
                 .padding(.horizontal, 14)
@@ -385,20 +385,20 @@ struct PinnedModelsSection: View {
                     Button {
                         appState.togglePinModel(model)
                     } label: {
-                        Label("Unpin from Sidebar", systemImage: "pin.slash")
+                        Label(String(localized: "pinnedModel.unpinFromSidebar"), systemImage: "pin.slash")
                     }
 
                     Button {
                         appState.selectedModel = model
                     } label: {
-                        Label("Select Model", systemImage: "checkmark.circle")
+                        Label(String(localized: "pinnedModel.selectModel"), systemImage: "checkmark.circle")
                     }
 
                     if !appState.isDefaultModel(model) {
                         Button {
                             appState.setDefaultModel(model)
                         } label: {
-                            Label("Set as Default", systemImage: "star")
+                            Label(String(localized: "pinnedModel.setAsDefault"), systemImage: "star")
                         }
                     }
                 }

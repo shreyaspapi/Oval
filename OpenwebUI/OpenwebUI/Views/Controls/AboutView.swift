@@ -7,37 +7,37 @@ struct AboutView: View {
 
     var body: some View {
         Form {
-            Section("Version") {
-                LabeledContent("App Version") {
+            Section(String(localized: "about.section.version")) {
+                LabeledContent(String(localized: "about.appVersion")) {
                     Text("v\(appState.appVersion)")
                 }
 
-                Link("See what's new", destination: URL(string: "https://desktop.openwebui.com")!)
+                Link(String(localized: "about.seeWhatsNew"), destination: URL(string: "https://desktop.openwebui.com")!)
                     .font(.callout)
             }
 
-            Section("Community") {
+            Section(String(localized: "about.section.community")) {
                 Link(destination: URL(string: "https://discord.gg/5rJgQTnV4s")!) {
-                    Label("Discord", systemImage: "bubble.left.and.bubble.right")
+                    Label(String(localized: "about.discord"), systemImage: "bubble.left.and.bubble.right")
                 }
                 Link(destination: URL(string: "https://x.com/spapinwar")!) {
-                    Label("Twitter / X", systemImage: "at")
+                    Label(String(localized: "about.twitter"), systemImage: "at")
                 }
                 Link(destination: URL(string: "https://github.com/anomalyco/oval")!) {
-                    Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                    Label(String(localized: "about.github"), systemImage: "chevron.left.forwardslash.chevron.right")
                 }
             }
 
             Section {
-                Text("Twemoji graphics made by Twitter/X, licensed under CC-BY 4.0.")
+                Text("about.twemojiCredit")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text("Copyright (c) \(currentYear) Oval")
+                Text(String(format: String(localized: "about.copyright"), currentYear))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text("All rights reserved.")
+                Text("about.allRightsReserved")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

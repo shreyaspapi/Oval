@@ -81,7 +81,7 @@ struct RealtimeTranscriptionView: View {
                     .frame(width: 40, height: 16)
             }
 
-            Text("Live Transcription")
+            Text("transcription.title")
                 .font(AppFont.semibold(size: 13))
                 .foregroundStyle(AppColors.textPrimary)
 
@@ -103,13 +103,13 @@ struct RealtimeTranscriptionView: View {
                     Circle()
                         .fill(.red)
                         .frame(width: 6, height: 6)
-                    Text("LIVE")
+                    Text("transcription.live")
                         .font(AppFont.caption(size: 10))
                         .foregroundStyle(.red)
                         .fontWeight(.bold)
                 }
             } else if !manager.isModelReady {
-                Text("Model not loaded")
+                Text("transcription.modelNotLoaded")
                     .font(AppFont.caption(size: 11))
                     .foregroundStyle(AppColors.textTertiary)
             }
@@ -158,7 +158,7 @@ struct RealtimeTranscriptionView: View {
                 HStack(spacing: 6) {
                     Image(systemName: manager.isActive ? "stop.fill" : "mic.fill")
                         .font(.system(size: 12))
-                    Text(manager.isActive ? "Stop" : "Start")
+                    Text(manager.isActive ? String(localized: "transcription.stop") : String(localized: "transcription.start"))
                         .font(AppFont.semibold(size: 12))
                 }
                 .foregroundStyle(manager.isActive ? .red : AppColors.accentBlue)
@@ -191,8 +191,8 @@ struct RealtimeTranscriptionView: View {
                 HStack(spacing: 4) {
                     Image(systemName: diarizationManager.isEnabled ? "person.2.fill" : "person.2")
                         .font(.system(size: 11))
-                    Text(diarizationManager.isPreparing ? "Loading..." :
-                            diarizationManager.isEnabled ? "Speakers On" : "Speakers")
+                    Text(diarizationManager.isPreparing ? String(localized: "transcription.loading") :
+                            diarizationManager.isEnabled ? String(localized: "transcription.speakersOn") : String(localized: "transcription.speakers"))
                         .font(AppFont.caption(size: 11))
                 }
                 .foregroundStyle(diarizationManager.isEnabled ? Color.white : AppColors.textSecondary)
@@ -205,13 +205,13 @@ struct RealtimeTranscriptionView: View {
             }
             .buttonStyle(.plain)
             .disabled(diarizationManager.isPreparing)
-            .help(diarizationManager.isEnabled ? "Disable speaker identification" : "Enable speaker identification (downloads ~100MB models)")
+                    .help(diarizationManager.isEnabled ? String(localized: "transcription.disableSpeakers") : String(localized: "transcription.enableSpeakers"))
 
             Spacer()
 
             // Speaker count badge
             if diarizationManager.isEnabled && diarizationManager.speakerCount > 0 {
-                Text("\(diarizationManager.speakerCount) speaker\(diarizationManager.speakerCount == 1 ? "" : "s")")
+                Text(diarizationManager.speakerCount == 1 ? String(localized: "transcription.speakerCount.one") : String(format: String(localized: "transcription.speakerCount.other"), diarizationManager.speakerCount))
                     .font(AppFont.caption(size: 10))
                     .foregroundStyle(AppColors.emerald600)
                     .padding(.horizontal, 8)
@@ -243,7 +243,7 @@ struct RealtimeTranscriptionView: View {
                 HStack(spacing: 4) {
                     Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                         .font(.system(size: 11))
-                    Text(showCopied ? "Copied" : "Copy")
+                    Text(showCopied ? String(localized: "transcription.copied") : String(localized: "transcription.copy"))
                         .font(AppFont.caption(size: 11))
                 }
                 .foregroundStyle(AppColors.textSecondary)
