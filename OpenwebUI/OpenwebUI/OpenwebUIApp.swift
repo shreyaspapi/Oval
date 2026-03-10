@@ -51,7 +51,7 @@ struct OpenwebUIApp: App {
 
         // MARK: - Main Window
 
-        WindowGroup("Oval") {
+        WindowGroup(String(localized: "app.name")) {
             ContentView(appState: appState)
                 .frame(minWidth: 700, minHeight: 450)
         }
@@ -61,7 +61,7 @@ struct OpenwebUIApp: App {
         .commands {
             // MARK: File Menu
             CommandGroup(replacing: .newItem) {
-                Button("New Chat") {
+                Button(String(localized: "menu.newChat")) {
                     appState.newConversation()
                 }
                 .keyboardShortcut("n", modifiers: .command)
@@ -69,13 +69,13 @@ struct OpenwebUIApp: App {
 
                 Divider()
 
-                Button("Quick Chat  \(appState.hotkeyPreferences.quickChat.displayString)") {
+                Button(String(format: String(localized: "menu.quickChat"), appState.hotkeyPreferences.quickChat.displayString)) {
                     appState.miniChatWindowManager.toggle()
                 }
 
                 Divider()
 
-                Button(appState.isRealtimeTranscriptionActive ? "Stop Transcription" : "Live Transcription") {
+                Button(appState.isRealtimeTranscriptionActive ? String(localized: "menu.stopTranscription") : String(localized: "menu.liveTranscription")) {
                     appState.setRealtimeTranscriptionActive(!appState.isRealtimeTranscriptionActive)
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
@@ -83,7 +83,7 @@ struct OpenwebUIApp: App {
 
             // MARK: Edit Menu
             CommandGroup(after: .textEditing) {
-                Button("Find...") {
+                Button(String(localized: "menu.find")) {
                     NotificationCenter.default.post(name: .focusSearch, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: .command)
@@ -91,7 +91,7 @@ struct OpenwebUIApp: App {
 
                 Divider()
 
-                Button("Copy Last Response") {
+                Button(String(localized: "menu.copyLastResponse")) {
                     appState.copyLastAssistantMessage()
                 }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
@@ -99,7 +99,7 @@ struct OpenwebUIApp: App {
 
             // MARK: View Menu
             CommandGroup(after: .sidebar) {
-                Button(appState.isSidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+                Button(appState.isSidebarVisible ? String(localized: "menu.hideSidebar") : String(localized: "menu.showSidebar")) {
                     withAnimation { appState.isSidebarVisible.toggle() }
                 }
                 .keyboardShortcut("s", modifiers: [.command, .control])
@@ -107,7 +107,7 @@ struct OpenwebUIApp: App {
 
                 Divider()
 
-                Toggle("Always on Top", isOn: Binding(
+                Toggle(String(localized: "menu.alwaysOnTop"), isOn: Binding(
                     get: { appState.alwaysOnTop },
                     set: { appState.alwaysOnTop = $0 }
                 ))
@@ -120,7 +120,7 @@ struct OpenwebUIApp: App {
 
                 Divider()
 
-                Button("Open Server in Browser") {
+                Button(String(localized: "menu.openServerInBrowser")) {
                     appState.openInBrowser()
                 }
                 .keyboardShortcut("o", modifiers: [.command, .option])
@@ -129,12 +129,12 @@ struct OpenwebUIApp: App {
 
             // MARK: Help Menu
             CommandGroup(replacing: .help) {
-                Link("Oval Documentation",
+                Link(String(localized: "menu.ovalDocumentation"),
                      destination: URL(string: "https://docs.openwebui.com")!)
-                Link("GitHub Repository",
+                Link(String(localized: "menu.githubRepository"),
                      destination: URL(string: "https://github.com/open-webui/open-webui")!)
                 Divider()
-                Link("Report an Issue",
+                Link(String(localized: "menu.reportAnIssue"),
                      destination: URL(string: "https://github.com/open-webui/open-webui/issues")!)
             }
         }

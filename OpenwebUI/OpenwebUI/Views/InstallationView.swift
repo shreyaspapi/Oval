@@ -43,7 +43,7 @@ struct ConnectView: View {
 
                 // Title section
                 VStack(spacing: 12) {
-                    Text("Oval")
+                    Text("app.name")
                         .font(.system(size: 42, weight: .regular, design: .serif))
                         .foregroundStyle(.white)
                         .onTapGesture {
@@ -54,7 +54,7 @@ struct ConnectView: View {
                             }
                         }
 
-                    Text("Sign in to your server to get started.")
+                    Text("connect.subtitle")
                         .font(.system(size: 15))
                         .foregroundStyle(.white.opacity(0.5))
                 }
@@ -66,7 +66,7 @@ struct ConnectView: View {
                 VStack(spacing: 16) {
                     // Server URL
                     formField(
-                        label: "Server URL",
+                        label: String(localized: "connect.serverURL"),
                         icon: "link",
                         content: AnyView(
                             TextField("", text: $appState.urlInput, prompt: Text("http://localhost:8080").foregroundStyle(.white.opacity(0.25)))
@@ -78,9 +78,9 @@ struct ConnectView: View {
 
                     // Auth method toggle
                     HStack(spacing: 0) {
-                        authTab(label: "Email", icon: "envelope", method: .emailPassword)
-                        authTab(label: "API Key", icon: "key", method: .apiKey)
-                        authTab(label: "SSO", icon: "globe", method: .sso)
+                        authTab(label: String(localized: "connect.email"), icon: "envelope", method: .emailPassword)
+                        authTab(label: String(localized: "connect.apiKey"), icon: "key", method: .apiKey)
+                        authTab(label: String(localized: "connect.sso"), icon: "globe", method: .sso)
                     }
                     .background(Color.white.opacity(0.03))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -117,7 +117,7 @@ struct ConnectView: View {
                                     .controlSize(.small)
                                     .tint(.white)
                             }
-                            Text(appState.isConnecting ? "Connecting..." : "Sign in")
+                            Text(appState.isConnecting ? String(localized: "connect.connecting") : String(localized: "connect.signIn"))
                                 .font(.system(size: 14, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -266,10 +266,10 @@ struct ConnectView: View {
     private var emailPasswordFields: some View {
         VStack(spacing: 12) {
             formField(
-                label: "Email",
+                label: String(localized: "connect.email"),
                 icon: "envelope",
                 content: AnyView(
-                    TextField("", text: $appState.emailInput, prompt: Text("Enter your email").foregroundStyle(.white.opacity(0.25)))
+                    TextField("", text: $appState.emailInput, prompt: Text("connect.emailPrompt").foregroundStyle(.white.opacity(0.25)))
                         .textFieldStyle(.plain)
                         .font(.system(size: 14))
                         .foregroundStyle(.white)
@@ -278,10 +278,10 @@ struct ConnectView: View {
             )
 
             formField(
-                label: "Password",
+                label: String(localized: "addServer.passwordLabel"),
                 icon: "lock",
                 content: AnyView(
-                    SecureField("", text: $appState.passwordInput, prompt: Text("Enter your password").foregroundStyle(.white.opacity(0.25)))
+                    SecureField("", text: $appState.passwordInput, prompt: Text("connect.passwordPrompt").foregroundStyle(.white.opacity(0.25)))
                         .textFieldStyle(.plain)
                         .font(.system(size: 14))
                         .foregroundStyle(.white)
@@ -299,7 +299,7 @@ struct ConnectView: View {
 
     private var ssoFields: some View {
         VStack(spacing: 12) {
-            Text("Sign in via your server's OAuth/SSO provider. A browser window will open to complete authentication.")
+                    Text("connect.ssoDescription")
                 .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.35))
                 .multilineTextAlignment(.center)
@@ -307,7 +307,7 @@ struct ConnectView: View {
             Button {
                 let url = appState.urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !url.isEmpty else {
-                    appState.connectionError = "Please enter a server URL"
+                    appState.connectionError = String(localized: "connect.errorNoServerURL")
                     return
                 }
                 showSSOWebView = true
@@ -315,7 +315,7 @@ struct ConnectView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.right.square")
                         .font(.system(size: 13))
-                    Text("Open SSO Login")
+                    Text("connect.openSSOLogin")
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundStyle(.white)
@@ -352,10 +352,10 @@ struct ConnectView: View {
     private var apiKeyFields: some View {
         VStack(spacing: 8) {
             formField(
-                label: "API Key",
+                label: String(localized: "connect.apiKey"),
                 icon: "key",
                 content: AnyView(
-                    SecureField("", text: $appState.apiKeyInput, prompt: Text("sk-...").foregroundStyle(.white.opacity(0.25)))
+                    SecureField("", text: $appState.apiKeyInput, prompt: Text("connect.apiKeyPrompt").foregroundStyle(.white.opacity(0.25)))
                         .textFieldStyle(.plain)
                         .font(.system(size: 14))
                         .foregroundStyle(.white)
@@ -365,7 +365,7 @@ struct ConnectView: View {
                 )
             )
 
-            Text("Find your API key in Settings > Account > API Keys")
+                    Text("connect.apiKeyHint")
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.25))
                 .multilineTextAlignment(.center)

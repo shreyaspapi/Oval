@@ -1,0 +1,291 @@
+/* Localizable.strings — Russian (ru)
+   Oval macOS App
+*/
+
+"app.name" = "Oval";
+"ok" = "ОК";
+"cancel" = "Отмена";
+"delete" = "Удалить";
+"rename" = "Переименовать";
+"save" = "Сохранить";
+"close" = "Закрыть";
+"done" = "Готово";
+"back" = "Назад";
+"retry" = "Повторить";
+"copy" = "Копировать";
+"copied" = "Скопировано";
+"share" = "Поделиться";
+"download" = "Загрузить";
+"select" = "Выбрать";
+"open" = "Открыть";
+"start" = "Начать";
+"stop" = "Остановить";
+"clear" = "Очистить";
+"cleared" = "Очищено";
+
+"menu.newChat" = "Новый чат";
+"menu.quickChat" = "Быстрый чат  %@";
+"menu.stopTranscription" = "Остановить транскрипцию";
+"menu.liveTranscription" = "Живая транскрипция";
+"menu.find" = "Найти...";
+"menu.copyLastResponse" = "Скопировать последний ответ";
+"menu.hideSidebar" = "Скрыть боковую панель";
+"menu.showSidebar" = "Показать боковую панель";
+"menu.alwaysOnTop" = "Всегда поверх";
+"menu.openServerInBrowser" = "Открыть сервер в браузере";
+"menu.ovalDocumentation" = "Документация Oval";
+"menu.githubRepository" = "Репозиторий GitHub";
+"menu.reportAnIssue" = "Сообщить о проблеме";
+
+"toolbar.toggleSidebar" = "Показать/скрыть боковую панель";
+"toolbar.toggleSidebarHelp" = "Показать/скрыть боковую панель (Ctrl+Cmd+S)";
+"toolbar.newChat" = "Новый чат";
+"toolbar.newChatHelp" = "Новый чат (Cmd+N)";
+
+"connect.subtitle" = "Войдите в свой сервер, чтобы начать.";
+"connect.serverURL" = "URL-адрес сервера";
+"connect.email" = "Эл. почта";
+"connect.apiKey" = "API-ключ";
+"connect.sso" = "SSO";
+"connect.emailPrompt" = "Введите адрес эл. почты";
+"connect.passwordPrompt" = "Введите пароль";
+"connect.ssoDescription" = "Войдите через провайдер OAuth/SSO вашего сервера. Откроется окно браузера для завершения аутентификации.";
+"connect.openSSOLogin" = "Открыть SSO-вход";
+"connect.apiKeyPrompt" = "sk-...";
+"connect.apiKeyHint" = "Найдите ваш API-ключ в Настройки > Аккаунт > API-ключи";
+"connect.connecting" = "Подключение...";
+"connect.signIn" = "Войти";
+"connect.errorNoServerURL" = "Введите URL-адрес сервера";
+
+"addServer.title" = "Добавить сервер";
+"addServer.serverName" = "Имя сервера";
+"addServer.serverNamePrompt" = "Мой сервер";
+"addServer.serverURL" = "URL-адрес сервера";
+"addServer.authentication" = "Аутентификация";
+"addServer.emailLabel" = "Эл. почта";
+"addServer.passwordLabel" = "Пароль";
+"addServer.apiKeyLabel" = "API-ключ (sk-...)";
+"addServer.apiKeyHint" = "Настройки > Аккаунт > API-ключи";
+"addServer.connecting" = "Подключение...";
+"addServer.addButton" = "Добавить сервер";
+"addServer.errorNoServerURL" = "Введите URL-адрес сервера";
+"addServer.errorNoEmail" = "Введите адрес эл. почты";
+"addServer.errorNoPassword" = "Введите пароль";
+"addServer.errorNoAPIKey" = "Введите API-ключ";
+"addServer.errorSSOLogin" = "SSO настраивается на экране входа";
+
+"sidebar.searchPlaceholder" = "Поиск разговоров";
+"sidebar.noConversations" = "Нет разговоров";
+"sidebar.noResults" = "Нет результатов";
+"sidebar.loadMore" = "Загрузить ещё...";
+"sidebar.settingsHelp" = "Настройки (Cmd+,)";
+"sidebar.pinnedModels" = "ЗАКРЕПЛЁННЫЕ МОДЕЛИ";
+
+"sidebar.group.today" = "Сегодня";
+"sidebar.group.yesterday" = "Вчера";
+"sidebar.group.prev7Days" = "Последние 7 дней";
+"sidebar.group.prev30Days" = "Последние 30 дней";
+"sidebar.group.conversations" = "Разговоры";
+
+"conversation.share" = "Поделиться";
+"conversation.download" = "Загрузить";
+"conversation.rename" = "Переименовать";
+"conversation.pin" = "Закрепить";
+"conversation.unpin" = "Открепить";
+"conversation.clone" = "Дублировать";
+"conversation.removeFromFolder" = "Убрать из папки";
+"conversation.move" = "Переместить";
+"conversation.archive" = "Архивировать";
+"conversation.delete" = "Удалить";
+
+"pinnedModel.unpinFromSidebar" = "Открепить от боковой панели";
+"pinnedModel.selectModel" = "Выбрать модель";
+"pinnedModel.setAsDefault" = "Установить по умолчанию";
+
+"deleteChat.title" = "Удалить чат";
+"deleteChat.message" = "Удалить этот разговор? Это действие нельзя отменить.";
+
+"renameChat.title" = "Переименовать разговор";
+"renameChat.message" = "Введите новое название для этого разговора.";
+"renameChat.fieldLabel" = "Название";
+
+"chatInput.placeholder" = "Отправить сообщение";
+"chatInput.searchLabel" = "Поиск";
+"chatInput.listening" = "Прослушивание...";
+"chatInput.disclaimer" = "Oval может допускать ошибки. Проверяйте важную информацию.";
+"chatInput.attachHelp" = "Прикрепить файл или изображение";
+"chatInput.webSearchEnable" = "Включить веб-поиск";
+"chatInput.webSearchDisable" = "Отключить веб-поиск";
+"chatInput.stopListening" = "Остановить прослушивание";
+"chatInput.speechToText" = "Речь в текст";
+"chatInput.voiceMode" = "Режим голосового разговора";
+"chatInput.stopLiveTranscription" = "Остановить живую транскрипцию";
+"chatInput.liveTranscription" = "Живая транскрипция (Cmd+Shift+T)";
+"chatInput.attachFilesTitle" = "Прикрепить файлы";
+"chatInput.attachFilesMessage" = "Выберите изображения или файлы для отправки с сообщением";
+
+"chatArea.dropFilesTitle" = "Перетащите файлы сюда";
+"chatArea.dropFilesSubtitle" = "Изображения, документы и другие файлы";
+"chatArea.welcomeMessage" = "Как я могу помочь вам сегодня?";
+
+"miniChat.placeholder" = "Спросите что-нибудь";
+"miniChat.thinking" = "Думаю...";
+"miniChat.closeHelp" = "Закрыть (Esc)";
+"miniChat.copyLastResponse" = "Скопировать последний ответ";
+"miniChat.newChat" = "Новый чат";
+"miniChat.attachHelp" = "Прикрепить";
+"miniChat.webSearchHelp" = "Веб-поиск";
+"miniChat.selectModelHelp" = "Выбрать модель";
+"miniChat.voiceInputHelp" = "Голосовой ввод";
+"miniChat.copyHelp" = "Копировать";
+"miniChat.modelFallback" = "Модель";
+
+"voiceMode.modelsNeeded" = "Необходимы голосовые модели";
+"voiceMode.downloadDescription" = "Загрузить модели STT и TTS (~140 МБ)";
+"voiceMode.downloadButton" = "Загрузить модели";
+"voiceMode.stateIdle" = "Нажмите для начала";
+"voiceMode.stateListening" = "Прослушивание...";
+"voiceMode.stateTranscribing" = "Транскрипция...";
+"voiceMode.stateThinking" = "Думаю...";
+"voiceMode.stateSpeaking" = "Говорю...";
+"voiceMode.stateError" = "Ошибка";
+"voiceMode.tapToEnd" = "Нажмите для завершения";
+"voiceMode.tapToStart" = "Нажмите для начала";
+
+"transcription.title" = "Живая транскрипция";
+"transcription.live" = "LIVE";
+"transcription.modelNotLoaded" = "Модель не загружена";
+"transcription.stop" = "Стоп";
+"transcription.start" = "Начать";
+"transcription.speakers" = "Спикеры";
+"transcription.speakersOn" = "Спикеры включены";
+"transcription.loading" = "Загрузка...";
+"transcription.disableSpeakers" = "Отключить определение спикеров";
+"transcription.enableSpeakers" = "Включить определение спикеров (загружает ~100 МБ моделей)";
+"transcription.speakerCount.one" = "1 спикер";
+"transcription.speakerCount.other" = "%lld спикеров";
+"transcription.copy" = "Копировать";
+"transcription.copied" = "Скопировано";
+
+"message.code" = "КОД";
+"message.output" = "ВЫВОД";
+"message.error" = "ОШИБКА";
+"message.input" = "ВВОД";
+"message.executing" = "Выполнение ...";
+"message.viewResult" = "Посмотреть результат от %@";
+"message.executed" = "%@ выполнено";
+"message.failed" = "Ошибка: %@";
+"message.tokens" = "%lld токенов";
+"message.sources.one" = "1 источник";
+"message.sources.other" = "%lld источников";
+"message.copyHelp" = "Скопировать сообщение";
+"message.editHelp" = "Редактировать сообщение";
+"message.regenerateHelp" = "Сгенерировать ответ заново";
+"message.editAction" = "Редактировать";
+"message.saveAndSubmit" = "Сохранить и отправить";
+"message.copyMessage" = "Скопировать сообщение";
+"message.stopSpeaking" = "Остановить чтение";
+"message.readAloud" = "Читать вслух";
+"message.regenerateResponse" = "Сгенерировать ответ заново";
+"message.thinking" = "Думаю...";
+"message.thought" = "Подумал";
+"message.thoughtLessThanSecond" = "Подумал менее секунды";
+"message.thoughtSeconds.one" = "Подумал 1 секунду";
+"message.thoughtSeconds.other" = "Подумал %lld секунд";
+"message.thoughtMinutes.one" = "Подумал 1 минуту";
+"message.thoughtMinutes.other" = "Подумал %lld минут";
+"message.executingPrefix" = "Выполнение ";
+"message.viewResultPrefix" = "Просмотр результата от ";
+"message.executedPrefix" = "Выполнено ";
+"message.failedPrefix" = "Ошибка: ";
+
+// MARK: - Settings — Language
+"settings.section.language" = "Язык";
+"settings.language.label" = "Язык";
+"settings.language.system" = "Системный язык";
+"settings.language.restartTitle" = "Требуется перезапуск";
+"settings.language.restartMessage" = "Приложение необходимо перезапустить для применения нового языка.";
+"settings.language.restartNow" = "Перезапустить сейчас";
+"settings.language.restartLater" = "Позже";
+
+"settings.section.server" = "Сервер";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "Не подключено";
+"settings.server.version" = "Версия";
+"settings.server.status" = "Статус";
+"settings.server.online" = "Онлайн";
+"settings.server.unreachable" = "Недоступен";
+
+"settings.section.behavior" = "Поведение";
+"settings.behavior.launchAtLogin" = "Запускать при входе";
+"settings.behavior.alwaysOnTop" = "Всегда поверх";
+
+"settings.section.shortcuts" = "Горячие клавиши";
+"settings.shortcuts.quickChat" = "Быстрый чат";
+"settings.shortcuts.toggleWindow" = "Переключить окно";
+"settings.shortcuts.pasteToChat" = "Вставить в чат";
+"settings.shortcuts.copyResponse" = "Скопировать ответ";
+"settings.shortcuts.copyResponseValue" = "Cmd + Shift + C";
+"settings.shortcuts.resetHelp" = "Сбросить до значения по умолчанию";
+
+"settings.section.cache" = "Кэш";
+"settings.cache.clearTitle" = "Очистить кэш сообщений";
+"settings.cache.clearSubtitle" = "Принудительно перезагрузить все разговоры с сервера";
+"settings.cache.clear" = "Очистить";
+"settings.cache.cleared" = "Очищено";
+
+"settings.section.support" = "Поддержать Oval";
+"settings.support.buyMeCoffeeTitle" = "Угостить кофе";
+"settings.support.buyMeCoffeeSubtitle" = "Поддержать разработку разовым пожертвованием";
+"settings.support.donateButton" = "Пожертвовать";
+"settings.support.githubSponsorsTitle" = "GitHub Sponsors";
+"settings.support.githubSponsorsSubtitle" = "Стать постоянным спонсором на GitHub";
+"settings.support.sponsorButton" = "Спонсировать";
+"settings.support.starGithubTitle" = "Поставить звезду на GitHub";
+"settings.support.starGithubSubtitle" = "Помочь другим узнать об Oval";
+"settings.support.starButton" = "Звезда";
+
+"settings.section.connection" = "Соединение";
+"settings.connection.openInBrowserTitle" = "Открыть в браузере";
+"settings.connection.openInBrowserSubtitle" = "Открыть веб-интерфейс сервера";
+"settings.connection.openButton" = "Открыть";
+"settings.connection.disconnectTitle" = "Отключиться";
+"settings.connection.disconnectSubtitle" = "Вернуться к экрану подключения";
+"settings.connection.disconnectButton" = "Отключиться";
+"settings.connection.disconnectConfirm" = "Отключиться от этого сервера?";
+
+"voice.section.engine" = "Голосовой движок";
+"voice.engine.label" = "Движок";
+"voice.engine.name" = "RunAnywhere (На устройстве)";
+"voice.engine.status" = "Статус";
+"voice.engine.ready" = "Готово";
+"voice.engine.modelsNeeded" = "Необходимы модели";
+"voice.engine.initializing" = "Инициализация...";
+"voice.engine.description" = "Голосовые модели работают полностью на устройстве для обеспечения конфиденциальности и низкой задержки. После загрузки они автоматически загружаются при каждом запуске.";
+
+"voice.section.stt" = "Речь в текст";
+"voice.section.tts" = "Текст в речь";
+"voice.section.about" = "О программе";
+
+"voice.model.ready" = "Готово";
+"voice.model.downloaded" = "Загружено";
+"voice.model.extracting" = "Извлечение...";
+"voice.model.starting" = "Запуск...";
+"voice.model.loading" = "Загрузка...";
+"voice.model.checking" = "Проверка...";
+"voice.model.downloadButton" = "Загрузить";
+"voice.model.selectButton" = "Выбрать";
+"voice.model.downloaded.bytes" = "%@ загружено";
+
+"about.section.version" = "Версия";
+"about.appVersion" = "Версия приложения";
+"about.seeWhatsNew" = "Что нового";
+"about.section.community" = "Сообщество";
+"about.discord" = "Discord";
+"about.twitter" = "Twitter / X";
+"about.github" = "GitHub";
+"about.twemojiCredit" = "Графика Twemoji создана Twitter/X, лицензия CC-BY 4.0.";
+"about.copyright" = "Copyright (c) %@ Oval";
+"about.allRightsReserved" = "Все права защищены.";
+
+"sso.title" = "SSO-вход";

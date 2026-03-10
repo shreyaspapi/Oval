@@ -8,23 +8,27 @@ struct VoiceModelSettingsView: View {
     var body: some View {
         Form {
             // Status
-            Section("Voice Engine") {
-                LabeledContent("Engine") {
-                    Text("RunAnywhere (On-Device)")
+            Section(String(localized: "voice.section.engine")) {
+                LabeledContent(String(localized: "voice.engine.label")) {
+                    Text(String(localized: "voice.engine.name"))
                         .foregroundStyle(.secondary)
                 }
-                LabeledContent("Status") {
+                LabeledContent(String(localized: "voice.engine.status")) {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(raService.isVoiceReady ? .green : .orange)
                             .frame(width: 8, height: 8)
-                        Text(raService.isVoiceReady ? "Ready" : (raService.isSDKReady ? "Models Needed" : "Initializing..."))
+                        Text(raService.isVoiceReady
+                             ? String(localized: "voice.engine.ready")
+                             : (raService.isSDKReady
+                                ? String(localized: "voice.engine.modelsNeeded")
+                                : String(localized: "voice.engine.initializing")))
                     }
                 }
             }
 
             // STT Model Selection
-            Section("Speech-to-Text") {
+            Section(String(localized: "voice.section.stt")) {
                 ForEach(RunAnywhereService.sttCatalog) { entry in
                     modelRow(entry: entry, isSelected: entry.id == raService.selectedSTTModelId) {
                         Task { await raService.selectSTTModel(entry.id) }
@@ -33,7 +37,7 @@ struct VoiceModelSettingsView: View {
             }
 
             // TTS Voice Selection
-            Section("Text-to-Speech") {
+            Section(String(localized: "voice.section.tts")) {
                 ForEach(RunAnywhereService.ttsCatalog) { entry in
                     modelRow(entry: entry, isSelected: entry.id == raService.selectedTTSModelId) {
                         Task { await raService.selectTTSModel(entry.id) }
@@ -55,8 +59,8 @@ struct VoiceModelSettingsView: View {
             }
 
             // Info
-            Section("About") {
-                Text("Voice models run entirely on-device for privacy and low latency. Once downloaded, they load automatically on each launch. The selected TTS voice is also used for the play button on chat messages.")
+            Section(String(localized: "voice.section.about")) {
+                Text("voice.engine.description")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -133,7 +137,7 @@ struct VoiceModelSettingsView: View {
         case .loaded:
             HStack(spacing: 4) {
                 Circle().fill(.green).frame(width: 6, height: 6)
-                Text("Ready")
+                Text(String(localized: "voice.model.ready"))
                     .font(.caption)
                     .foregroundStyle(.green)
             }
@@ -142,12 +146,12 @@ struct VoiceModelSettingsView: View {
             if isSelected {
                 HStack(spacing: 4) {
                     Circle().fill(.blue).frame(width: 6, height: 6)
-                    Text("Downloaded")
+                    Text(String(localized: "voice.model.downloaded"))
                         .font(.caption)
                         .foregroundStyle(.blue)
                 }
             } else {
-                Button("Select") {
+                Button(String(localized: "voice.model.selectButton")) {
                     onSelect()
                 }
                 .controlSize(.small)
@@ -163,19 +167,19 @@ struct VoiceModelSettingsView: View {
                 HStack(spacing: 4) {
                     if progress > 0 && progress < 0.8 {
                         // Downloading phase (0–80% of overall)
-                        Text("\(formatMB(bytesDownloaded)) downloaded")
+                        Text(String(format: String(localized: "voice.model.downloaded.bytes"), formatMB(bytesDownloaded)))
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(.secondary)
                     } else if progress >= 0.8 {
                         ProgressView()
                             .controlSize(.mini)
-                        Text("Extracting...")
+                        Text(String(localized: "voice.model.extracting"))
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     } else {
                         ProgressView()
                             .controlSize(.mini)
-                        Text("Starting...")
+                        Text(String(localized: "voice.model.starting"))
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }
@@ -185,7 +189,7 @@ struct VoiceModelSettingsView: View {
         case .loading:
             HStack(spacing: 4) {
                 ProgressView().controlSize(.mini)
-                Text("Loading...")
+                Text(String(localized: "voice.model.loading"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -196,12 +200,12 @@ struct VoiceModelSettingsView: View {
             if raService.isCheckingModelStates && raService.isSDKReady == false {
                 HStack(spacing: 4) {
                     ProgressView().controlSize(.mini)
-                    Text("Checking...")
+                    Text(String(localized: "voice.model.checking"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Button("Download") {
+                Button(String(localized: "voice.model.downloadButton")) {
                     Task {
                         await raService.downloadModel(id: entry.id)
                         // Auto-select after download
@@ -224,7 +228,7 @@ struct VoiceModelSettingsView: View {
                         .foregroundStyle(.red)
                         .lineLimit(1)
                 }
-                Button("Retry") {
+                Button(String(localized: "retry")) {
                     // Reset state so download/load can be attempted again
                     raService.modelStates[entry.id] = .notDownloaded
                     raService.error = nil

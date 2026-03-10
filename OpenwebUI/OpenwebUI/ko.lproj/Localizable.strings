@@ -1,0 +1,291 @@
+/* Localizable.strings — Korean (ko)
+   Oval macOS App
+*/
+
+"app.name" = "Oval";
+"ok" = "확인";
+"cancel" = "취소";
+"delete" = "삭제";
+"rename" = "이름 변경";
+"save" = "저장";
+"close" = "닫기";
+"done" = "완료";
+"back" = "뒤로";
+"retry" = "다시 시도";
+"copy" = "복사";
+"copied" = "복사됨";
+"share" = "공유";
+"download" = "다운로드";
+"select" = "선택";
+"open" = "열기";
+"start" = "시작";
+"stop" = "중지";
+"clear" = "지우기";
+"cleared" = "지워짐";
+
+"menu.newChat" = "새 대화";
+"menu.quickChat" = "빠른 대화  %@";
+"menu.stopTranscription" = "변환 중지";
+"menu.liveTranscription" = "실시간 변환";
+"menu.find" = "찾기...";
+"menu.copyLastResponse" = "마지막 응답 복사";
+"menu.hideSidebar" = "사이드바 숨기기";
+"menu.showSidebar" = "사이드바 표시";
+"menu.alwaysOnTop" = "항상 위에 표시";
+"menu.openServerInBrowser" = "브라우저에서 서버 열기";
+"menu.ovalDocumentation" = "Oval 문서";
+"menu.githubRepository" = "GitHub 저장소";
+"menu.reportAnIssue" = "문제 신고";
+
+"toolbar.toggleSidebar" = "사이드바 전환";
+"toolbar.toggleSidebarHelp" = "사이드바 전환 (Ctrl+Cmd+S)";
+"toolbar.newChat" = "새 대화";
+"toolbar.newChatHelp" = "새 대화 (Cmd+N)";
+
+"connect.subtitle" = "시작하려면 서버에 로그인하세요.";
+"connect.serverURL" = "서버 URL";
+"connect.email" = "이메일";
+"connect.apiKey" = "API 키";
+"connect.sso" = "SSO";
+"connect.emailPrompt" = "이메일을 입력하세요";
+"connect.passwordPrompt" = "비밀번호를 입력하세요";
+"connect.ssoDescription" = "서버의 OAuth/SSO 제공자를 통해 로그인하세요. 인증을 완료하기 위해 브라우저 창이 열립니다.";
+"connect.openSSOLogin" = "SSO 로그인 열기";
+"connect.apiKeyPrompt" = "sk-...";
+"connect.apiKeyHint" = "API 키는 설정 > 계정 > API 키에서 찾을 수 있습니다";
+"connect.connecting" = "연결 중...";
+"connect.signIn" = "로그인";
+"connect.errorNoServerURL" = "서버 URL을 입력해 주세요";
+
+"addServer.title" = "서버 추가";
+"addServer.serverName" = "서버 이름";
+"addServer.serverNamePrompt" = "내 서버";
+"addServer.serverURL" = "서버 URL";
+"addServer.authentication" = "인증";
+"addServer.emailLabel" = "이메일";
+"addServer.passwordLabel" = "비밀번호";
+"addServer.apiKeyLabel" = "API 키 (sk-...)";
+"addServer.apiKeyHint" = "설정 > 계정 > API 키";
+"addServer.connecting" = "연결 중...";
+"addServer.addButton" = "서버 추가";
+"addServer.errorNoServerURL" = "서버 URL을 입력해 주세요";
+"addServer.errorNoEmail" = "이메일을 입력하세요";
+"addServer.errorNoPassword" = "비밀번호를 입력하세요";
+"addServer.errorNoAPIKey" = "API 키를 입력하세요";
+"addServer.errorSSOLogin" = "SSO는 로그인 화면에서 설정됩니다";
+
+"sidebar.searchPlaceholder" = "대화 검색";
+"sidebar.noConversations" = "대화 없음";
+"sidebar.noResults" = "결과 없음";
+"sidebar.loadMore" = "더 보기...";
+"sidebar.settingsHelp" = "설정 (Cmd+,)";
+"sidebar.pinnedModels" = "고정된 모델";
+
+"sidebar.group.today" = "오늘";
+"sidebar.group.yesterday" = "어제";
+"sidebar.group.prev7Days" = "최근 7일";
+"sidebar.group.prev30Days" = "최근 30일";
+"sidebar.group.conversations" = "대화";
+
+"conversation.share" = "공유";
+"conversation.download" = "다운로드";
+"conversation.rename" = "이름 변경";
+"conversation.pin" = "고정";
+"conversation.unpin" = "고정 해제";
+"conversation.clone" = "복제";
+"conversation.removeFromFolder" = "폴더에서 제거";
+"conversation.move" = "이동";
+"conversation.archive" = "보관";
+"conversation.delete" = "삭제";
+
+"pinnedModel.unpinFromSidebar" = "사이드바에서 고정 해제";
+"pinnedModel.selectModel" = "모델 선택";
+"pinnedModel.setAsDefault" = "기본값으로 설정";
+
+"deleteChat.title" = "대화 삭제";
+"deleteChat.message" = "이 대화를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.";
+
+"renameChat.title" = "대화 이름 변경";
+"renameChat.message" = "이 대화의 새 제목을 입력하세요.";
+"renameChat.fieldLabel" = "제목";
+
+"chatInput.placeholder" = "메시지 보내기";
+"chatInput.searchLabel" = "검색";
+"chatInput.listening" = "듣는 중...";
+"chatInput.disclaimer" = "Oval은 실수를 할 수 있습니다. 중요한 정보는 확인하세요.";
+"chatInput.attachHelp" = "파일 또는 이미지 첨부";
+"chatInput.webSearchEnable" = "웹 검색 활성화";
+"chatInput.webSearchDisable" = "웹 검색 비활성화";
+"chatInput.stopListening" = "듣기 중지";
+"chatInput.speechToText" = "음성을 텍스트로";
+"chatInput.voiceMode" = "음성 대화 모드";
+"chatInput.stopLiveTranscription" = "실시간 변환 중지";
+"chatInput.liveTranscription" = "실시간 변환 (Cmd+Shift+T)";
+"chatInput.attachFilesTitle" = "파일 첨부";
+"chatInput.attachFilesMessage" = "메시지와 함께 보낼 이미지 또는 파일을 선택하세요";
+
+"chatArea.dropFilesTitle" = "여기에 파일을 놓으세요";
+"chatArea.dropFilesSubtitle" = "이미지, 문서 및 기타 파일";
+"chatArea.welcomeMessage" = "오늘 어떻게 도와드릴까요?";
+
+"miniChat.placeholder" = "무엇이든 물어보세요";
+"miniChat.thinking" = "생각 중...";
+"miniChat.closeHelp" = "닫기 (Esc)";
+"miniChat.copyLastResponse" = "마지막 응답 복사";
+"miniChat.newChat" = "새 대화";
+"miniChat.attachHelp" = "첨부";
+"miniChat.webSearchHelp" = "웹 검색";
+"miniChat.selectModelHelp" = "모델 선택";
+"miniChat.voiceInputHelp" = "음성 입력";
+"miniChat.copyHelp" = "복사";
+"miniChat.modelFallback" = "모델";
+
+"voiceMode.modelsNeeded" = "음성 모델이 필요합니다";
+"voiceMode.downloadDescription" = "STT 및 TTS 모델 다운로드 (~140 MB)";
+"voiceMode.downloadButton" = "모델 다운로드";
+"voiceMode.stateIdle" = "탭하여 시작";
+"voiceMode.stateListening" = "듣는 중...";
+"voiceMode.stateTranscribing" = "변환 중...";
+"voiceMode.stateThinking" = "생각 중...";
+"voiceMode.stateSpeaking" = "말하는 중...";
+"voiceMode.stateError" = "오류";
+"voiceMode.tapToEnd" = "탭하여 종료";
+"voiceMode.tapToStart" = "탭하여 시작";
+
+"transcription.title" = "실시간 변환";
+"transcription.live" = "라이브";
+"transcription.modelNotLoaded" = "모델이 로드되지 않음";
+"transcription.stop" = "중지";
+"transcription.start" = "시작";
+"transcription.speakers" = "화자";
+"transcription.speakersOn" = "화자 켜짐";
+"transcription.loading" = "로딩 중...";
+"transcription.disableSpeakers" = "화자 식별 비활성화";
+"transcription.enableSpeakers" = "화자 식별 활성화 (~100MB 모델 다운로드)";
+"transcription.speakerCount.one" = "화자 1명";
+"transcription.speakerCount.other" = "화자 %lld명";
+"transcription.copy" = "복사";
+"transcription.copied" = "복사됨";
+
+"message.code" = "코드";
+"message.output" = "출력";
+"message.error" = "오류";
+"message.input" = "입력";
+"message.executing" = "실행 중 ...";
+"message.viewResult" = "%@ 결과 보기";
+"message.executed" = "%@ 실행됨";
+"message.failed" = "실패: %@";
+"message.tokens" = "%lld 토큰";
+"message.sources.one" = "1개 소스";
+"message.sources.other" = "%lld개 소스";
+"message.copyHelp" = "메시지 복사";
+"message.editHelp" = "메시지 편집";
+"message.regenerateHelp" = "응답 재생성";
+"message.editAction" = "편집";
+"message.saveAndSubmit" = "저장 및 전송";
+"message.copyMessage" = "메시지 복사";
+"message.stopSpeaking" = "읽기 중지";
+"message.readAloud" = "소리 내어 읽기";
+"message.regenerateResponse" = "응답 재생성";
+"message.thinking" = "생각 중...";
+"message.thought" = "생각함";
+"message.thoughtLessThanSecond" = "1초 미만 동안 생각함";
+"message.thoughtSeconds.one" = "1초 동안 생각함";
+"message.thoughtSeconds.other" = "%lld초 동안 생각함";
+"message.thoughtMinutes.one" = "1분 동안 생각함";
+"message.thoughtMinutes.other" = "%lld분 동안 생각함";
+"message.executingPrefix" = "실행 중 ";
+"message.viewResultPrefix" = "결과 보기 ";
+"message.executedPrefix" = "실행됨 ";
+"message.failedPrefix" = "실패: ";
+
+// MARK: - Settings — Language
+"settings.section.language" = "언어";
+"settings.language.label" = "언어";
+"settings.language.system" = "시스템 기본값";
+"settings.language.restartTitle" = "재시작 필요";
+"settings.language.restartMessage" = "새로운 언어를 적용하려면 앱을 재시작해야 합니다.";
+"settings.language.restartNow" = "지금 재시작";
+"settings.language.restartLater" = "나중에";
+
+"settings.section.server" = "서버";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "연결되지 않음";
+"settings.server.version" = "버전";
+"settings.server.status" = "상태";
+"settings.server.online" = "온라인";
+"settings.server.unreachable" = "연결 불가";
+
+"settings.section.behavior" = "동작";
+"settings.behavior.launchAtLogin" = "로그인 시 시작";
+"settings.behavior.alwaysOnTop" = "항상 위에 표시";
+
+"settings.section.shortcuts" = "키보드 단축키";
+"settings.shortcuts.quickChat" = "빠른 대화";
+"settings.shortcuts.toggleWindow" = "창 전환";
+"settings.shortcuts.pasteToChat" = "대화에 붙여넣기";
+"settings.shortcuts.copyResponse" = "응답 복사";
+"settings.shortcuts.copyResponseValue" = "Cmd + Shift + C";
+"settings.shortcuts.resetHelp" = "기본값으로 재설정";
+
+"settings.section.cache" = "캐시";
+"settings.cache.clearTitle" = "메시지 캐시 지우기";
+"settings.cache.clearSubtitle" = "서버에서 모든 대화 강제 새로 고침";
+"settings.cache.clear" = "지우기";
+"settings.cache.cleared" = "지워짐";
+
+"settings.section.support" = "Oval 지원";
+"settings.support.buyMeCoffeeTitle" = "커피 한 잔 사주기";
+"settings.support.buyMeCoffeeSubtitle" = "일회성 기부로 개발 지원";
+"settings.support.donateButton" = "기부";
+"settings.support.githubSponsorsTitle" = "GitHub Sponsors";
+"settings.support.githubSponsorsSubtitle" = "GitHub에서 정기 후원자가 되세요";
+"settings.support.sponsorButton" = "후원";
+"settings.support.starGithubTitle" = "GitHub에 별 주기";
+"settings.support.starGithubSubtitle" = "다른 사람들이 Oval을 발견할 수 있도록 도와주세요";
+"settings.support.starButton" = "별";
+
+"settings.section.connection" = "연결";
+"settings.connection.openInBrowserTitle" = "브라우저에서 열기";
+"settings.connection.openInBrowserSubtitle" = "서버 웹 인터페이스 열기";
+"settings.connection.openButton" = "열기";
+"settings.connection.disconnectTitle" = "연결 끊기";
+"settings.connection.disconnectSubtitle" = "연결 화면으로 돌아가기";
+"settings.connection.disconnectButton" = "연결 끊기";
+"settings.connection.disconnectConfirm" = "이 서버와의 연결을 끊으시겠습니까?";
+
+"voice.section.engine" = "음성 엔진";
+"voice.engine.label" = "엔진";
+"voice.engine.name" = "RunAnywhere (기기 내장)";
+"voice.engine.status" = "상태";
+"voice.engine.ready" = "준비됨";
+"voice.engine.modelsNeeded" = "모델 필요";
+"voice.engine.initializing" = "초기화 중...";
+"voice.engine.description" = "음성 모델은 개인 정보 보호와 낮은 지연을 위해 기기에서 완전히 실행됩니다. 다운로드 후 매번 시작할 때 자동으로 로드됩니다.";
+
+"voice.section.stt" = "음성을 텍스트로";
+"voice.section.tts" = "텍스트를 음성으로";
+"voice.section.about" = "정보";
+
+"voice.model.ready" = "준비됨";
+"voice.model.downloaded" = "다운로드됨";
+"voice.model.extracting" = "압축 해제 중...";
+"voice.model.starting" = "시작 중...";
+"voice.model.loading" = "로딩 중...";
+"voice.model.checking" = "확인 중...";
+"voice.model.downloadButton" = "다운로드";
+"voice.model.selectButton" = "선택";
+"voice.model.downloaded.bytes" = "%@ 다운로드됨";
+
+"about.section.version" = "버전";
+"about.appVersion" = "앱 버전";
+"about.seeWhatsNew" = "새로운 기능 보기";
+"about.section.community" = "커뮤니티";
+"about.discord" = "Discord";
+"about.twitter" = "Twitter / X";
+"about.github" = "GitHub";
+"about.twemojiCredit" = "Twemoji 그래픽은 Twitter/X에서 제작했으며 CC-BY 4.0 라이선스를 따릅니다.";
+"about.copyright" = "Copyright (c) %@ Oval";
+"about.allRightsReserved" = "모든 권리 보유.";
+
+"sso.title" = "SSO 로그인";

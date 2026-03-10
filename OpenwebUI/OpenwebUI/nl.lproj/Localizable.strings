@@ -1,0 +1,291 @@
+/* Localizable.strings — Dutch (nl)
+   Oval macOS App
+*/
+
+"app.name" = "Oval";
+"ok" = "OK";
+"cancel" = "Annuleren";
+"delete" = "Verwijderen";
+"rename" = "Naam wijzigen";
+"save" = "Opslaan";
+"close" = "Sluiten";
+"done" = "Klaar";
+"back" = "Terug";
+"retry" = "Opnieuw proberen";
+"copy" = "Kopiëren";
+"copied" = "Gekopieerd";
+"share" = "Delen";
+"download" = "Downloaden";
+"select" = "Selecteren";
+"open" = "Openen";
+"start" = "Starten";
+"stop" = "Stoppen";
+"clear" = "Leegmaken";
+"cleared" = "Leeggemaakt";
+
+"menu.newChat" = "Nieuw gesprek";
+"menu.quickChat" = "Snel gesprek  %@";
+"menu.stopTranscription" = "Transcriptie stoppen";
+"menu.liveTranscription" = "Live transcriptie";
+"menu.find" = "Zoeken...";
+"menu.copyLastResponse" = "Laatste antwoord kopiëren";
+"menu.hideSidebar" = "Zijbalk verbergen";
+"menu.showSidebar" = "Zijbalk weergeven";
+"menu.alwaysOnTop" = "Altijd bovenaan";
+"menu.openServerInBrowser" = "Server in browser openen";
+"menu.ovalDocumentation" = "Oval-documentatie";
+"menu.githubRepository" = "GitHub-repository";
+"menu.reportAnIssue" = "Probleem melden";
+
+"toolbar.toggleSidebar" = "Zijbalk in-/uitschakelen";
+"toolbar.toggleSidebarHelp" = "Zijbalk in-/uitschakelen (Ctrl+Cmd+S)";
+"toolbar.newChat" = "Nieuw gesprek";
+"toolbar.newChatHelp" = "Nieuw gesprek (Cmd+N)";
+
+"connect.subtitle" = "Meld je aan bij je server om te beginnen.";
+"connect.serverURL" = "Server-URL";
+"connect.email" = "E-mail";
+"connect.apiKey" = "API-sleutel";
+"connect.sso" = "SSO";
+"connect.emailPrompt" = "Voer je e-mailadres in";
+"connect.passwordPrompt" = "Voer je wachtwoord in";
+"connect.ssoDescription" = "Meld je aan via de OAuth/SSO-provider van je server. Er wordt een browservenster geopend om de authenticatie te voltooien.";
+"connect.openSSOLogin" = "SSO-aanmelding openen";
+"connect.apiKeyPrompt" = "sk-...";
+"connect.apiKeyHint" = "Vind je API-sleutel in Instellingen > Account > API-sleutels";
+"connect.connecting" = "Verbinding maken...";
+"connect.signIn" = "Aanmelden";
+"connect.errorNoServerURL" = "Voer een server-URL in";
+
+"addServer.title" = "Server toevoegen";
+"addServer.serverName" = "Servernaam";
+"addServer.serverNamePrompt" = "Mijn server";
+"addServer.serverURL" = "Server-URL";
+"addServer.authentication" = "Authenticatie";
+"addServer.emailLabel" = "E-mail";
+"addServer.passwordLabel" = "Wachtwoord";
+"addServer.apiKeyLabel" = "API-sleutel (sk-...)";
+"addServer.apiKeyHint" = "Instellingen > Account > API-sleutels";
+"addServer.connecting" = "Verbinding maken...";
+"addServer.addButton" = "Server toevoegen";
+"addServer.errorNoServerURL" = "Voer een server-URL in";
+"addServer.errorNoEmail" = "Voer je e-mailadres in";
+"addServer.errorNoPassword" = "Voer je wachtwoord in";
+"addServer.errorNoAPIKey" = "Voer je API-sleutel in";
+"addServer.errorSSOLogin" = "SSO wordt geconfigureerd op het aanmeldingsscherm";
+
+"sidebar.searchPlaceholder" = "Gesprekken zoeken";
+"sidebar.noConversations" = "Geen gesprekken";
+"sidebar.noResults" = "Geen resultaten";
+"sidebar.loadMore" = "Meer laden...";
+"sidebar.settingsHelp" = "Instellingen (Cmd+,)";
+"sidebar.pinnedModels" = "VASTGEZETTE MODELLEN";
+
+"sidebar.group.today" = "Vandaag";
+"sidebar.group.yesterday" = "Gisteren";
+"sidebar.group.prev7Days" = "Afgelopen 7 dagen";
+"sidebar.group.prev30Days" = "Afgelopen 30 dagen";
+"sidebar.group.conversations" = "Gesprekken";
+
+"conversation.share" = "Delen";
+"conversation.download" = "Downloaden";
+"conversation.rename" = "Naam wijzigen";
+"conversation.pin" = "Vastmaken";
+"conversation.unpin" = "Losmaken";
+"conversation.clone" = "Dupliceren";
+"conversation.removeFromFolder" = "Uit map verwijderen";
+"conversation.move" = "Verplaatsen";
+"conversation.archive" = "Archiveren";
+"conversation.delete" = "Verwijderen";
+
+"pinnedModel.unpinFromSidebar" = "Losmaken van zijbalk";
+"pinnedModel.selectModel" = "Model selecteren";
+"pinnedModel.setAsDefault" = "Als standaard instellen";
+
+"deleteChat.title" = "Gesprek verwijderen";
+"deleteChat.message" = "Dit gesprek verwijderen? Deze actie kan niet ongedaan worden gemaakt.";
+
+"renameChat.title" = "Gesprek hernoemen";
+"renameChat.message" = "Voer een nieuwe titel in voor dit gesprek.";
+"renameChat.fieldLabel" = "Titel";
+
+"chatInput.placeholder" = "Stuur een bericht";
+"chatInput.searchLabel" = "Zoeken";
+"chatInput.listening" = "Luisteren...";
+"chatInput.disclaimer" = "Oval kan fouten maken. Controleer belangrijke informatie.";
+"chatInput.attachHelp" = "Bestand of afbeelding bijvoegen";
+"chatInput.webSearchEnable" = "Webzoeken inschakelen";
+"chatInput.webSearchDisable" = "Webzoeken uitschakelen";
+"chatInput.stopListening" = "Stoppen met luisteren";
+"chatInput.speechToText" = "Spraak naar tekst";
+"chatInput.voiceMode" = "Spraakgespreksmodus";
+"chatInput.stopLiveTranscription" = "Live transcriptie stoppen";
+"chatInput.liveTranscription" = "Live transcriptie (Cmd+Shift+T)";
+"chatInput.attachFilesTitle" = "Bestanden bijvoegen";
+"chatInput.attachFilesMessage" = "Selecteer afbeeldingen of bestanden om met je bericht te sturen";
+
+"chatArea.dropFilesTitle" = "Bestanden hier neerzetten";
+"chatArea.dropFilesSubtitle" = "Afbeeldingen, documenten en andere bestanden";
+"chatArea.welcomeMessage" = "Hoe kan ik je vandaag helpen?";
+
+"miniChat.placeholder" = "Stel een vraag";
+"miniChat.thinking" = "Denken...";
+"miniChat.closeHelp" = "Sluiten (Esc)";
+"miniChat.copyLastResponse" = "Laatste antwoord kopiëren";
+"miniChat.newChat" = "Nieuw gesprek";
+"miniChat.attachHelp" = "Bijvoegen";
+"miniChat.webSearchHelp" = "Webzoeken";
+"miniChat.selectModelHelp" = "Model selecteren";
+"miniChat.voiceInputHelp" = "Spraakinvoer";
+"miniChat.copyHelp" = "Kopiëren";
+"miniChat.modelFallback" = "Model";
+
+"voiceMode.modelsNeeded" = "Spraakmodellen vereist";
+"voiceMode.downloadDescription" = "STT- en TTS-modellen downloaden (~140 MB)";
+"voiceMode.downloadButton" = "Modellen downloaden";
+"voiceMode.stateIdle" = "Tik om te starten";
+"voiceMode.stateListening" = "Luisteren...";
+"voiceMode.stateTranscribing" = "Transcriberen...";
+"voiceMode.stateThinking" = "Denken...";
+"voiceMode.stateSpeaking" = "Spreken...";
+"voiceMode.stateError" = "Fout";
+"voiceMode.tapToEnd" = "Tik om te beëindigen";
+"voiceMode.tapToStart" = "Tik om te starten";
+
+"transcription.title" = "Live transcriptie";
+"transcription.live" = "LIVE";
+"transcription.modelNotLoaded" = "Model niet geladen";
+"transcription.stop" = "Stoppen";
+"transcription.start" = "Starten";
+"transcription.speakers" = "Sprekers";
+"transcription.speakersOn" = "Sprekers actief";
+"transcription.loading" = "Laden...";
+"transcription.disableSpeakers" = "Sprekeridentificatie uitschakelen";
+"transcription.enableSpeakers" = "Sprekeridentificatie inschakelen (downloadt ~100 MB aan modellen)";
+"transcription.speakerCount.one" = "1 spreker";
+"transcription.speakerCount.other" = "%lld sprekers";
+"transcription.copy" = "Kopiëren";
+"transcription.copied" = "Gekopieerd";
+
+"message.code" = "CODE";
+"message.output" = "UITVOER";
+"message.error" = "FOUT";
+"message.input" = "INVOER";
+"message.executing" = "Uitvoeren ...";
+"message.viewResult" = "Resultaat van %@ bekijken";
+"message.executed" = "%@ uitgevoerd";
+"message.failed" = "Mislukt: %@";
+"message.tokens" = "%lld tokens";
+"message.sources.one" = "1 bron";
+"message.sources.other" = "%lld bronnen";
+"message.copyHelp" = "Bericht kopiëren";
+"message.editHelp" = "Bericht bewerken";
+"message.regenerateHelp" = "Antwoord opnieuw genereren";
+"message.editAction" = "Bewerken";
+"message.saveAndSubmit" = "Opslaan en verzenden";
+"message.copyMessage" = "Bericht kopiëren";
+"message.stopSpeaking" = "Stop spreken";
+"message.readAloud" = "Hardop lezen";
+"message.regenerateResponse" = "Antwoord opnieuw genereren";
+"message.thinking" = "Nadenken...";
+"message.thought" = "Gedacht";
+"message.thoughtLessThanSecond" = "Minder dan een seconde nagedacht";
+"message.thoughtSeconds.one" = "1 seconde nagedacht";
+"message.thoughtSeconds.other" = "%lld seconden nagedacht";
+"message.thoughtMinutes.one" = "1 minuut nagedacht";
+"message.thoughtMinutes.other" = "%lld minuten nagedacht";
+"message.executingPrefix" = "Uitvoeren ";
+"message.viewResultPrefix" = "Resultaat van ";
+"message.executedPrefix" = "Uitgevoerd ";
+"message.failedPrefix" = "Mislukt: ";
+
+// MARK: - Settings — Language
+"settings.section.language" = "Taal";
+"settings.language.label" = "Taal";
+"settings.language.system" = "Systeemstandaard";
+"settings.language.restartTitle" = "Herstart vereist";
+"settings.language.restartMessage" = "De app moet opnieuw worden gestart om de nieuwe taal toe te passen.";
+"settings.language.restartNow" = "Nu herstarten";
+"settings.language.restartLater" = "Later";
+
+"settings.section.server" = "Server";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "Niet verbonden";
+"settings.server.version" = "Versie";
+"settings.server.status" = "Status";
+"settings.server.online" = "Online";
+"settings.server.unreachable" = "Niet bereikbaar";
+
+"settings.section.behavior" = "Gedrag";
+"settings.behavior.launchAtLogin" = "Starten bij aanmelding";
+"settings.behavior.alwaysOnTop" = "Altijd bovenaan";
+
+"settings.section.shortcuts" = "Sneltoetsen";
+"settings.shortcuts.quickChat" = "Snel gesprek";
+"settings.shortcuts.toggleWindow" = "Venster in-/uitschakelen";
+"settings.shortcuts.pasteToChat" = "Plakken in gesprek";
+"settings.shortcuts.copyResponse" = "Antwoord kopiëren";
+"settings.shortcuts.copyResponseValue" = "Cmd + Shift + C";
+"settings.shortcuts.resetHelp" = "Naar standaard herstellen";
+
+"settings.section.cache" = "Cache";
+"settings.cache.clearTitle" = "Berichtencache leegmaken";
+"settings.cache.clearSubtitle" = "Alle gesprekken opnieuw laden van server";
+"settings.cache.clear" = "Leegmaken";
+"settings.cache.cleared" = "Leeggemaakt";
+
+"settings.section.support" = "Oval ondersteunen";
+"settings.support.buyMeCoffeeTitle" = "Trakteer me op een koffie";
+"settings.support.buyMeCoffeeSubtitle" = "Ondersteun de ontwikkeling met een eenmalige donatie";
+"settings.support.donateButton" = "Doneren";
+"settings.support.githubSponsorsTitle" = "GitHub Sponsors";
+"settings.support.githubSponsorsSubtitle" = "Word een terugkerende sponsor op GitHub";
+"settings.support.sponsorButton" = "Sponsoren";
+"settings.support.starGithubTitle" = "Ster op GitHub";
+"settings.support.starGithubSubtitle" = "Help anderen Oval te ontdekken";
+"settings.support.starButton" = "Ster";
+
+"settings.section.connection" = "Verbinding";
+"settings.connection.openInBrowserTitle" = "Openen in browser";
+"settings.connection.openInBrowserSubtitle" = "Server-webinterface openen";
+"settings.connection.openButton" = "Openen";
+"settings.connection.disconnectTitle" = "Verbinding verbreken";
+"settings.connection.disconnectSubtitle" = "Terug naar het verbindingsscherm";
+"settings.connection.disconnectButton" = "Verbinding verbreken";
+"settings.connection.disconnectConfirm" = "Verbinding met deze server verbreken?";
+
+"voice.section.engine" = "Spraakengine";
+"voice.engine.label" = "Engine";
+"voice.engine.name" = "RunAnywhere (Op apparaat)";
+"voice.engine.status" = "Status";
+"voice.engine.ready" = "Klaar";
+"voice.engine.modelsNeeded" = "Modellen vereist";
+"voice.engine.initializing" = "Initialiseren...";
+"voice.engine.description" = "Spraakmodellen draaien volledig op het apparaat voor privacy en lage latentie. Eenmaal gedownload, worden ze automatisch geladen bij elke start.";
+
+"voice.section.stt" = "Spraak naar tekst";
+"voice.section.tts" = "Tekst naar spraak";
+"voice.section.about" = "Over";
+
+"voice.model.ready" = "Klaar";
+"voice.model.downloaded" = "Gedownload";
+"voice.model.extracting" = "Uitpakken...";
+"voice.model.starting" = "Starten...";
+"voice.model.loading" = "Laden...";
+"voice.model.checking" = "Controleren...";
+"voice.model.downloadButton" = "Downloaden";
+"voice.model.selectButton" = "Selecteren";
+"voice.model.downloaded.bytes" = "%@ gedownload";
+
+"about.section.version" = "Versie";
+"about.appVersion" = "App-versie";
+"about.seeWhatsNew" = "Bekijk wat er nieuw is";
+"about.section.community" = "Community";
+"about.discord" = "Discord";
+"about.twitter" = "Twitter / X";
+"about.github" = "GitHub";
+"about.twemojiCredit" = "Twemoji-graphics gemaakt door Twitter/X, gelicenseerd onder CC-BY 4.0.";
+"about.copyright" = "Copyright (c) %@ Oval";
+"about.allRightsReserved" = "Alle rechten voorbehouden.";
+
+"sso.title" = "SSO-aanmelding";

@@ -35,9 +35,9 @@ struct ChatView: View {
                         appState.isSidebarVisible.toggle()
                     }
                 } label: {
-                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                    Label(String(localized: "toolbar.toggleSidebar"), systemImage: "sidebar.left")
                 }
-                .help("Toggle Sidebar (Ctrl+Cmd+S)")
+                .help(String(localized: "toolbar.toggleSidebarHelp"))
             }
 
             // MARK: — New Chat
@@ -45,9 +45,9 @@ struct ChatView: View {
                 Button {
                     appState.newConversation()
                 } label: {
-                    Label("New Chat", systemImage: "square.and.pencil")
+                    Label(String(localized: "toolbar.newChat"), systemImage: "square.and.pencil")
                 }
-                .help("New Chat (Cmd+N)")
+                .help(String(localized: "toolbar.newChatHelp"))
             }
 
             // MARK: Principal — Model Selector
@@ -87,7 +87,7 @@ struct AddServerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            Text("Add Server")
+            Text("addServer.title")
                 .font(AppFont.semibold(size: 16))
                 .foregroundStyle(AppColors.textPrimary)
                 .padding(.top, 20)
@@ -95,26 +95,25 @@ struct AddServerSheet: View {
 
             Form {
                 // Server name
-                TextField("Server Name", text: $serverName, prompt: Text("My Server"))
+                TextField(String(localized: "addServer.serverName"), text: $serverName, prompt: Text("addServer.serverNamePrompt"))
 
                 // Server URL
-                TextField("Server URL", text: $url, prompt: Text("http://localhost:8080"))
+                TextField(String(localized: "addServer.serverURL"), text: $url, prompt: Text("http://localhost:8080"))
 
                 // Auth method picker
-                Picker("Authentication", selection: $authMethod) {
-                    Label("Email", systemImage: "envelope").tag(AuthMethod.emailPassword)
-                    Label("API Key", systemImage: "key").tag(AuthMethod.apiKey)
+                Picker(String(localized: "addServer.authentication"), selection: $authMethod) {
+                    Label(String(localized: "addServer.emailLabel"), systemImage: "envelope").tag(AuthMethod.emailPassword)
+                    Label(String(localized: "connect.apiKey"), systemImage: "key").tag(AuthMethod.apiKey)
                 }
-                .pickerStyle(.segmented)
 
                 // Auth fields
                 if authMethod == .emailPassword {
-                    TextField("Email", text: $email)
+                    TextField(String(localized: "addServer.emailLabel"), text: $email)
                         .textContentType(.emailAddress)
-                    SecureField("Password", text: $password)
+                    SecureField(String(localized: "addServer.passwordLabel"), text: $password)
                 } else {
-                    SecureField("API Key (sk-...)", text: $apiKey)
-                    Text("Settings > Account > API Keys")
+                    SecureField(String(localized: "addServer.apiKeyLabel"), text: $apiKey)
+                    Text("addServer.apiKeyHint")
                         .font(.caption)
                         .foregroundStyle(AppColors.textSecondary)
                 }
@@ -131,7 +130,7 @@ struct AddServerSheet: View {
 
             // Buttons
             HStack {
-                Button("Cancel", role: .cancel) {
+                Button(String(localized: "cancel"), role: .cancel) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -145,7 +144,7 @@ struct AddServerSheet: View {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    Text(isConnecting ? "Connecting..." : "Add Server")
+                    Text(isConnecting ? String(localized: "addServer.connecting") : String(localized: "addServer.addButton"))
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(isConnecting)
@@ -159,7 +158,7 @@ struct AddServerSheet: View {
     private func addServer() async {
         let serverURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !serverURL.isEmpty else {
-            error = "Please enter a server URL"
+            error = String(localized: "addServer.errorNoServerURL")
             return
         }
 
@@ -173,8 +172,8 @@ struct AddServerSheet: View {
         switch authMethod {
         case .emailPassword:
             let emailVal = email.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !emailVal.isEmpty else { error = "Enter your email"; isConnecting = false; return }
-            guard !password.isEmpty else { error = "Enter your password"; isConnecting = false; return }
+            guard !emailVal.isEmpty else { error = String(localized: "addServer.errorNoEmail"); isConnecting = false; return }
+            guard !password.isEmpty else { error = String(localized: "addServer.errorNoPassword"); isConnecting = false; return }
 
             do {
                 let resp = try await OpenWebUIClient.signIn(baseURL: serverURL, email: emailVal, password: password)
@@ -189,12 +188,12 @@ struct AddServerSheet: View {
 
         case .apiKey:
             let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !key.isEmpty else { error = "Enter your API key"; isConnecting = false; return }
+            guard !key.isEmpty else { error = String(localized: "addServer.errorNoAPIKey"); isConnecting = false; return }
             token = key
             resolvedAuthMethod = .apiKey
 
         case .sso:
-            error = "SSO is configured on the login screen"
+            error = String(localized: "addServer.errorSSOLogin")
             isConnecting = false
             return
         }

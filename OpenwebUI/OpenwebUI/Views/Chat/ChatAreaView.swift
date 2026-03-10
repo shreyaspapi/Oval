@@ -32,10 +32,10 @@ struct ChatAreaView: View {
                         Image(systemName: "arrow.down.doc.fill")
                             .font(.system(size: 36))
                             .foregroundStyle(AppColors.accentBlue)
-                        Text("Drop files here")
+                        Text("chatArea.dropFilesTitle")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(AppColors.textPrimary)
-                        Text("Images, documents, and other files")
+                        Text("chatArea.dropFilesSubtitle")
                             .font(.system(size: 13))
                             .foregroundStyle(AppColors.textSecondary)
                     }
@@ -160,7 +160,7 @@ private struct WelcomeView: View {
                 }
                 .glassEffect(.regular, in: .circle)
 
-                Text("How can I help you today?")
+                Text("chatArea.welcomeMessage")
                     .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(AppColors.welcomeText)
             }

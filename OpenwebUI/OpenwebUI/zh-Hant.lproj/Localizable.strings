@@ -1,0 +1,291 @@
+/* Localizable.strings — Chinese Traditional (zh-Hant)
+   Oval macOS App
+*/
+
+"app.name" = "Oval";
+"ok" = "好";
+"cancel" = "取消";
+"delete" = "刪除";
+"rename" = "重新命名";
+"save" = "儲存";
+"close" = "關閉";
+"done" = "完成";
+"back" = "返回";
+"retry" = "重試";
+"copy" = "複製";
+"copied" = "已複製";
+"share" = "分享";
+"download" = "下載";
+"select" = "選取";
+"open" = "開啟";
+"start" = "開始";
+"stop" = "停止";
+"clear" = "清除";
+"cleared" = "已清除";
+
+"menu.newChat" = "新增對話";
+"menu.quickChat" = "快速對話  %@";
+"menu.stopTranscription" = "停止轉錄";
+"menu.liveTranscription" = "即時轉錄";
+"menu.find" = "尋找...";
+"menu.copyLastResponse" = "複製最後回覆";
+"menu.hideSidebar" = "隱藏側欄";
+"menu.showSidebar" = "顯示側欄";
+"menu.alwaysOnTop" = "永遠在最前";
+"menu.openServerInBrowser" = "在瀏覽器中開啟伺服器";
+"menu.ovalDocumentation" = "Oval 說明文件";
+"menu.githubRepository" = "GitHub 儲存庫";
+"menu.reportAnIssue" = "回報問題";
+
+"toolbar.toggleSidebar" = "切換側欄";
+"toolbar.toggleSidebarHelp" = "切換側欄 (Ctrl+Cmd+S)";
+"toolbar.newChat" = "新增對話";
+"toolbar.newChatHelp" = "新增對話 (Cmd+N)";
+
+"connect.subtitle" = "登入您的伺服器以開始使用。";
+"connect.serverURL" = "伺服器 URL";
+"connect.email" = "電子郵件";
+"connect.apiKey" = "API 金鑰";
+"connect.sso" = "SSO";
+"connect.emailPrompt" = "請輸入電子郵件";
+"connect.passwordPrompt" = "請輸入密碼";
+"connect.ssoDescription" = "透過您伺服器的 OAuth/SSO 提供者登入。將開啟瀏覽器視窗以完成驗證。";
+"connect.openSSOLogin" = "開啟 SSO 登入";
+"connect.apiKeyPrompt" = "sk-...";
+"connect.apiKeyHint" = "在設定 > 帳號 > API 金鑰中找到您的 API 金鑰";
+"connect.connecting" = "連線中...";
+"connect.signIn" = "登入";
+"connect.errorNoServerURL" = "請輸入伺服器 URL";
+
+"addServer.title" = "新增伺服器";
+"addServer.serverName" = "伺服器名稱";
+"addServer.serverNamePrompt" = "我的伺服器";
+"addServer.serverURL" = "伺服器 URL";
+"addServer.authentication" = "驗證";
+"addServer.emailLabel" = "電子郵件";
+"addServer.passwordLabel" = "密碼";
+"addServer.apiKeyLabel" = "API 金鑰 (sk-...)";
+"addServer.apiKeyHint" = "設定 > 帳號 > API 金鑰";
+"addServer.connecting" = "連線中...";
+"addServer.addButton" = "新增伺服器";
+"addServer.errorNoServerURL" = "請輸入伺服器 URL";
+"addServer.errorNoEmail" = "請輸入電子郵件";
+"addServer.errorNoPassword" = "請輸入密碼";
+"addServer.errorNoAPIKey" = "請輸入 API 金鑰";
+"addServer.errorSSOLogin" = "SSO 在登入畫面設定";
+
+"sidebar.searchPlaceholder" = "搜尋對話";
+"sidebar.noConversations" = "沒有對話";
+"sidebar.noResults" = "沒有結果";
+"sidebar.loadMore" = "載入更多...";
+"sidebar.settingsHelp" = "設定 (Cmd+,)";
+"sidebar.pinnedModels" = "已釘選的模型";
+
+"sidebar.group.today" = "今天";
+"sidebar.group.yesterday" = "昨天";
+"sidebar.group.prev7Days" = "最近 7 天";
+"sidebar.group.prev30Days" = "最近 30 天";
+"sidebar.group.conversations" = "對話";
+
+"conversation.share" = "分享";
+"conversation.download" = "下載";
+"conversation.rename" = "重新命名";
+"conversation.pin" = "釘選";
+"conversation.unpin" = "取消釘選";
+"conversation.clone" = "複製";
+"conversation.removeFromFolder" = "從資料夾移除";
+"conversation.move" = "移動";
+"conversation.archive" = "封存";
+"conversation.delete" = "刪除";
+
+"pinnedModel.unpinFromSidebar" = "從側欄取消釘選";
+"pinnedModel.selectModel" = "選取模型";
+"pinnedModel.setAsDefault" = "設為預設";
+
+"deleteChat.title" = "刪除對話";
+"deleteChat.message" = "確定要刪除此對話嗎？此動作無法還原。";
+
+"renameChat.title" = "重新命名對話";
+"renameChat.message" = "請輸入此對話的新標題。";
+"renameChat.fieldLabel" = "標題";
+
+"chatInput.placeholder" = "傳送訊息";
+"chatInput.searchLabel" = "搜尋";
+"chatInput.listening" = "聆聽中...";
+"chatInput.disclaimer" = "Oval 可能會出錯。請核實重要資訊。";
+"chatInput.attachHelp" = "附加檔案或圖片";
+"chatInput.webSearchEnable" = "啟用網路搜尋";
+"chatInput.webSearchDisable" = "停用網路搜尋";
+"chatInput.stopListening" = "停止聆聽";
+"chatInput.speechToText" = "語音轉文字";
+"chatInput.voiceMode" = "語音對話模式";
+"chatInput.stopLiveTranscription" = "停止即時轉錄";
+"chatInput.liveTranscription" = "即時轉錄 (Cmd+Shift+T)";
+"chatInput.attachFilesTitle" = "附加檔案";
+"chatInput.attachFilesMessage" = "選取要隨訊息傳送的圖片或檔案";
+
+"chatArea.dropFilesTitle" = "將檔案拖曳到此處";
+"chatArea.dropFilesSubtitle" = "圖片、文件及其他檔案";
+"chatArea.welcomeMessage" = "今天我能幫您做什麼？";
+
+"miniChat.placeholder" = "隨意詢問";
+"miniChat.thinking" = "思考中...";
+"miniChat.closeHelp" = "關閉 (Esc)";
+"miniChat.copyLastResponse" = "複製最後回覆";
+"miniChat.newChat" = "新增對話";
+"miniChat.attachHelp" = "附加";
+"miniChat.webSearchHelp" = "網路搜尋";
+"miniChat.selectModelHelp" = "選取模型";
+"miniChat.voiceInputHelp" = "語音輸入";
+"miniChat.copyHelp" = "複製";
+"miniChat.modelFallback" = "模型";
+
+"voiceMode.modelsNeeded" = "需要語音模型";
+"voiceMode.downloadDescription" = "下載 STT 和 TTS 模型（約 140 MB）";
+"voiceMode.downloadButton" = "下載模型";
+"voiceMode.stateIdle" = "點擊開始";
+"voiceMode.stateListening" = "聆聽中...";
+"voiceMode.stateTranscribing" = "轉錄中...";
+"voiceMode.stateThinking" = "思考中...";
+"voiceMode.stateSpeaking" = "播放中...";
+"voiceMode.stateError" = "錯誤";
+"voiceMode.tapToEnd" = "點擊結束";
+"voiceMode.tapToStart" = "點擊開始";
+
+"transcription.title" = "即時轉錄";
+"transcription.live" = "直播";
+"transcription.modelNotLoaded" = "模型未載入";
+"transcription.stop" = "停止";
+"transcription.start" = "開始";
+"transcription.speakers" = "說話者";
+"transcription.speakersOn" = "說話者已啟用";
+"transcription.loading" = "載入中...";
+"transcription.disableSpeakers" = "停用說話者辨識";
+"transcription.enableSpeakers" = "啟用說話者辨識（下載約 100 MB 模型）";
+"transcription.speakerCount.one" = "1 位說話者";
+"transcription.speakerCount.other" = "%lld 位說話者";
+"transcription.copy" = "複製";
+"transcription.copied" = "已複製";
+
+"message.code" = "程式碼";
+"message.output" = "輸出";
+"message.error" = "錯誤";
+"message.input" = "輸入";
+"message.executing" = "執行中...";
+"message.viewResult" = "檢視 %@ 的結果";
+"message.executed" = "已執行 %@";
+"message.failed" = "失敗：%@";
+"message.tokens" = "%lld 個 Token";
+"message.sources.one" = "1 個來源";
+"message.sources.other" = "%lld 個來源";
+"message.copyHelp" = "複製訊息";
+"message.editHelp" = "編輯訊息";
+"message.regenerateHelp" = "重新生成回覆";
+"message.editAction" = "編輯";
+"message.saveAndSubmit" = "儲存並送出";
+"message.copyMessage" = "複製訊息";
+"message.stopSpeaking" = "停止朗讀";
+"message.readAloud" = "朗讀";
+"message.regenerateResponse" = "重新生成回覆";
+"message.thinking" = "思考中...";
+"message.thought" = "已思考";
+"message.thoughtLessThanSecond" = "思考了不到一秒";
+"message.thoughtSeconds.one" = "思考了1秒";
+"message.thoughtSeconds.other" = "思考了%lld秒";
+"message.thoughtMinutes.one" = "思考了1分鐘";
+"message.thoughtMinutes.other" = "思考了%lld分鐘";
+"message.executingPrefix" = "執行中 ";
+"message.viewResultPrefix" = "查看來自 ";
+"message.executedPrefix" = "已執行 ";
+"message.failedPrefix" = "失敗：";
+
+// MARK: - Settings — Language
+"settings.section.language" = "語言";
+"settings.language.label" = "語言";
+"settings.language.system" = "系統預設";
+"settings.language.restartTitle" = "需要重新啟動";
+"settings.language.restartMessage" = "需要重新啟動應用程式以套用新語言。";
+"settings.language.restartNow" = "立即重新啟動";
+"settings.language.restartLater" = "稍後";
+
+"settings.section.server" = "伺服器";
+"settings.server.url" = "URL";
+"settings.server.notConnected" = "未連線";
+"settings.server.version" = "版本";
+"settings.server.status" = "狀態";
+"settings.server.online" = "線上";
+"settings.server.unreachable" = "無法連線";
+
+"settings.section.behavior" = "行為";
+"settings.behavior.launchAtLogin" = "登入時啟動";
+"settings.behavior.alwaysOnTop" = "永遠在最前";
+
+"settings.section.shortcuts" = "鍵盤快速鍵";
+"settings.shortcuts.quickChat" = "快速對話";
+"settings.shortcuts.toggleWindow" = "切換視窗";
+"settings.shortcuts.pasteToChat" = "貼上至對話";
+"settings.shortcuts.copyResponse" = "複製回覆";
+"settings.shortcuts.copyResponseValue" = "Cmd + Shift + C";
+"settings.shortcuts.resetHelp" = "還原為預設值";
+
+"settings.section.cache" = "快取";
+"settings.cache.clearTitle" = "清除訊息快取";
+"settings.cache.clearSubtitle" = "從伺服器強制重新載入所有對話";
+"settings.cache.clear" = "清除";
+"settings.cache.cleared" = "已清除";
+
+"settings.section.support" = "支持 Oval";
+"settings.support.buyMeCoffeeTitle" = "請我喝杯咖啡";
+"settings.support.buyMeCoffeeSubtitle" = "透過一次性捐款支持開發";
+"settings.support.donateButton" = "捐款";
+"settings.support.githubSponsorsTitle" = "GitHub Sponsors";
+"settings.support.githubSponsorsSubtitle" = "在 GitHub 上成為定期贊助人";
+"settings.support.sponsorButton" = "贊助";
+"settings.support.starGithubTitle" = "在 GitHub 上給星";
+"settings.support.starGithubSubtitle" = "幫助他人發現 Oval";
+"settings.support.starButton" = "給星";
+
+"settings.section.connection" = "連線";
+"settings.connection.openInBrowserTitle" = "在瀏覽器中開啟";
+"settings.connection.openInBrowserSubtitle" = "開啟伺服器網頁介面";
+"settings.connection.openButton" = "開啟";
+"settings.connection.disconnectTitle" = "中斷連線";
+"settings.connection.disconnectSubtitle" = "返回連線畫面";
+"settings.connection.disconnectButton" = "中斷連線";
+"settings.connection.disconnectConfirm" = "確定要中斷與此伺服器的連線嗎？";
+
+"voice.section.engine" = "語音引擎";
+"voice.engine.label" = "引擎";
+"voice.engine.name" = "RunAnywhere（裝置端）";
+"voice.engine.status" = "狀態";
+"voice.engine.ready" = "就緒";
+"voice.engine.modelsNeeded" = "需要模型";
+"voice.engine.initializing" = "初始化中...";
+"voice.engine.description" = "語音模型完全在裝置上執行，保護隱私並降低延遲。下載後，每次啟動時自動載入。";
+
+"voice.section.stt" = "語音轉文字";
+"voice.section.tts" = "文字轉語音";
+"voice.section.about" = "關於";
+
+"voice.model.ready" = "就緒";
+"voice.model.downloaded" = "已下載";
+"voice.model.extracting" = "解壓縮中...";
+"voice.model.starting" = "啟動中...";
+"voice.model.loading" = "載入中...";
+"voice.model.checking" = "檢查中...";
+"voice.model.downloadButton" = "下載";
+"voice.model.selectButton" = "選取";
+"voice.model.downloaded.bytes" = "已下載 %@";
+
+"about.section.version" = "版本";
+"about.appVersion" = "應用程式版本";
+"about.seeWhatsNew" = "查看新功能";
+"about.section.community" = "社群";
+"about.discord" = "Discord";
+"about.twitter" = "Twitter / X";
+"about.github" = "GitHub";
+"about.twemojiCredit" = "Twemoji 圖形由 Twitter/X 製作，採用 CC-BY 4.0 授權。";
+"about.copyright" = "版權所有 (c) %@ Oval";
+"about.allRightsReserved" = "保留所有權利。";
+
+"sso.title" = "SSO 登入";

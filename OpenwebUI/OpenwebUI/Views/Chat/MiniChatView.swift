@@ -76,7 +76,7 @@ struct MiniChatView: View {
                     .foregroundStyle(Color(hex: "#666666"))
             }
             .buttonStyle(.plain)
-            .help("Close (Esc)")
+            .help(String(localized: "miniChat.closeHelp"))
 
             Spacer()
 
@@ -89,7 +89,7 @@ struct MiniChatView: View {
                     .foregroundStyle(Color(hex: "#999999"))
             }
             .buttonStyle(.plain)
-            .help("Copy last response")
+            .help(String(localized: "miniChat.copyLastResponse"))
             .disabled(appState.miniChatMessages.last(where: { $0.role == "assistant" }) == nil)
 
             // New chat
@@ -103,7 +103,7 @@ struct MiniChatView: View {
                     .foregroundStyle(Color(hex: "#999999"))
             }
             .buttonStyle(.plain)
-            .help("New chat")
+            .help(String(localized: "miniChat.newChat"))
         }
     }
 
@@ -114,7 +114,7 @@ struct MiniChatView: View {
             // Text field row
             ZStack(alignment: .topLeading) {
                 if appState.miniMessageInput.isEmpty {
-                    Text("Ask anything")
+                    Text("miniChat.placeholder")
                         .font(.system(size: 15))
                         .foregroundStyle(Color(hex: "#666666"))
                         .padding(.leading, 4)
@@ -146,7 +146,7 @@ struct MiniChatView: View {
                         .frame(width: 30, height: 30)
                 }
                 .buttonStyle(.plain)
-                .help("Attach")
+                .help(String(localized: "miniChat.attachHelp"))
 
                 // Web search toggle
                 Button {
@@ -160,7 +160,7 @@ struct MiniChatView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help("Web search")
+                .help(String(localized: "miniChat.webSearchHelp"))
 
                 // Model selector
                 Button {
@@ -177,7 +177,7 @@ struct MiniChatView: View {
                     .frame(height: 30)
                 }
                 .buttonStyle(.plain)
-                .help("Select model")
+                .help(String(localized: "miniChat.selectModelHelp"))
                 .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
                     miniModelPicker
                 }
@@ -208,7 +208,7 @@ struct MiniChatView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .help("Voice input")
+                .help(String(localized: "miniChat.voiceInputHelp"))
 
                 // Send / Stop button
                 Button {
@@ -301,7 +301,7 @@ struct MiniChatView: View {
 
     /// Short model name for the button label (e.g. "4o" from "gpt-4o", "5.2" from "chatgpt-5.2")
     private var shortModelName: String {
-        guard let model = appState.selectedModel else { return "Model" }
+        guard let model = appState.selectedModel else { return String(localized: "miniChat.modelFallback") }
         let name = model.displayName
         // Try to extract a short version
         if let range = name.range(of: #"\d+[\.\d]*"#, options: .regularExpression) {
@@ -358,7 +358,7 @@ struct MiniMessageRow: View {
                             ProgressView()
                                 .scaleEffect(0.5)
                                 .frame(width: 16, height: 16)
-                            Text("Thinking...")
+                            Text("miniChat.thinking")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color(hex: "#999999"))
                         }
@@ -378,7 +378,7 @@ struct MiniMessageRow: View {
                                     .foregroundStyle(Color(hex: "#666666"))
                             }
                             .buttonStyle(.plain)
-                            .help("Copy")
+                            .help(String(localized: "miniChat.copyHelp"))
                         }
                         .padding(.top, 2)
                     }
