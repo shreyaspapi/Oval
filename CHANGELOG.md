@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-03-10
+
+### Added
+
+- **Customizable hotkeys**: Global keyboard shortcuts (Quick Chat, Toggle Window, Paste to Chat) can now be changed in Settings > General > Keyboard Shortcuts ([#7](https://github.com/shreyaspapi/Oval/issues/7))
+- **Shortcut recorder**: Click any shortcut field to record a new key combination interactively; press Esc to cancel
+- **Per-shortcut reset**: Each shortcut has a reset button to restore its factory default
+- **Persistent preferences**: Custom hotkeys are saved to config.json and restored on launch
+- **Dynamic tray labels**: Menu bar shortcut hints update to reflect configured bindings
+
+### Fixed
+
+- **Old shortcut still firing**: Removed hardcoded `.keyboardShortcut` on the Quick Chat menu item that caused Ctrl+Space to trigger even after reassignment
+
 ## [1.5.1] - 2026-03-09
 
 ### Fixed
