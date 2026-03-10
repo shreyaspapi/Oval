@@ -244,10 +244,13 @@ RELEASE_NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} /^## \[/{if(found) exit} 
   | sed 's/^- \*\*\(.*\)\*\*\(.*\)/<li><strong>\1<\/strong>\2<\/li>/' \
   | sed 's/^- \(.*\)/<li>\1<\/li>/')
 
-NEW_ITEM="        <item>
+# Write the new item to a temp file
+ITEM_FILE=$(mktemp)
+cat > "$ITEM_FILE" <<XMLITEM
+        <item>
             <title>Version ${VERSION}</title>
             <description><![CDATA[
-                <h2>What's New in v${VERSION}</h2>
+                <h2>What is New in v${VERSION}</h2>
                 <ul>
 ${RELEASE_NOTES}
                 </ul>
@@ -257,16 +260,25 @@ ${RELEASE_NOTES}
             <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <enclosure
-                url=\"${DOWNLOAD_URL}\"
-                sparkle:edSignature=\"${ED_SIGNATURE}\"
-                length=\"${ED_LENGTH}\"
-                type=\"application/octet-stream\" />
-        </item>"
+                url="${DOWNLOAD_URL}"
+                sparkle:edSignature="${ED_SIGNATURE}"
+                length="${ED_LENGTH}"
+                type="application/octet-stream" />
+        </item>
+XMLITEM
 
 # Insert new item after <language>en</language>
 TEMP_APPCAST=$(mktemp)
-awk -v item="$NEW_ITEM" '/<language>en<\/language>/{print; print item; next} {print}' appcast.xml > "$TEMP_APPCAST"
+{
+  while IFS= read -r line; do
+    echo "$line"
+    if echo "$line" | grep -q '<language>en</language>'; then
+      cat "$ITEM_FILE"
+    fi
+  done
+} < appcast.xml > "$TEMP_APPCAST"
 mv "$TEMP_APPCAST" appcast.xml
+rm -f "$ITEM_FILE"
 
 ok "Added v${VERSION} to appcast.xml"
 
