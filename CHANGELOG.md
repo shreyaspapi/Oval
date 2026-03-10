@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-03-10
+
+### Added
+
+- **Automated release script**: `scripts/release.sh` handles the full release workflow locally (build, sign, notarize, DMG, appcast, GitHub release)
+
 ## [1.6.1] - 2026-03-10
 
 ### Fixed
