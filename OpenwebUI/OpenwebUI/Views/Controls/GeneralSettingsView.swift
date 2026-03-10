@@ -50,19 +50,67 @@ struct GeneralSettingsView: View {
             // Section: Keyboard Shortcuts
             Section("Keyboard Shortcuts") {
                 LabeledContent("Quick Chat") {
-                    Text("Ctrl + Space")
-                        .font(.system(size: 12, design: .monospaced))
+                    HStack(spacing: 8) {
+                        ShortcutRecorderView(
+                            binding: Binding(
+                                get: { appState.hotkeyPreferences.quickChat },
+                                set: { appState.hotkeyPreferences.quickChat = $0 }
+                            ),
+                            onChanged: { appState.applyHotkeyChanges() }
+                        )
+                        Button {
+                            appState.hotkeyPreferences.quickChat = HotkeyPreferences.defaults.quickChat
+                            appState.applyHotkeyChanges()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
+                        .help("Reset to default")
+                    }
                 }
                 LabeledContent("Toggle Window") {
-                    Text("Ctrl + Opt + Space")
-                        .font(.system(size: 12, design: .monospaced))
+                    HStack(spacing: 8) {
+                        ShortcutRecorderView(
+                            binding: Binding(
+                                get: { appState.hotkeyPreferences.toggleWindow },
+                                set: { appState.hotkeyPreferences.toggleWindow = $0 }
+                            ),
+                            onChanged: { appState.applyHotkeyChanges() }
+                        )
+                        Button {
+                            appState.hotkeyPreferences.toggleWindow = HotkeyPreferences.defaults.toggleWindow
+                            appState.applyHotkeyChanges()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
+                        .help("Reset to default")
+                    }
                 }
                 LabeledContent("Paste to Chat") {
-                    Text("Ctrl + Shift + V")
-                        .font(.system(size: 12, design: .monospaced))
+                    HStack(spacing: 8) {
+                        ShortcutRecorderView(
+                            binding: Binding(
+                                get: { appState.hotkeyPreferences.pasteToChat },
+                                set: { appState.hotkeyPreferences.pasteToChat = $0 }
+                            ),
+                            onChanged: { appState.applyHotkeyChanges() }
+                        )
+                        Button {
+                            appState.hotkeyPreferences.pasteToChat = HotkeyPreferences.defaults.pasteToChat
+                            appState.applyHotkeyChanges()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
+                        .help("Reset to default")
+                    }
                 }
                 LabeledContent("Copy Response") {
                     Text("Cmd + Shift + C")
