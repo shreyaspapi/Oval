@@ -3,6 +3,7 @@ import Carbon.HIToolbox
 
 /// Manages global keyboard shortcuts using CGEvent taps.
 /// Works even when the app is not focused (requires Accessibility permissions).
+/// Hotkey bindings are configurable at runtime via `bindings`.
 @MainActor
 final class HotkeyManager {
 
@@ -12,12 +13,17 @@ final class HotkeyManager {
     var onToggleMainWindow: (() -> Void)?
     var onPasteToMiniChat: (() -> Void)?
 
+    // MARK: - Configurable Bindings
+
+    /// Current hotkey preferences. Call `restart()` after changing to apply.
+    var bindings: HotkeyPreferences = .defaults
+
     // MARK: - Event Tap
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    // MARK: - Shared Callbacks (nonisolated for C callback access)
+    // MARK: - Shared State (nonisolated for C callback access)
 
     /// These closures are set from the main actor but invoked from the CGEvent callback.
     /// Using nonisolated(unsafe) because the CGEvent callback runs on the main run loop.
@@ -26,7 +32,19 @@ final class HotkeyManager {
     nonisolated(unsafe) static var pasteCallback: (() -> Void)?
     nonisolated(unsafe) static var tapPort: CFMachPort?
 
+    /// Current bindings exposed to the C callback (value type, safe to copy).
+    /// Initialized with the same defaults as HotkeyPreferences.defaults but using
+    /// raw initializers to avoid actor-isolation warnings in nonisolated context.
+    nonisolated(unsafe) static var activeBindings = HotkeyPreferences(
+        quickChat:    HotkeyBinding(rawKeyCode: UInt16(kVK_Space),  rawModifiers: CGEventFlags.maskControl.rawValue),
+        toggleWindow: HotkeyBinding(rawKeyCode: UInt16(kVK_Space),  rawModifiers: CGEventFlags([.maskControl, .maskAlternate]).rawValue),
+        pasteToChat:  HotkeyBinding(rawKeyCode: UInt16(kVK_ANSI_V), rawModifiers: CGEventFlags([.maskControl, .maskShift]).rawValue)
+    )
+
     func start() {
+        // Publish current bindings to the static context used by the C callback
+        HotkeyManager.activeBindings = bindings
+
         // Set up the static callbacks to forward to our instance closures
         HotkeyManager.miniWindowCallback = { [weak self] in
             Task { @MainActor in self?.onToggleMiniWindow?() }
@@ -79,6 +97,12 @@ final class HotkeyManager {
         globalMonitor = nil
     }
 
+    /// Stop and re-start with the current `bindings`. Call after the user changes a shortcut.
+    func restart() {
+        stop()
+        start()
+    }
+
     // MARK: - Fallback: NSEvent Monitors
 
     private var localMonitor: Any?
@@ -100,26 +124,27 @@ final class HotkeyManager {
     private static func handleNSEvent(_ event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let keyCode = event.keyCode
+        let b = activeBindings
 
-        // Ctrl+Space → toggle mini window
-        if keyCode == UInt16(kVK_Space) && flags == .control {
+        if matchesNSEvent(keyCode: keyCode, flags: flags, binding: b.quickChat) {
             miniWindowCallback?()
             return true
         }
-
-        // Ctrl+Option+Space → toggle full window
-        if keyCode == UInt16(kVK_Space) && flags == [.control, .option] {
+        if matchesNSEvent(keyCode: keyCode, flags: flags, binding: b.toggleWindow) {
             mainWindowCallback?()
             return true
         }
-
-        // Ctrl+Shift+V → paste clipboard to mini chat
-        if keyCode == UInt16(kVK_ANSI_V) && flags == [.control, .shift] {
+        if matchesNSEvent(keyCode: keyCode, flags: flags, binding: b.pasteToChat) {
             pasteCallback?()
             return true
         }
 
         return false
+    }
+
+    /// Check whether an NSEvent matches a HotkeyBinding.
+    private static func matchesNSEvent(keyCode: UInt16, flags: NSEvent.ModifierFlags, binding: HotkeyBinding) -> Bool {
+        keyCode == binding.keyCode && flags == binding.nsModifierFlags
     }
 }
 
@@ -146,28 +171,37 @@ nonisolated private func hotkeyCallback(
 
     let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
     let flags = event.flags
-    let ctrl = flags.contains(.maskControl)
-    let alt = flags.contains(.maskAlternate)
-    let shift = flags.contains(.maskShift)
-    let cmd = flags.contains(.maskCommand)
+    let b = HotkeyManager.activeBindings
 
-    // Ctrl+Space → toggle mini window
-    if keyCode == UInt16(kVK_Space) && ctrl && !alt && !shift && !cmd {
+    if matchesCGEvent(keyCode: keyCode, flags: flags, binding: b.quickChat) {
         HotkeyManager.miniWindowCallback?()
         return nil // consume
     }
 
-    // Ctrl+Option+Space → toggle full window
-    if keyCode == UInt16(kVK_Space) && ctrl && alt && !shift && !cmd {
+    if matchesCGEvent(keyCode: keyCode, flags: flags, binding: b.toggleWindow) {
         HotkeyManager.mainWindowCallback?()
         return nil
     }
 
-    // Ctrl+Shift+V → paste clipboard to mini chat
-    if keyCode == UInt16(kVK_ANSI_V) && ctrl && shift && !alt && !cmd {
+    if matchesCGEvent(keyCode: keyCode, flags: flags, binding: b.pasteToChat) {
         HotkeyManager.pasteCallback?()
         return nil
     }
 
     return Unmanaged.passRetained(event)
+}
+
+/// Check whether a CGEvent matches a HotkeyBinding by comparing key code and exact modifier state.
+/// Uses raw modifiers field directly to avoid accessing main-actor-isolated computed properties.
+nonisolated private func matchesCGEvent(keyCode: UInt16, flags: CGEventFlags, binding: HotkeyBinding) -> Bool {
+    guard keyCode == binding.keyCode else { return false }
+    let expected = CGEventFlags(rawValue: binding.modifiers)
+    let ctrl  = flags.contains(.maskControl)
+    let alt   = flags.contains(.maskAlternate)
+    let shift = flags.contains(.maskShift)
+    let cmd   = flags.contains(.maskCommand)
+    return ctrl == expected.contains(.maskControl)
+        && alt == expected.contains(.maskAlternate)
+        && shift == expected.contains(.maskShift)
+        && cmd == expected.contains(.maskCommand)
 }

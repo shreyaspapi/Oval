@@ -79,15 +79,17 @@ final class TrayManager {
         shortcutsHeader.isEnabled = false
         menu.addItem(shortcutsHeader)
 
-        let s1 = NSMenuItem(title: "  Quick Chat: Ctrl+Space", action: nil, keyEquivalent: "")
+        let prefs = appState.hotkeyPreferences
+
+        let s1 = NSMenuItem(title: "  Quick Chat: \(prefs.quickChat.displayString)", action: nil, keyEquivalent: "")
         s1.isEnabled = false
         menu.addItem(s1)
 
-        let s2 = NSMenuItem(title: "  Toggle Window: Ctrl+Opt+Space", action: nil, keyEquivalent: "")
+        let s2 = NSMenuItem(title: "  Toggle Window: \(prefs.toggleWindow.displayString)", action: nil, keyEquivalent: "")
         s2.isEnabled = false
         menu.addItem(s2)
 
-        let s3 = NSMenuItem(title: "  Paste to Chat: Ctrl+Shift+V", action: nil, keyEquivalent: "")
+        let s3 = NSMenuItem(title: "  Paste to Chat: \(prefs.pasteToChat.displayString)", action: nil, keyEquivalent: "")
         s3.isEnabled = false
         menu.addItem(s3)
 
