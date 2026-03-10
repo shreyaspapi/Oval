@@ -82,7 +82,7 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 
 Download the latest `.dmg` from the [**Releases page**](https://github.com/shreyaspapi/Oval/releases/latest), open it, and drag Oval to your Applications folder.
 
-> **First launch:** Since the app is not notarized, right-click Oval and select "Open" the first time, or go to System Settings → Privacy & Security to allow it.
+> The app is signed with Developer ID and notarized by Apple. It should open without any Gatekeeper warnings.
 
 ### Mac App Store
 
@@ -189,6 +189,22 @@ This project is licensed under the GNU General Public License v3.0 — see the [
 ## Disclaimer
 
 Oval is an independent, third-party application and is not officially affiliated with the [Open WebUI](https://openwebui.com) project.
+
+## Support
+
+Oval is free and open source. If you find it useful, consider supporting development:
+
+<a href="https://buymeacoffee.com/shreyaspapi"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
+<a href="https://github.com/sponsors/shreyaspapi"><img src="https://img.shields.io/badge/GitHub%20Sponsors-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors"></a>
+
+## Sponsors
+
+Thank you to everyone who sponsors this project:
+
+<!-- SPONSORS:START - Do not remove or modify this section -->
+<!-- This section is automatically updated -->
+*Become the first sponsor! [GitHub Sponsors](https://github.com/sponsors/shreyaspapi) or [Buy Me a Coffee](https://buymeacoffee.com/shreyaspapi)*
+<!-- SPONSORS:END -->
 
 ## Acknowledgments
 

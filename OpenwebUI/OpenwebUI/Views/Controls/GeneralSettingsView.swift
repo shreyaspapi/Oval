@@ -142,6 +142,57 @@ struct GeneralSettingsView: View {
                 }
             }
 
+            // Section: Support
+            Section("Support Oval") {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Buy Me a Coffee")
+                            .font(.callout)
+                        Text("Support development with a one-time donation")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Donate") {
+                        if let url = URL(string: "https://buymeacoffee.com/shreyaspapi") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("GitHub Sponsors")
+                            .font(.callout)
+                        Text("Become a recurring sponsor on GitHub")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Sponsor") {
+                        if let url = URL(string: "https://github.com/sponsors/shreyaspapi") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Star on GitHub")
+                            .font(.callout)
+                        Text("Help others discover Oval")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Star") {
+                        if let url = URL(string: "https://github.com/shreyaspapi/Oval") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+            }
+
             // Section: Connection Actions
             Section("Connection") {
                 HStack {
