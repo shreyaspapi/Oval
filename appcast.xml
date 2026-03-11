@@ -5,6 +5,27 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.7.1</title>
+            <description><![CDATA[
+                <h2>What is New in v1.7.1</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Hotkeys stop working after window close</strong> — Global hotkeys (Quick Chat, Toggle Window, Paste to Chat) now persist when the main window is closed ([#41](https://github.com/shreyaspapi/Oval/issues/41))</li>
+<li><strong>Menu bar icon disappears after window close</strong> — Tray icon and menu now survive the main window being closed</li>
+<li><strong>Toggle Window hotkey with no window</strong> — Pressing the Toggle Window hotkey after closing the window now re-activates the app and recreates the window</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 11 Mar 2026 21:07:43 +0000</pubDate>
+            <sparkle:version>13</sparkle:version>
+            <sparkle:shortVersionString>1.7.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.7.1/Oval-v1.7.1.dmg"
+                sparkle:edSignature="5JAhQPQWQR3mmG9LELSg+TfayUSkkv+n92Q5DNz5Pn0J64lKDP38nABdtni6aERsVSQJ7RZ/zYpXjJIERXutBA=="
+                length="35997482"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.7.0</title>
             <description><![CDATA[
                 <h2>What is New in v1.7.0</h2>
