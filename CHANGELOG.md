@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-03-12
+
+### Fixed
+
+- **Hotkeys stop working after window close**: Global hotkeys (Quick Chat, Toggle Window, Paste to Chat) now persist when the main window is closed ([#41](https://github.com/shreyaspapi/Oval/issues/41))
+- **Menu bar icon disappears after window close**: Tray icon and menu now survive the main window being closed
+- **Toggle Window hotkey with no window**: Pressing the Toggle Window hotkey after closing the window now re-activates the app and recreates the window
+
 ## [1.7.0] - 2026-03-11
 
 ### Added
