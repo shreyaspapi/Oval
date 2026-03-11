@@ -479,14 +479,12 @@ final class AppState {
 
     // MARK: - Lifecycle
 
+    /// Whether persistent services (tray, hotkeys, mini chat) have been set up.
+    /// These survive window close/reopen cycles and are only initialized once.
+    private var hasSetupPersistentServices = false
+
     func onAppear() async {
-        trayManager.setup(appState: self)
-        miniChatWindowManager.setup(appState: self)
-        voiceModeManager.setup(appState: self)
-        voiceModeWindowManager.setup(appState: self)
-        transcriptionWindowManager.setup(appState: self)
-        realtimeTranscriptionManager.setDiarizationManager(speakerDiarizationManager)
-        setupHotkeys()
+        setupPersistentServicesIfNeeded()
 
         // Initialize RunAnywhere SDK for on-device STT/TTS
         Task {
@@ -540,12 +538,35 @@ final class AppState {
         trayManager.updateMenu()
     }
 
+    /// Set up persistent services that should survive window close/reopen.
+    /// Only runs once — subsequent calls are no-ops.
+    private func setupPersistentServicesIfNeeded() {
+        guard !hasSetupPersistentServices else { return }
+        hasSetupPersistentServices = true
+
+        trayManager.setup(appState: self)
+        miniChatWindowManager.setup(appState: self)
+        voiceModeManager.setup(appState: self)
+        voiceModeWindowManager.setup(appState: self)
+        transcriptionWindowManager.setup(appState: self)
+        realtimeTranscriptionManager.setDiarizationManager(speakerDiarizationManager)
+        setupHotkeys()
+    }
+
+    /// Called when the main window disappears (e.g. user clicks the red close button).
+    /// Intentionally does NOT tear down persistent services — they must survive window close.
     func onDisappear() {
+        // No-op: tray, hotkeys, and mini chat persist for the app's lifetime.
+    }
+
+    /// Full teardown for app termination.
+    func teardownAll() {
         trayManager.teardown()
         hotkeyManager.stop()
         miniChatWindowManager.teardown()
         voiceModeWindowManager.teardown()
         transcriptionWindowManager.teardown()
+        hasSetupPersistentServices = false
     }
 
     // MARK: - Hotkey Setup
@@ -574,7 +595,7 @@ final class AppState {
 
     private func toggleMainWindow() {
         if let window = NSApp.windows.first(where: {
-            $0.title.contains("Oval") && !($0 is NSPanel)
+            !($0 is NSPanel) && $0.className != "NSMenuWindowManagerWindow"
         }) {
             if window.isVisible && window.isKeyWindow {
                 window.orderOut(nil)
@@ -582,6 +603,9 @@ final class AppState {
                 NSApp.activate(ignoringOtherApps: true)
                 window.makeKeyAndOrderFront(nil)
             }
+        } else {
+            // No main window exists (user closed it) — activate app so SwiftUI recreates it
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 

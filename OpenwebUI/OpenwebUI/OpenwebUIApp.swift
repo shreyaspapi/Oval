@@ -3,6 +3,9 @@ import SwiftUI
 /// App delegate to handle lifecycle events.
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
+    /// Reference to app state for teardown on quit.
+    var appState: AppState?
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
             // Restore all non-panel windows (main window, settings, etc.)
@@ -39,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        appState?.teardownAll()
+    }
 }
 
 @main
@@ -54,6 +61,9 @@ struct OpenwebUIApp: App {
         WindowGroup(String(localized: "app.name")) {
             ContentView(appState: appState)
                 .frame(minWidth: 700, minHeight: 450)
+                .onAppear {
+                    appDelegate.appState = appState
+                }
         }
         .defaultSize(width: 1000, height: 650)
         .windowStyle(.titleBar)
