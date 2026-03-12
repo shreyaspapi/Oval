@@ -42,7 +42,7 @@ struct ChatView: View {
 
             // MARK: — Temporary Chat toggle / Save Chat button
             ToolbarItem(placement: .primaryAction) {
-                if appState.isTemporaryChat && !appState.chatMessages.isEmpty {
+                if appState.isTemporaryChat && !appState.chatMessages.isEmpty && !appState.isStreaming {
                     // After sending: show "Save Chat" to persist the temp chat
                     Button {
                         Task { await appState.saveTemporaryChat() }
