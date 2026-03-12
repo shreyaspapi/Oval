@@ -310,3 +310,16 @@
 
 // MARK: - SSO
 "sso.title" = "Connexion SSO";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Discussion temporaire";
+"tempChat.indicatorHelp" = "Cette discussion n'apparaîtra pas dans l'historique et vos messages ne seront pas enregistrés.";
+"tempChat.savedToast" = "Discussion enregistrée";
+"toolbar.temporaryChat" = "Discussion temporaire";
+"toolbar.temporaryChatHelp" = "Démarrer une discussion temporaire qui ne sera pas enregistrée dans l'historique";
+"toolbar.temporaryChatActiveHelp" = "La discussion temporaire est active — cette conversation ne sera pas enregistrée";
+"toolbar.saveChat" = "Enregistrer la discussion";
+"toolbar.saveChatHelp" = "Enregistrer cette discussion temporaire dans votre historique";
+"settings.section.privacy" = "Confidentialité";
+"settings.privacy.temporaryChatDefault" = "Discussions temporaires par défaut";
+"settings.privacy.temporaryChatDefaultFooter" = "Les discussions temporaires ne sont pas enregistrées sur le serveur. Vous pouvez toujours enregistrer manuellement une discussion temporaire.";
