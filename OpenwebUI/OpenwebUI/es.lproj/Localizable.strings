@@ -256,7 +256,8 @@
 
 "voice.section.engine" = "Motor de voz";
 "voice.engine.label" = "Motor";
-"voice.engine.name" = "RunAnywhere (En el dispositivo)";
+"voice.engine.name" = "TTS nativo de macOS";
+"voice.engine.unavailable" = "No disponible";
 "voice.engine.status" = "Estado";
 "voice.engine.ready" = "Listo";
 "voice.engine.modelsNeeded" = "Modelos necesarios";

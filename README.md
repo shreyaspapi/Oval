@@ -37,14 +37,10 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 - **Web search toggle** for retrieval-augmented generation
 - **Voice input** with on-device speech-to-text (Apple Speech framework)
 
-### Voice Mode (v1.1.0)
+### Voice Mode
 - **Floating voice window** — ChatGPT-style compact window, draggable, stays on top
-- **Fully on-device STT & TTS** — powered by [RunAnywhere](https://github.com/RunanywhereAI/runanywhere-sdks) (Whisper + Piper). Voice data never leaves your machine — only the transcript goes to your server.
-- **Pipeline:** Mic → on-device Whisper STT → Open WebUI server LLM → on-device Piper TTS → speaker
-- **Multiple STT models** — Whisper Tiny (fast), Whisper Small (accurate), WhisperKit variants (Apple Neural Engine)
-- **Multiple TTS voices** — Lessac (US male), Amy (US female), Alba (British female)
-- **Model management** in Settings (Cmd+, → Voice) — download, select, and switch models
-- **Chat play button** uses on-device TTS instead of macOS system voice — much better quality
+- **Text-to-speech** — native macOS TTS for assistant responses
+- **Chat play button** — hear any assistant message read aloud
 - **Instant stop** — TTS stops mid-sentence when you hit stop
 
 ### macOS Integration
@@ -125,7 +121,7 @@ open OpenwebUI/OpenwebUI.xcodeproj
 
 ## Architecture
 
-Native SwiftUI app. Uses [RunAnywhere SDK](https://github.com/RunanywhereAI/runanywhere-sdks) for on-device voice (STT/TTS).
+Native SwiftUI app with macOS native TTS for voice playback.
 
 ```
 OpenwebUI/
@@ -137,10 +133,9 @@ OpenwebUI/
 │   ├── AppState.swift          # Main app state (@Observable)
 │   ├── OpenWebUIClient.swift   # HTTP client (auth, models, chats, streaming)
 │   ├── ConfigManager.swift     # Disk persistence for server configs
-│   ├── RunAnywhereService.swift     # On-device STT/TTS model management
-│   ├── VoiceModeManager.swift       # Voice conversation pipeline (STT → LLM → TTS)
+│   ├── VoiceModeManager.swift       # Voice conversation pipeline
 │   ├── VoiceModeWindowManager.swift # Floating NSPanel for voice mode
-│   ├── TTSManager.swift        # TTS playback (RunAnywhere + native fallback)
+│   ├── TTSManager.swift        # TTS playback (native macOS)
 │   ├── SpeechManager.swift     # On-device speech-to-text (Apple Speech)
 │   ├── HotkeyManager.swift     # Global keyboard shortcuts (CGEvent tap)
 │   ├── MiniChatWindowManager.swift  # Floating NSPanel for Quick Chat
@@ -169,8 +164,7 @@ OpenwebUI/
 - **No data collection** — no analytics, no telemetry, no tracking
 - All network traffic goes **directly** between your Mac and your Open WebUI server
 - Credentials stored locally in the app's sandboxed container
-- Voice mode STT and TTS run **entirely on-device** — audio never leaves your machine
-- Only the text transcript is sent to your server for the LLM response
+- Voice TTS uses macOS native speech synthesis
 
 See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full privacy policy.
 
@@ -209,5 +203,4 @@ Thank you to everyone who sponsors this project:
 ## Acknowledgments
 
 - [Open WebUI](https://openwebui.com) team for creating an amazing self-hosted AI interface
-- [RunAnywhere](https://github.com/RunanywhereAI/runanywhere-sdks) for on-device STT/TTS (Whisper + Piper)
 - Apple for SwiftUI and the macOS platform

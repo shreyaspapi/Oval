@@ -129,7 +129,7 @@ final class RealtimeTranscriptionManager {
     // MARK: - Model Loading
 
     /// Load model for realtime transcription.
-    /// RunAnywhere SDK removed — realtime transcription is unavailable.
+    /// On-device STT is currently unavailable.
     func loadModel() async {
         isModelReady = false
         errorMessage = "Realtime transcription is unavailable (voice SDK removed)."
@@ -348,7 +348,7 @@ final class RealtimeTranscriptionManager {
             nil
         }
 
-        // Transcribe — RunAnywhere/WhisperKit SDK removed, transcription unavailable
+        // Transcribe — on-device STT unavailable
         do {
             let text: String = ""  // No STT backend available
 
