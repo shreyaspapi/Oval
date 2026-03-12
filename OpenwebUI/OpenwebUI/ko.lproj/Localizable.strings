@@ -288,4 +288,16 @@
 "about.copyright" = "Copyright (c) %@ Oval";
 "about.allRightsReserved" = "모든 권리 보유.";
 
+// MARK: - Tags
+"tags.untagged" = "태그 없음";
+"tags.searchForTags" = "태그 검색";
+"tags.editorTitle" = "태그 관리";
+"tags.currentTags" = "현재 태그";
+"tags.addPlaceholder" = "태그 추가...";
+"tags.addButton" = "추가";
+"tags.suggestions" = "제안";
+"tags.noTagsYet" = "아직 태그가 없습니다. 위에서 추가하거나 제안을 선택하세요.";
+"conversation.manageTags" = "태그 관리";
+
+// MARK: - SSO
 "sso.title" = "SSO 로그인";

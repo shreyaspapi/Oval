@@ -384,13 +384,61 @@ final class AppState {
     var isSidebarVisible: Bool = true
     var searchText: String = ""
 
+    // MARK: - Tags
+
+    /// All tags across all conversations (fetched from server).
+    var allTags: [String] = []
+    /// Whether the tag editor sheet is being shown.
+    var isTagEditorPresented: Bool = false
+    /// The conversation ID being edited in the tag editor.
+    var tagEditorConversationID: String?
+
+    /// Parsed search components from the search text.
+    /// Supports `tag:<name>` tokens for filtering by tag and plain text for title search.
+    private var parsedSearch: (tags: [String], text: String) {
+        var tags: [String] = []
+        var textParts: [String] = []
+        // Split by spaces but respect tag: tokens
+        let components = searchText.components(separatedBy: " ")
+        var i = 0
+        while i < components.count {
+            let comp = components[i]
+            if comp.lowercased().hasPrefix("tag:") {
+                let tagValue = String(comp.dropFirst(4)).lowercased()
+                if !tagValue.isEmpty {
+                    tags.append(tagValue)
+                }
+                // "tag:" alone (no value yet) — skip, user is still typing
+            } else if !comp.isEmpty {
+                textParts.append(comp)
+            }
+            i += 1
+        }
+        return (tags: tags, text: textParts.joined(separator: " "))
+    }
+
     var filteredConversations: [ChatListItem] {
-        if searchText.isEmpty {
-            return conversations
+        let parsed = parsedSearch
+        var result = conversations
+
+        // Filter by tags (supports multiple tag: tokens)
+        for tag in parsed.tags {
+            if tag == "none" {
+                // Special: "Untagged" — show conversations with no tags
+                result = result.filter { $0.tagList.isEmpty }
+            } else {
+                result = result.filter { $0.tagList.contains(tag) }
+            }
         }
-        return conversations.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText)
+
+        // Then filter by text search
+        if !parsed.text.isEmpty {
+            result = result.filter {
+                $0.title.localizedCaseInsensitiveContains(parsed.text)
+            }
         }
+
+        return result
     }
 
     // MARK: - Toasts
@@ -1232,7 +1280,8 @@ final class AppState {
                         updated_at: conversations[idx].updated_at,
                         created_at: conversations[idx].created_at,
                         pinned: conversations[idx].pinned,
-                        folder_id: conversations[idx].folder_id
+                        folder_id: conversations[idx].folder_id,
+                        tags: conversations[idx].tags
                     )
                 }
             }
@@ -1423,6 +1472,8 @@ final class AppState {
             if chats.count < 50 { hasMoreConversations = false }
             // Prefetch messages for all conversations in background
             prefetchConversations()
+            // Load tags in background
+            Task { await loadAllTags() }
         } catch {
             if !silent {
                 toastManager.show("Failed to load conversations", style: .error)
@@ -1507,7 +1558,8 @@ final class AppState {
             updated_at: Date().timeIntervalSince1970,
             created_at: old.created_at,
             pinned: old.pinned,
-            folder_id: old.folder_id
+            folder_id: old.folder_id,
+            tags: old.tags
         )
         conversations.remove(at: idx)
         conversations.insert(updated, at: 0)
@@ -1551,7 +1603,8 @@ final class AppState {
                     updated_at: old.updated_at,
                     created_at: old.created_at,
                     pinned: old.pinned,
-                    folder_id: old.folder_id
+                    folder_id: old.folder_id,
+                    tags: old.tags
                 )
             }
             return
@@ -1716,6 +1769,71 @@ final class AppState {
         } catch {
             return []
         }
+    }
+
+    // MARK: - Tag Management
+
+    /// Fetch all tags from the server and update the local list.
+    func loadAllTags() async {
+        guard let client else { return }
+        do {
+            allTags = try await client.getAllTags()
+        } catch {
+            // Silently fail — tags are non-critical
+        }
+    }
+
+    /// Add a tag to a conversation. Updates local state and server.
+    func addTag(to conversationId: String, tagName: String) async {
+        let tag = tagName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !tag.isEmpty, let client else { return }
+        do {
+            try await client.addTagToChat(id: conversationId, tagName: tag)
+            // Update local conversation tags
+            if let idx = conversations.firstIndex(where: { $0.id == conversationId }) {
+                var tags = conversations[idx].tags ?? []
+                if !tags.contains(tag) {
+                    tags.append(tag)
+                    conversations[idx].tags = tags
+                }
+            }
+            // Add to global tags list if new
+            if !allTags.contains(tag) {
+                allTags.append(tag)
+            }
+        } catch {
+            toastManager.show("Failed to add tag: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Remove a tag from a conversation. Updates local state and server.
+    func removeTag(from conversationId: String, tagName: String) async {
+        guard let client else { return }
+        do {
+            try await client.removeTagFromChat(id: conversationId, tagName: tagName)
+            // Update local conversation tags
+            if let idx = conversations.firstIndex(where: { $0.id == conversationId }) {
+                conversations[idx].tags?.removeAll { $0 == tagName }
+            }
+            // Refresh global tags (a tag might no longer exist on any conversation)
+            await loadAllTags()
+        } catch {
+            toastManager.show("Failed to remove tag: \(error.localizedDescription)", style: .error)
+        }
+    }
+
+    /// Open the tag editor for a specific conversation.
+    func showTagEditor(for conversationId: String) {
+        tagEditorConversationID = conversationId
+        isTagEditorPresented = true
+    }
+
+    /// Clear the tag filter by removing all `tag:` tokens from the search text.
+    func clearTagFilter() {
+        searchText = searchText.components(separatedBy: " ")
+            .filter { !$0.lowercased().hasPrefix("tag:") }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
     }
 
     private func loadChatMessages(_ chatId: String) async {
