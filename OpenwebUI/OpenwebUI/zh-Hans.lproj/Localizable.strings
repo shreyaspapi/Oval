@@ -296,6 +296,7 @@
 "tags.addPlaceholder" = "添加标签...";
 "tags.addButton" = "添加";
 "tags.suggestions" = "建议";
+"tags.noTagsYet" = "暂无标签。在上方添加一个或选择建议。";
 "conversation.manageTags" = "管理标签";
 
 // MARK: - SSO

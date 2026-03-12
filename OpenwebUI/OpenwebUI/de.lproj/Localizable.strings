@@ -316,6 +316,7 @@
 "tags.addPlaceholder" = "Tag hinzufügen...";
 "tags.addButton" = "Hinzufügen";
 "tags.suggestions" = "Vorschläge";
+"tags.noTagsYet" = "Noch keine Tags. Fügen Sie oben einen hinzu oder wählen Sie einen Vorschlag.";
 "conversation.manageTags" = "Tags verwalten";
 
 // MARK: - SSO
