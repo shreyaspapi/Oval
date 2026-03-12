@@ -1,8 +1,6 @@
 import AVFoundation
 import Accelerate
 import Foundation
-import RunAnywhere
-import WhisperKitRuntime
 import os
 
 // MARK: - Transcription Segment
@@ -130,54 +128,11 @@ final class RealtimeTranscriptionManager {
 
     // MARK: - Model Loading
 
-    /// Load a WhisperKit model for realtime transcription.
-    /// Uses WhisperKitSTTService directly for fastest inference on Neural Engine.
+    /// Load model for realtime transcription.
+    /// RunAnywhere SDK removed — realtime transcription is unavailable.
     func loadModel() async {
-        // Check if WhisperKit model is already loaded via RunAnywhereService
-        let sttModelId = RunAnywhereService.shared.selectedSTTModelId
-        let isWhisperKit = sttModelId.hasPrefix("whisperkit-")
-
-        if isWhisperKit {
-            // WhisperKitSTTService may already be loaded from RunAnywhereService
-            let loaded = await WhisperKitSTTService.shared.isModelLoaded
-            if loaded {
-                isModelReady = true
-                logger.info("WhisperKit model already loaded for realtime transcription")
-                return
-            }
-        }
-
-        // If the selected model is not WhisperKit, or not loaded, try loading it
-        // For best realtime performance, prefer WhisperKit models
-        if isWhisperKit {
-            // Try to load the WhisperKit model
-            do {
-                let modelFolder = try CppBridge.ModelPaths.getModelFolder(
-                    modelId: sttModelId, framework: .onnx
-                )
-                // WhisperKit models may be in nested directory
-                let nestedFolder = modelFolder.appendingPathComponent(sttModelId)
-                let path = FileManager.default.fileExists(atPath: nestedFolder.path)
-                    ? nestedFolder.path : modelFolder.path
-
-                try await WhisperKitSTTService.shared.loadModel(
-                    modelId: sttModelId, modelFolder: path
-                )
-                isModelReady = true
-                logger.info("Loaded WhisperKit model '\(sttModelId)' for realtime transcription")
-            } catch {
-                logger.error("Failed to load WhisperKit model: \(error)")
-                // Fall back to batch RunAnywhere.transcribe() path
-                isModelReady = RunAnywhereService.shared.sttModelState == .loaded
-            }
-        } else {
-            // Non-WhisperKit model — use batch RunAnywhere.transcribe() as fallback
-            isModelReady = RunAnywhereService.shared.sttModelState == .loaded
-        }
-
-        if !isModelReady {
-            errorMessage = "No STT model loaded. Download and select a model in Settings > Voice."
-        }
+        isModelReady = false
+        errorMessage = "Realtime transcription is unavailable (voice SDK removed)."
     }
 
     // MARK: - Session Control
@@ -393,21 +348,9 @@ final class RealtimeTranscriptionManager {
             nil
         }
 
-        // Transcribe
+        // Transcribe — RunAnywhere/WhisperKit SDK removed, transcription unavailable
         do {
-            let text: String
-
-            // Try WhisperKit direct path first (faster, skips C++ bridge)
-            let isWhisperKitLoaded = await WhisperKitSTTService.shared.isModelLoaded
-            if isWhisperKitLoaded {
-                let options = STTOptions()
-                let output = try await WhisperKitSTTService.shared.transcribe(audioData, options: options)
-                text = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            } else {
-                // Fallback to RunAnywhere batch path (works with ONNX models too)
-                let result = try await RunAnywhere.transcribe(audioData)
-                text = result.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+            let text: String = ""  // No STT backend available
 
             guard !Task.isCancelled, isActive else { return }
 

@@ -108,6 +108,19 @@ struct GeneralSettingsView: View {
                 ))
             }
 
+            // Section: Privacy
+            Section {
+                Toggle(String(localized: "settings.privacy.temporaryChatDefault"), isOn: Binding(
+                    get: { appState.temporaryChatDefault },
+                    set: { appState.temporaryChatDefault = $0 }
+                ))
+            } header: {
+                Text(String(localized: "settings.section.privacy"))
+            } footer: {
+                Text(String(localized: "settings.privacy.temporaryChatDefaultFooter"))
+                    .foregroundStyle(.secondary)
+            }
+
             // Section: Keyboard Shortcuts
             Section(String(localized: "settings.section.shortcuts")) {
                 LabeledContent(String(localized: "settings.shortcuts.quickChat")) {

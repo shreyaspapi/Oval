@@ -289,3 +289,16 @@
 "about.allRightsReserved" = "Todos los derechos reservados.";
 
 "sso.title" = "Inicio de sesión SSO";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Chat temporal";
+"tempChat.indicatorHelp" = "Este chat no aparecerá en el historial y tus mensajes no se guardarán.";
+"tempChat.savedToast" = "Chat guardado";
+"toolbar.temporaryChat" = "Chat temporal";
+"toolbar.temporaryChatHelp" = "Iniciar un chat temporal que no se guardará en el historial";
+"toolbar.temporaryChatActiveHelp" = "El chat temporal está activo: esta conversación no se guardará";
+"toolbar.saveChat" = "Guardar chat";
+"toolbar.saveChatHelp" = "Guardar este chat temporal en tu historial";
+"settings.section.privacy" = "Privacidad";
+"settings.privacy.temporaryChatDefault" = "Chats temporales por defecto";
+"settings.privacy.temporaryChatDefaultFooter" = "Los chats temporales no se guardan en el servidor. Puedes guardar un chat temporal manualmente.";
