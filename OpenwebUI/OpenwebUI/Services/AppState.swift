@@ -500,8 +500,12 @@ final class AppState {
 
     /// Whether new chats should default to temporary mode. Persisted in config.json.
     var temporaryChatDefault: Bool = false {
-        didSet { saveServers() }
+        didSet { guard !isLoadingConfig else { return }; saveServers() }
     }
+
+    /// Set to true during loadServers() to prevent didSet observers from writing
+    /// incomplete state back to disk before config is fully hydrated.
+    private var isLoadingConfig = false
 
     // MARK: - Hotkey Preferences
 
@@ -2723,25 +2727,31 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            // Notify server that streaming completed (triggers filters, follow-ups, etc.)
-            let completedMessages = self.getStreamingMessages(chatId: chatId)
-            let simplifiedMsgs = completedMessages.suffix(2).map {
-                ["role": $0.role, "content": $0.content, "id": $0.id]
-            }
-            await client.sendChatCompleted(
-                chatId: chatId,
-                messageId: assistantId,
-                messages: simplifiedMsgs,
-                model: model.id,
-                sessionId: regenSocketSessionId ?? UUID().uuidString
-            )
+            if !self.isTemporaryChat {
+                // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+                let completedMessages = self.getStreamingMessages(chatId: chatId)
+                let simplifiedMsgs = completedMessages.suffix(2).map {
+                    ["role": $0.role, "content": $0.content, "id": $0.id]
+                }
+                await client.sendChatCompleted(
+                    chatId: chatId,
+                    messageId: assistantId,
+                    messages: simplifiedMsgs,
+                    model: model.id,
+                    sessionId: regenSocketSessionId ?? UUID().uuidString
+                )
 
-            let finalMessages = self.messageCache[chatId] ?? []
-            let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
-                .map { String($0.content.prefix(100)) } ?? "New Chat"
-            let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-            _ = try? await client.updateChat(id: chatId, blob: blob)
-            await self.loadConversations(silent: true)
+                let finalMessages = self.messageCache[chatId] ?? []
+                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
+                    .map { String($0.content.prefix(100)) } ?? "New Chat"
+                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                _ = try? await client.updateChat(id: chatId, blob: blob)
+                await self.loadConversations(silent: true)
+            } else {
+                // Temp chat — cache messages locally only, skip all server persistence
+                let finalMessages = self.getStreamingMessages(chatId: chatId)
+                self.messageCache[chatId] = finalMessages
+            }
         }
         streamingTaskByChat[chatId] = task
     }
@@ -3642,6 +3652,8 @@ final class AppState {
     private func loadServers() {
         let config = configManager.load()
         servers = config.servers
+        isLoadingConfig = true
+        defer { isLoadingConfig = false }
         activeServerID = config.activeServerID
         pinnedModelIDs = config.pinnedModelIDs
         // selectedModelID and defaultModelID are restored in loadModels()
