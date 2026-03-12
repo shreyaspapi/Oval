@@ -275,7 +275,8 @@
 // MARK: - Settings — Voice Models
 "voice.section.engine" = "Sprach-Engine";
 "voice.engine.label" = "Engine";
-"voice.engine.name" = "RunAnywhere (Auf dem Gerät)";
+"voice.engine.name" = "Natives macOS TTS";
+"voice.engine.unavailable" = "Nicht verfügbar";
 "voice.engine.status" = "Status";
 "voice.engine.ready" = "Bereit";
 "voice.engine.modelsNeeded" = "Modelle benötigt";

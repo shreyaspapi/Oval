@@ -3,11 +3,10 @@ import Foundation
 import os
 
 /// Orchestrates the voice conversation pipeline:
-///   Mic capture -> RunAnywhere STT -> Open WebUI Server LLM -> RunAnywhere TTS -> Speaker
+///   Mic capture -> STT -> Open WebUI Server LLM -> TTS -> Speaker
 ///
-/// This does NOT use RunAnywhere's built-in voice agent (which couples a local LLM).
-/// Instead, it uses RunAnywhere only for on-device STT and TTS, while routing the
-/// LLM call through the user's Open WebUI server (same models as text chat).
+/// Uses on-device STT and TTS while routing the LLM call through the
+/// user's Open WebUI server (same models as text chat).
 @MainActor
 @Observable
 final class VoiceModeManager {
@@ -89,12 +88,6 @@ final class VoiceModeManager {
     /// Start a voice conversation session.
     func startSession() async {
         guard !isActive else { return }
-        guard RunAnywhereService.shared.isVoiceReady else {
-            sessionState = .error("Voice models not loaded")
-            errorMessage = "Download and load STT/TTS models first"
-            return
-        }
-
         isStopped = false
         errorMessage = nil
         currentTranscript = ""
@@ -145,7 +138,7 @@ final class VoiceModeManager {
             return false
         }
 
-        // RunAnywhere STT requires 16kHz mono Int16 PCM
+        // STT requires 16kHz mono Int16 PCM
         guard let format = AVAudioFormat(commonFormat: .pcmFormatInt16,
                                           sampleRate: 16000,
                                           channels: 1,
@@ -399,10 +392,9 @@ final class VoiceModeManager {
 
         logger.info("Processing audio: \(audio.count) bytes, peakRMS=\(self.peakRMS)")
 
-        // STT unavailable — RunAnywhere SDK removed
-        // Stop capture cleanly since we can't process audio without the SDK
+        // STT unavailable — no on-device STT backend
         stopCapture()
-        sessionState = .error("Voice mode requires the RunAnywhere SDK")
+        sessionState = .error("On-device STT is not available")
         errorMessage = "On-device STT is not available in this build."
     }
 

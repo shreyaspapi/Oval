@@ -256,7 +256,8 @@
 
 "voice.section.engine" = "語音引擎";
 "voice.engine.label" = "引擎";
-"voice.engine.name" = "RunAnywhere（裝置端）";
+"voice.engine.name" = "原生 macOS TTS";
+"voice.engine.unavailable" = "不可用";
 "voice.engine.status" = "狀態";
 "voice.engine.ready" = "就緒";
 "voice.engine.modelsNeeded" = "需要模型";

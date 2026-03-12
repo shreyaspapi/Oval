@@ -241,7 +241,6 @@ struct OllamaDetails: Codable, Hashable {
 // MARK: - Model Info (DB customization)
 
 /// Server-side model customization stored in the Open WebUI database.
-/// Named `OpenWebUIModelInfo` to avoid collision with `RunAnywhere.ModelInfo`.
 struct OpenWebUIModelInfo: Codable, Hashable {
     let id: String?
     let name: String?

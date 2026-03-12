@@ -5,7 +5,6 @@ import SwiftUI
 /// Clean, minimal design using the app's existing theme colors.
 struct VoiceModeView: View {
     @Bindable var appState: AppState
-    let raService = RunAnywhereService.shared
 
     @State private var animationPhase: Double = 0
     private let animationTimer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
@@ -176,32 +175,28 @@ struct VoiceModeView: View {
 
     private var statusSection: some View {
         VStack(spacing: 8) {
-            if !raService.isVoiceReady && !vm.isActive {
-                setupPrompt
-            } else {
-                Text(stateLabel)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppColors.textTertiary)
+            Text(stateLabel)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppColors.textTertiary)
 
-                if !vm.currentTranscript.isEmpty {
-                    Text(vm.currentTranscript)
-                        .font(.system(size: 14))
-                        .foregroundStyle(AppColors.textPrimary)
+            if !vm.currentTranscript.isEmpty {
+                Text(vm.currentTranscript)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppColors.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, 24)
+            }
+
+            if !vm.assistantResponse.isEmpty {
+                ScrollView {
+                    Text(vm.assistantResponse)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(3)
                         .padding(.horizontal, 24)
                 }
-
-                if !vm.assistantResponse.isEmpty {
-                    ScrollView {
-                        Text(vm.assistantResponse)
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppColors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
-                    }
-                    .frame(maxHeight: 80)
-                }
+                .frame(maxHeight: 80)
             }
 
             if let error = vm.errorMessage {
@@ -222,69 +217,6 @@ struct VoiceModeView: View {
         case .thinking:     return String(localized: "voiceMode.stateThinking")
         case .speaking:     return String(localized: "voiceMode.stateSpeaking")
         case .error:        return String(localized: "voiceMode.stateError")
-        }
-    }
-
-    // MARK: - Setup Prompt
-
-    private var setupPrompt: some View {
-        VStack(spacing: 12) {
-            Text("voiceMode.modelsNeeded")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(AppColors.textPrimary)
-
-            Text("voiceMode.downloadDescription")
-                .font(.system(size: 11))
-                .foregroundStyle(AppColors.textTertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-
-            if raService.sttModelState == .downloading || raService.ttsModelState == .downloading {
-                VStack(spacing: 4) {
-                    ProgressView(value: raService.downloadProgress, total: 1.0)
-                        .progressViewStyle(.linear)
-                        .tint(AppColors.accentBlue)
-                        .frame(width: 160)
-
-                    Text("\(Int(raService.downloadProgress * 100))%")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(AppColors.textTertiary)
-                }
-            } else {
-                Button {
-                    Task {
-                        await raService.downloadAndLoadModels()
-                        if raService.isVoiceReady {
-                            await vm.startSession()
-                        }
-                    }
-                } label: {
-                    Text("voiceMode.downloadButton")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AppColors.sendButtonIcon)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 7)
-                        .background(AppColors.sendButtonBg)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-
-            HStack(spacing: 12) {
-                modelBadge("STT", state: raService.sttModelState)
-                modelBadge("TTS", state: raService.ttsModelState)
-            }
-        }
-    }
-
-    private func modelBadge(_ label: String, state: RAModelState) -> some View {
-        HStack(spacing: 3) {
-            Circle()
-                .fill(state.isReady ? AppColors.green500 : AppColors.gray500)
-                .frame(width: 5, height: 5)
-            Text("\(label): \(state.displayName)")
-                .font(.system(size: 9))
-                .foregroundStyle(AppColors.textTertiary)
         }
     }
 
@@ -342,7 +274,6 @@ struct VoiceModeView: View {
     // MARK: - Helpers
 
     private func startSessionIfReady() {
-        guard raService.isVoiceReady else { return }
         Task { await vm.startSession() }
     }
 

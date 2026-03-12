@@ -1,9 +1,7 @@
 import AppKit
 import AVFoundation
 
-/// Manages text-to-speech playback.
-/// Prefers RunAnywhere on-device TTS when loaded (better quality),
-/// with fallback to macOS native AVSpeechSynthesizer.
+/// Manages text-to-speech playback using macOS native AVSpeechSynthesizer.
 @MainActor
 @Observable
 final class TTSManager: NSObject {
@@ -17,8 +15,8 @@ final class TTSManager: NSObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var delegateHandler: TTSDelegateHandler?
 
-    /// Task for RunAnywhere TTS playback (cancellable).
-    private var raPlaybackTask: Task<Void, Never>?
+    /// Task for TTS playback (cancellable).
+    private var ttsPlaybackTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -32,12 +30,7 @@ final class TTSManager: NSObject {
         synthesizer.delegate = handler
     }
 
-    /// Speak using on-device TTS (RunAnywhere SDK removed — falls back to native).
-    func speakWithRunAnywhere(_ text: String, messageId: String? = nil) {
-        speak(text, messageId: messageId)
-    }
-
-    /// Speak using macOS native AVSpeechSynthesizer (fallback).
+    /// Speak using macOS native AVSpeechSynthesizer.
     func speak(_ text: String, messageId: String? = nil) {
         stop()
 
@@ -61,8 +54,8 @@ final class TTSManager: NSObject {
 
     /// Stop any current speech immediately.
     func stop() {
-        raPlaybackTask?.cancel()
-        raPlaybackTask = nil
+        ttsPlaybackTask?.cancel()
+        ttsPlaybackTask = nil
 
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
