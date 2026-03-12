@@ -211,6 +211,59 @@ actor OpenWebUIClient {
         try await get("/api/v1/folders/")
     }
 
+    // MARK: - Tags
+
+    /// Fetch all tags across all conversations.
+    /// The server may return `[{"name": "tag"}]` or `["tag"]` depending on version.
+    func getAllTags() async throws -> [String] {
+        guard let url = URL(string: "\(baseURL)/api/v1/chats/all/tags") else {
+            throw URLError(.badURL)
+        }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.allHTTPHeaderFields = authHeader
+        let (data, _) = try await URLSession.shared.data(for: req)
+
+        // Try array of objects first: [{"name": "tag_name"}]
+        if let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            return array.compactMap { $0["name"] as? String }
+        }
+        // Fallback: plain string array ["tag_name"]
+        if let array = try? JSONSerialization.jsonObject(with: data) as? [String] {
+            return array
+        }
+        return []
+    }
+
+    /// Add a tag to a conversation.
+    func addTagToChat(id: String, tagName: String) async throws {
+        guard let url = URL(string: "\(baseURL)/api/v1/chats/\(id)/tags") else {
+            throw URLError(.badURL)
+        }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.httpMethod = "POST"
+        req.allHTTPHeaderFields = authHeader
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["tag_name": tagName])
+        let (_, response) = try await URLSession.shared.data(for: req)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+    /// Remove a tag from a conversation.
+    func removeTagFromChat(id: String, tagName: String) async throws {
+        guard let url = URL(string: "\(baseURL)/api/v1/chats/\(id)/tags") else {
+            throw URLError(.badURL)
+        }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.httpMethod = "DELETE"
+        req.allHTTPHeaderFields = authHeader
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["tag_name": tagName])
+        let (_, response) = try await URLSession.shared.data(for: req)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw URLError(.badServerResponse)
+        }
+    }
+
     // MARK: - File Upload
 
     /// Upload a file to the server. Returns a FileUploadResponse with the server-side file ID.
