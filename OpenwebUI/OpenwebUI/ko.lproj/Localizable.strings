@@ -256,7 +256,8 @@
 
 "voice.section.engine" = "음성 엔진";
 "voice.engine.label" = "엔진";
-"voice.engine.name" = "RunAnywhere (기기 내장)";
+"voice.engine.name" = "기본 macOS TTS";
+"voice.engine.unavailable" = "사용 불가";
 "voice.engine.status" = "상태";
 "voice.engine.ready" = "준비됨";
 "voice.engine.modelsNeeded" = "모델 필요";

@@ -256,7 +256,8 @@
 
 "voice.section.engine" = "Голосовой движок";
 "voice.engine.label" = "Движок";
-"voice.engine.name" = "RunAnywhere (На устройстве)";
+"voice.engine.name" = "Встроенный macOS TTS";
+"voice.engine.unavailable" = "Недоступно";
 "voice.engine.status" = "Статус";
 "voice.engine.ready" = "Готово";
 "voice.engine.modelsNeeded" = "Необходимы модели";

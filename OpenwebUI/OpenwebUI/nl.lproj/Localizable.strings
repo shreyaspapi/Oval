@@ -256,7 +256,8 @@
 
 "voice.section.engine" = "Spraakengine";
 "voice.engine.label" = "Engine";
-"voice.engine.name" = "RunAnywhere (Op apparaat)";
+"voice.engine.name" = "Eigen macOS TTS";
+"voice.engine.unavailable" = "Niet beschikbaar";
 "voice.engine.status" = "Status";
 "voice.engine.ready" = "Klaar";
 "voice.engine.modelsNeeded" = "Modellen vereist";

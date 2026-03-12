@@ -450,7 +450,7 @@ final class AppState {
     let speechManager = SpeechManager()
     let ttsManager = TTSManager()
 
-    // MARK: - Voice Mode (on-device STT/TTS via RunAnywhere)
+    // MARK: - Voice Mode
 
     let voiceModeManager = VoiceModeManager()
     let voiceModeWindowManager = VoiceModeWindowManager()
@@ -2775,8 +2775,7 @@ final class AppState {
     // MARK: - Text-to-Speech
 
     /// Speak assistant message content.
-    /// Uses RunAnywhere on-device TTS if loaded, otherwise falls back to macOS native TTS.
-    /// Strips reasoning/thinking blocks before speaking.
+    /// Uses macOS native TTS. Strips reasoning/thinking blocks before speaking.
     func speakMessage(_ content: String) {
         let cleaned = stripReasoningBlocks(content)
         ttsManager.speak(cleaned)
