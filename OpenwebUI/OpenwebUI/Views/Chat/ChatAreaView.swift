@@ -163,6 +163,22 @@ private struct WelcomeView: View {
                 Text("chatArea.welcomeMessage")
                     .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(AppColors.welcomeText)
+
+                // Temporary chat indicator
+                if appState.isTemporaryChat {
+                    HStack(spacing: 6) {
+                        Image(systemName: "eye.slash")
+                            .font(.system(size: 12))
+                        Text(String(localized: "tempChat.indicator"))
+                            .font(.system(size: 12))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(.quaternary)
+                    .clipShape(Capsule())
+                    .help(String(localized: "tempChat.indicatorHelp"))
+                }
             }
 
             Spacer()

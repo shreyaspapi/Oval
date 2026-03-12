@@ -289,3 +289,16 @@
 "about.allRightsReserved" = "保留所有权利。";
 
 "sso.title" = "SSO 登录";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "临时对话";
+"tempChat.indicatorHelp" = "此对话不会出现在历史记录中，您的消息也不会被保存。";
+"tempChat.savedToast" = "对话已保存";
+"toolbar.temporaryChat" = "临时对话";
+"toolbar.temporaryChatHelp" = "开始一个不会保存到历史记录的临时对话";
+"toolbar.temporaryChatActiveHelp" = "临时对话已激活——此对话不会被保存";
+"toolbar.saveChat" = "保存对话";
+"toolbar.saveChatHelp" = "将此临时对话保存到您的历史记录";
+"settings.section.privacy" = "隐私";
+"settings.privacy.temporaryChatDefault" = "默认使用临时对话";
+"settings.privacy.temporaryChatDefaultFooter" = "临时对话不会保存到服务器。您仍然可以手动保存临时对话。";

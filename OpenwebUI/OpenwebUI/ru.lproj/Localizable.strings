@@ -289,3 +289,16 @@
 "about.allRightsReserved" = "Все права защищены.";
 
 "sso.title" = "SSO-вход";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Временный чат";
+"tempChat.indicatorHelp" = "Этот чат не будет отображаться в истории и ваши сообщения не будут сохранены.";
+"tempChat.savedToast" = "Чат сохранён";
+"toolbar.temporaryChat" = "Временный чат";
+"toolbar.temporaryChatHelp" = "Начать временный чат, который не будет сохранён в истории";
+"toolbar.temporaryChatActiveHelp" = "Временный чат активен — этот разговор не будет сохранён";
+"toolbar.saveChat" = "Сохранить чат";
+"toolbar.saveChatHelp" = "Сохранить этот временный чат в вашу историю";
+"settings.section.privacy" = "Конфиденциальность";
+"settings.privacy.temporaryChatDefault" = "Временные чаты по умолчанию";
+"settings.privacy.temporaryChatDefaultFooter" = "Временные чаты не сохраняются на сервере. Вы всегда можете сохранить временный чат вручную.";
