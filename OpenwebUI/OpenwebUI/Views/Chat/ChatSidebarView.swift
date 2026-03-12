@@ -13,35 +13,15 @@ struct ChatSidebarView: View {
     @State private var renameTarget: String?
     @State private var renameText: String = ""
     @State private var folders: [ChatFolder] = []
+    @State private var searchFieldRef = SidebarSearchFieldRef()
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: - Search Field
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppColors.textTertiary)
-                TextField(String(localized: "sidebar.searchPlaceholder"), text: $appState.searchText)
-                    .textFieldStyle(.plain)
-                    .font(AppFont.body(size: 13))
-                if !appState.searchText.isEmpty {
-                    Button {
-                        appState.searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(AppColors.textTertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(AppColors.searchFieldBg)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .padding(.horizontal, 10)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            // MARK: - Search Field (supports tag: prefix autocomplete)
+            SidebarSearchField(appState: appState, ref: searchFieldRef)
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
             // MARK: - Pinned Models
             if !appState.pinnedModels.isEmpty {
@@ -123,6 +103,12 @@ struct ChatSidebarView: View {
                                     }
 
                                     Button {
+                                        appState.showTagEditor(for: conversation.id)
+                                    } label: {
+                                        Label(String(localized: "conversation.manageTags"), systemImage: "tag")
+                                    }
+
+                                    Button {
                                         Task { await appState.archiveConversation(conversation.id) }
                                     } label: {
                                         Label(String(localized: "conversation.archive"), systemImage: "archivebox")
@@ -175,6 +161,21 @@ struct ChatSidebarView: View {
             .scrollContentBackground(.hidden)
         }
         .background(AppColors.sidebarBg)
+        .overlay(alignment: .top) {
+            // Tag autocomplete dropdown — rendered at the sidebar level
+            // so it floats above the NSOutlineView-backed List.
+            if searchFieldRef.showAutocomplete && !searchFieldRef.suggestions.isEmpty {
+                TagAutocompleteDropdown(
+                    suggestions: searchFieldRef.suggestions,
+                    onSelect: { tag in
+                        searchFieldRef.onSelectTag?(tag)
+                    }
+                )
+                .padding(.horizontal, 10)
+                // Position below: search field top padding (8) + field height (~30) + bottom padding (4)
+                .padding(.top, 42)
+            }
+        }
         .task {
             folders = await appState.loadFolders()
         }
@@ -251,6 +252,11 @@ struct ChatSidebarView: View {
             }
         } message: {
             Text("renameChat.message")
+        }
+        .sheet(isPresented: $appState.isTagEditorPresented) {
+            if let convId = appState.tagEditorConversationID {
+                TagEditorSheet(appState: appState, conversationId: convId)
+            }
         }
     }
 

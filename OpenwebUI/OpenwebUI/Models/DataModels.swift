@@ -303,6 +303,7 @@ struct ChatListItem: Codable, Identifiable, Equatable {
     let created_at: Double?
     var pinned: Bool?
     var folder_id: String?
+    var tags: [String]?
 
     var updatedDate: Date? {
         guard let ts = updated_at else { return nil }
@@ -311,14 +312,18 @@ struct ChatListItem: Codable, Identifiable, Equatable {
 
     var isPinned: Bool { pinned ?? false }
 
-    /// Convenience init for backwards compatibility (pinned/folder_id default to nil).
-    init(id: String, title: String, updated_at: Double?, created_at: Double?, pinned: Bool? = nil, folder_id: String? = nil) {
+    /// Tag names as a non-optional array (empty if nil).
+    var tagList: [String] { tags ?? [] }
+
+    /// Convenience init for backwards compatibility (pinned/folder_id/tags default to nil).
+    init(id: String, title: String, updated_at: Double?, created_at: Double?, pinned: Bool? = nil, folder_id: String? = nil, tags: [String]? = nil) {
         self.id = id
         self.title = title
         self.updated_at = updated_at
         self.created_at = created_at
         self.pinned = pinned
         self.folder_id = folder_id
+        self.tags = tags
     }
 }
 

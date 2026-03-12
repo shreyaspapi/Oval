@@ -288,4 +288,15 @@
 "about.copyright" = "Copyright (c) %@ Oval";
 "about.allRightsReserved" = "Alle rechten voorbehouden.";
 
+// MARK: - Tags
+"tags.untagged" = "Zonder tags";
+"tags.searchForTags" = "zoek naar tags";
+"tags.editorTitle" = "Tags beheren";
+"tags.currentTags" = "Huidige tags";
+"tags.addPlaceholder" = "Voeg een tag toe...";
+"tags.addButton" = "Toevoegen";
+"tags.suggestions" = "Suggesties";
+"conversation.manageTags" = "Tags beheren";
+
+// MARK: - SSO
 "sso.title" = "SSO-aanmelding";
