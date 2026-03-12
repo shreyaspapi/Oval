@@ -288,4 +288,16 @@
 "about.copyright" = "Copyright (c) %@ Oval";
 "about.allRightsReserved" = "Tutti i diritti riservati.";
 
+// MARK: - Tags
+"tags.untagged" = "Senza tag";
+"tags.searchForTags" = "cerca tag";
+"tags.editorTitle" = "Gestisci tag";
+"tags.currentTags" = "Tag attuali";
+"tags.addPlaceholder" = "Aggiungi un tag...";
+"tags.addButton" = "Aggiungi";
+"tags.suggestions" = "Suggerimenti";
+"tags.noTagsYet" = "Nessun tag ancora. Aggiungine uno sopra o scegli un suggerimento.";
+"conversation.manageTags" = "Gestisci tag";
+
+// MARK: - SSO
 "sso.title" = "Accesso SSO";
