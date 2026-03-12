@@ -296,6 +296,7 @@
 "tags.addPlaceholder" = "Aggiungi un tag...";
 "tags.addButton" = "Aggiungi";
 "tags.suggestions" = "Suggerimenti";
+"tags.noTagsYet" = "Nessun tag ancora. Aggiungine uno sopra o scegli un suggerimento.";
 "conversation.manageTags" = "Gestisci tag";
 
 // MARK: - SSO

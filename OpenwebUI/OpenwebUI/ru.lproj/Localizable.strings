@@ -296,6 +296,7 @@
 "tags.addPlaceholder" = "Добавить тег...";
 "tags.addButton" = "Добавить";
 "tags.suggestions" = "Предложения";
+"tags.noTagsYet" = "Тегов пока нет. Добавьте выше или выберите из предложений.";
 "conversation.manageTags" = "Управление тегами";
 
 // MARK: - SSO

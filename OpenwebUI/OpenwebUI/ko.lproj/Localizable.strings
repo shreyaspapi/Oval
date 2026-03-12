@@ -296,6 +296,7 @@
 "tags.addPlaceholder" = "태그 추가...";
 "tags.addButton" = "추가";
 "tags.suggestions" = "제안";
+"tags.noTagsYet" = "아직 태그가 없습니다. 위에서 추가하거나 제안을 선택하세요.";
 "conversation.manageTags" = "태그 관리";
 
 // MARK: - SSO

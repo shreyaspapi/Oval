@@ -296,6 +296,7 @@
 "tags.addPlaceholder" = "Voeg een tag toe...";
 "tags.addButton" = "Toevoegen";
 "tags.suggestions" = "Suggesties";
+"tags.noTagsYet" = "Nog geen tags. Voeg er een toe hierboven of kies een suggestie.";
 "conversation.manageTags" = "Tags beheren";
 
 // MARK: - SSO
