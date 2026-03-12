@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-03-12
+
+### Added
+
+- **Temporary/ephemeral chat mode**: Start chats that are not saved to history, with option to save mid-conversation ([#16](https://github.com/shreyaspapi/Oval/issues/16), [#43](https://github.com/shreyaspapi/Oval/pull/43))
+- **Conversation tags**: Tag-based filtering in the sidebar with search support ([#42](https://github.com/shreyaspapi/Oval/pull/42))
+- **CI build workflow**: GitHub Actions workflow that builds and tests the project on every pull request to `main`, catching build failures early
+- **Automated release workflow**: GitHub Actions workflow triggered on tag push (`v*`) that archives, signs, notarizes, creates a DMG, and publishes a GitHub Release with notes from CHANGELOG.md
+
+### Removed
+
+- **RunAnywhereAI SDK dependency**: Removed RunAnywhereAI SDK to simplify the build and reduce binary size
+
 ## [1.7.1] - 2026-03-12
 
 ### Fixed
