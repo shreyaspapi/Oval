@@ -301,3 +301,16 @@
 
 // MARK: - SSO
 "sso.title" = "Accesso SSO";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Chat temporanea";
+"tempChat.indicatorHelp" = "Questa chat non apparirà nella cronologia e i tuoi messaggi non verranno salvati.";
+"tempChat.savedToast" = "Chat salvata";
+"toolbar.temporaryChat" = "Chat temporanea";
+"toolbar.temporaryChatHelp" = "Avvia una chat temporanea che non verrà salvata nella cronologia";
+"toolbar.temporaryChatActiveHelp" = "La chat temporanea è attiva — questa conversazione non verrà salvata";
+"toolbar.saveChat" = "Salva chat";
+"toolbar.saveChatHelp" = "Salva questa chat temporanea nella tua cronologia";
+"settings.section.privacy" = "Privacy";
+"settings.privacy.temporaryChatDefault" = "Chat temporanee per impostazione predefinita";
+"settings.privacy.temporaryChatDefaultFooter" = "Le chat temporanee non vengono salvate sul server. Puoi comunque salvare manualmente una chat temporanea.";

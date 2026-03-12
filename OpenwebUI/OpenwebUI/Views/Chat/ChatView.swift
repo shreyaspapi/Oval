@@ -40,6 +40,33 @@ struct ChatView: View {
                 .help(String(localized: "toolbar.toggleSidebarHelp"))
             }
 
+            // MARK: — Temporary Chat toggle / Save Chat button
+            ToolbarItem(placement: .primaryAction) {
+                if appState.isTemporaryChat && !appState.chatMessages.isEmpty && !appState.isStreaming {
+                    // After sending: show "Save Chat" to persist the temp chat
+                    Button {
+                        Task { await appState.saveTemporaryChat() }
+                    } label: {
+                        Label(String(localized: "toolbar.saveChat"), systemImage: "square.and.arrow.down")
+                    }
+                    .help(String(localized: "toolbar.saveChatHelp"))
+                } else if appState.selectedConversationID == nil {
+                    // Before sending: toggle between temporary and normal mode
+                    Button {
+                        appState.isTemporaryChat.toggle()
+                    } label: {
+                        Label(
+                            String(localized: "toolbar.temporaryChat"),
+                            systemImage: appState.isTemporaryChat ? "eye.slash.fill" : "eye.slash"
+                        )
+                    }
+                    .help(appState.isTemporaryChat
+                          ? String(localized: "toolbar.temporaryChatActiveHelp")
+                          : String(localized: "toolbar.temporaryChatHelp"))
+                    .foregroundStyle(appState.isTemporaryChat ? .orange : .primary)
+                }
+            }
+
             // MARK: — New Chat
             ToolbarItem(placement: .primaryAction) {
                 Button {

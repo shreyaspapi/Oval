@@ -301,3 +301,16 @@
 
 // MARK: - SSO
 "sso.title" = "SSO 登入";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "暫時對話";
+"tempChat.indicatorHelp" = "此對話不會出現在歷史記錄中，您的訊息也不會被儲存。";
+"tempChat.savedToast" = "對話已儲存";
+"toolbar.temporaryChat" = "暫時對話";
+"toolbar.temporaryChatHelp" = "開始一個不會儲存到歷史記錄的暫時對話";
+"toolbar.temporaryChatActiveHelp" = "暫時對話已啟用——此對話不會被儲存";
+"toolbar.saveChat" = "儲存對話";
+"toolbar.saveChatHelp" = "將此暫時對話儲存到您的歷史記錄";
+"settings.section.privacy" = "隱私";
+"settings.privacy.temporaryChatDefault" = "預設使用暫時對話";
+"settings.privacy.temporaryChatDefaultFooter" = "暫時對話不會儲存到伺服器。您仍然可以手動儲存暫時對話。";

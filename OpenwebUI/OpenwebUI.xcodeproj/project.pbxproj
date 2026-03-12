@@ -8,10 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA1111112F5SPARKLE00000002 /* Sparkle */; };
-		EA2222222F5WHISPERKIT00001 /* RunAnywhereWhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = EA2222222F5WHISPERKIT00002 /* RunAnywhereWhisperKit */; };
 		EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = EA3333332F5FLUIDAUDIO0002 /* FluidAudio */; };
-		EA7C0DA42F56BE2D00FDFC75 /* RunAnywhere in Frameworks */ = {isa = PBXBuildFile; productRef = EA7C0DA32F56BE2D00FDFC75 /* RunAnywhere */; };
-		EA7C0DA82F56BE2D00FDFC75 /* RunAnywhereONNX in Frameworks */ = {isa = PBXBuildFile; productRef = EA7C0DA72F56BE2D00FDFC75 /* RunAnywhereONNX */; };
 		EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = EAF6EDD92F56ACA400DCBE29 /* SocketIO */; };
 /* End PBXBuildFile section */
 
@@ -62,9 +59,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */,
-				EA7C0DA82F56BE2D00FDFC75 /* RunAnywhereONNX in Frameworks */,
-				EA7C0DA42F56BE2D00FDFC75 /* RunAnywhere in Frameworks */,
-				EA2222222F5WHISPERKIT00001 /* RunAnywhereWhisperKit in Frameworks */,
 				EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */,
 				EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */,
 			);
@@ -128,9 +122,6 @@
 			name = OpenwebUI;
 			packageProductDependencies = (
 				EAF6EDD92F56ACA400DCBE29 /* SocketIO */,
-				EA7C0DA32F56BE2D00FDFC75 /* RunAnywhere */,
-				EA7C0DA72F56BE2D00FDFC75 /* RunAnywhereONNX */,
-				EA2222222F5WHISPERKIT00002 /* RunAnywhereWhisperKit */,
 				EA3333332F5FLUIDAUDIO0002 /* FluidAudio */,
 				EA1111112F5SPARKLE00000002 /* Sparkle */,
 			);
@@ -223,7 +214,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */,
-				EA7C0DA22F56BE2D00FDFC75 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */,
 				EA1111112F5SPARKLE00000003 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				EA3333332F5FLUIDAUDIO0003 /* XCRemoteSwiftPackageReference "FluidAudio" */,
 			);
@@ -631,14 +621,6 @@
 				minimumVersion = 2.7.0;
 			};
 		};
-		EA7C0DA22F56BE2D00FDFC75 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RunanywhereAI/runanywhere-sdks";
-			requirement = {
-				kind = exactVersion;
-				version = 0.19.6;
-			};
-		};
 		EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
@@ -662,21 +644,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EA1111112F5SPARKLE00000003 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
-		};
-		EA7C0DA32F56BE2D00FDFC75 /* RunAnywhere */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EA7C0DA22F56BE2D00FDFC75 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */;
-			productName = RunAnywhere;
-		};
-		EA7C0DA72F56BE2D00FDFC75 /* RunAnywhereONNX */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EA7C0DA22F56BE2D00FDFC75 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */;
-			productName = RunAnywhereONNX;
-		};
-		EA2222222F5WHISPERKIT00002 /* RunAnywhereWhisperKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EA7C0DA22F56BE2D00FDFC75 /* XCRemoteSwiftPackageReference "runanywhere-sdks" */;
-			productName = RunAnywhereWhisperKit;
 		};
 		EA3333332F5FLUIDAUDIO0002 /* FluidAudio */ = {
 			isa = XCSwiftPackageProductDependency;

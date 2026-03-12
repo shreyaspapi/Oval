@@ -15,6 +15,9 @@ final class ConfigManager {
 
         // Hotkey preferences
         var hotkeyPreferences: HotkeyPreferences?
+
+        // Privacy preferences
+        var temporaryChatDefault: Bool = false
     }
 
     private let fileManager = FileManager.default
