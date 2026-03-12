@@ -2552,33 +2552,39 @@ final class AppState {
                 self.endStreaming(chatId: chatId)
                 self.socketStreamContinuation = nil
 
-                // Notify server that streaming completed (triggers filters, follow-ups, etc.)
-                let completedMessages = self.getStreamingMessages(chatId: chatId)
-                let simplifiedMsgs = completedMessages.suffix(2).map {
-                    ["role": $0.role, "content": $0.content, "id": $0.id]
-                }
-                await client.sendChatCompleted(
-                    chatId: chatId,
-                    messageId: assistantId,
-                    messages: simplifiedMsgs,
-                    model: model.id,
-                    sessionId: editSocketSessionId ?? UUID().uuidString
-                )
+                if !self.isTemporaryChat {
+                    // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+                    let completedMessages = self.getStreamingMessages(chatId: chatId)
+                    let simplifiedMsgs = completedMessages.suffix(2).map {
+                        ["role": $0.role, "content": $0.content, "id": $0.id]
+                    }
+                    await client.sendChatCompleted(
+                        chatId: chatId,
+                        messageId: assistantId,
+                        messages: simplifiedMsgs,
+                        model: model.id,
+                        sessionId: editSocketSessionId ?? UUID().uuidString
+                    )
 
-                // Save to server and refresh sidebar
-                let finalMessages = self.messageCache[chatId] ?? []
-                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
-                    .map { String($0.content.prefix(100)) } ?? "New Chat"
-                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-                _ = try? await client.updateChat(id: chatId, blob: blob)
-                await self.loadConversations(silent: true)
+                    // Save to server and refresh sidebar
+                    let finalMessages = self.messageCache[chatId] ?? []
+                    let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
+                        .map { String($0.content.prefix(100)) } ?? "New Chat"
+                    let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                    _ = try? await client.updateChat(id: chatId, blob: blob)
+                    await self.loadConversations(silent: true)
+                } else {
+                    // Temp chat — cache messages locally only, skip all server persistence
+                    let finalMessages = self.getStreamingMessages(chatId: chatId)
+                    self.messageCache[chatId] = finalMessages
+                }
             }
             streamingTaskByChat[chatId] = task
         } else {
             // Just save the edit without re-streaming
             if let convId = selectedConversationID {
                 messageCache[convId] = chatMessages
-                if let client {
+                if let client, !isTemporaryChat {
                     let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
                         .map { String($0.content.prefix(100)) } ?? "New Chat"
                     let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
