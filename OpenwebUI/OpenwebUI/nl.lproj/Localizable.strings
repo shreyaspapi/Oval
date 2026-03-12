@@ -301,3 +301,16 @@
 
 // MARK: - SSO
 "sso.title" = "SSO-aanmelding";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Tijdelijke chat";
+"tempChat.indicatorHelp" = "Deze chat verschijnt niet in de geschiedenis en uw berichten worden niet opgeslagen.";
+"tempChat.savedToast" = "Chat opgeslagen";
+"toolbar.temporaryChat" = "Tijdelijke chat";
+"toolbar.temporaryChatHelp" = "Start een tijdelijke chat die niet in de geschiedenis wordt opgeslagen";
+"toolbar.temporaryChatActiveHelp" = "Tijdelijke chat is actief — dit gesprek wordt niet opgeslagen";
+"toolbar.saveChat" = "Chat opslaan";
+"toolbar.saveChatHelp" = "Sla deze tijdelijke chat op in uw geschiedenis";
+"settings.section.privacy" = "Privacy";
+"settings.privacy.temporaryChatDefault" = "Standaard tijdelijke chats";
+"settings.privacy.temporaryChatDefaultFooter" = "Tijdelijke chats worden niet op de server opgeslagen. U kunt een tijdelijke chat nog steeds handmatig opslaan.";
