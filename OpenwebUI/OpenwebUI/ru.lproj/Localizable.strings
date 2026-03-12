@@ -288,6 +288,18 @@
 "about.copyright" = "Copyright (c) %@ Oval";
 "about.allRightsReserved" = "Все права защищены.";
 
+// MARK: - Tags
+"tags.untagged" = "Без тегов";
+"tags.searchForTags" = "поиск по тегам";
+"tags.editorTitle" = "Управление тегами";
+"tags.currentTags" = "Текущие теги";
+"tags.addPlaceholder" = "Добавить тег...";
+"tags.addButton" = "Добавить";
+"tags.suggestions" = "Предложения";
+"tags.noTagsYet" = "Тегов пока нет. Добавьте выше или выберите из предложений.";
+"conversation.manageTags" = "Управление тегами";
+
+// MARK: - SSO
 "sso.title" = "SSO-вход";
 
 // MARK: - Temporary Chat

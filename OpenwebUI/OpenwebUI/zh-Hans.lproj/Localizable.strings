@@ -288,6 +288,18 @@
 "about.copyright" = "版权所有 (c) %@ Oval";
 "about.allRightsReserved" = "保留所有权利。";
 
+// MARK: - Tags
+"tags.untagged" = "无标签";
+"tags.searchForTags" = "搜索标签";
+"tags.editorTitle" = "管理标签";
+"tags.currentTags" = "当前标签";
+"tags.addPlaceholder" = "添加标签...";
+"tags.addButton" = "添加";
+"tags.suggestions" = "建议";
+"tags.noTagsYet" = "暂无标签。在上方添加一个或选择建议。";
+"conversation.manageTags" = "管理标签";
+
+// MARK: - SSO
 "sso.title" = "SSO 登录";
 
 // MARK: - Temporary Chat
