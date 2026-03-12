@@ -50,7 +50,7 @@ struct ChatView: View {
                         Label(String(localized: "toolbar.saveChat"), systemImage: "square.and.arrow.down")
                     }
                     .help(String(localized: "toolbar.saveChatHelp"))
-                } else if appState.selectedConversationID == nil || appState.chatMessages.isEmpty {
+                } else if appState.selectedConversationID == nil {
                     // Before sending: toggle between temporary and normal mode
                     Button {
                         appState.isTemporaryChat.toggle()
