@@ -57,7 +57,6 @@ final class SidebarSearchFieldRef {
 struct SidebarSearchField: View {
     @Bindable var appState: AppState
     var ref: SidebarSearchFieldRef
-    @State private var isAutocompleteVisible: Bool = false
     @State private var highlightedIndex: Int = 0
     @FocusState private var isFieldFocused: Bool
 
@@ -213,7 +212,8 @@ struct SidebarSearchField: View {
             text += "tag:\(tag.id) "
         }
         appState.searchText = text
-        isAutocompleteVisible = false
+        ref.showAutocomplete = false
+        ref.suggestions = []
     }
 }
 
@@ -407,7 +407,7 @@ struct TagEditorSheet: View {
                             }
                         }
                     } else {
-                        Text("No tags yet. Add one above or pick a suggestion.")
+                        Text(String(localized: "tags.noTagsYet"))
                             .font(AppFont.body(size: 12))
                             .foregroundStyle(AppColors.textTertiary)
                             .frame(maxWidth: .infinity, alignment: .center)
