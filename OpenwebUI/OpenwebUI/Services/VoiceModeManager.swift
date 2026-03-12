@@ -1,6 +1,5 @@
 import AVFoundation
 import Foundation
-import RunAnywhere
 import os
 
 /// Orchestrates the voice conversation pipeline:
@@ -400,75 +399,11 @@ final class VoiceModeManager {
 
         logger.info("Processing audio: \(audio.count) bytes, peakRMS=\(self.peakRMS)")
 
-        // Pause capturing during processing (don't tear down the tap)
-        pauseCapture()
-
-        // Step 1: STT — transcribe audio on-device
-        sessionState = .transcribing
-        do {
-            let sttOutput = try await RunAnywhere.transcribe(audio)
-
-            guard !isStopped, !Task.isCancelled else { return }
-
-            let transcript = sttOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // Filter out empty or hallucinated transcriptions
-            guard !transcript.isEmpty, !isHallucination(transcript) else {
-                logger.info("Discarded STT output (empty or hallucination): '\(transcript)'")
-                guard !isStopped else { return }
-                await startListening()
-                return
-            }
-
-            currentTranscript = transcript
-            conversationHistory.append((role: "user", content: transcript))
-            logger.info("Transcribed: \(transcript)")
-        } catch {
-            guard !isStopped, !Task.isCancelled else { return }
-            logger.error("STT failed: \(error)")
-            sessionState = .error("Transcription failed")
-            errorMessage = error.localizedDescription
-            return
-        }
-
-        // Step 2: LLM — send to Open WebUI server
-        guard !isStopped, !Task.isCancelled else { return }
-        sessionState = .thinking
-        do {
-            let response = try await sendToServer(userMessage: currentTranscript)
-
-            guard !isStopped, !Task.isCancelled else { return }
-
-            assistantResponse = response
-            conversationHistory.append((role: "assistant", content: response))
-            logger.info("LLM response: \(response.prefix(100))")
-        } catch {
-            guard !isStopped, !Task.isCancelled else { return }
-            logger.error("LLM failed: \(error)")
-            sessionState = .error("Server error")
-            errorMessage = error.localizedDescription
-            return
-        }
-
-        // Step 3: TTS — synthesize and speak on-device
-        guard !isStopped, !Task.isCancelled else { return }
-        sessionState = .speaking
-        do {
-            _ = try await RunAnywhere.speak(assistantResponse)
-            logger.info("TTS playback complete")
-        } catch {
-            guard !isStopped, !Task.isCancelled else { return }
-            logger.error("TTS failed: \(error)")
-            // Non-fatal — we still have the text response
-        }
-
-        // Clear display for next turn
-        guard !isStopped, !Task.isCancelled else { return }
-        currentTranscript = ""
-        assistantResponse = ""
-
-        // Resume listening for next turn
-        await startListening()
+        // STT unavailable — RunAnywhere SDK removed
+        // Stop capture cleanly since we can't process audio without the SDK
+        stopCapture()
+        sessionState = .error("Voice mode requires the RunAnywhere SDK")
+        errorMessage = "On-device STT is not available in this build."
     }
 
     // MARK: - Server LLM Call

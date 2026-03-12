@@ -321,3 +321,16 @@
 
 // MARK: - SSO
 "sso.title" = "SSO-Anmeldung";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "Temporärer Chat";
+"tempChat.indicatorHelp" = "Dieser Chat erscheint nicht im Verlauf und Ihre Nachrichten werden nicht gespeichert.";
+"tempChat.savedToast" = "Chat gespeichert";
+"toolbar.temporaryChat" = "Temporärer Chat";
+"toolbar.temporaryChatHelp" = "Temporären Chat starten, der nicht im Verlauf gespeichert wird";
+"toolbar.temporaryChatActiveHelp" = "Temporärer Chat ist aktiv – diese Unterhaltung wird nicht gespeichert";
+"toolbar.saveChat" = "Chat speichern";
+"toolbar.saveChatHelp" = "Diesen temporären Chat im Verlauf speichern";
+"settings.section.privacy" = "Datenschutz";
+"settings.privacy.temporaryChatDefault" = "Standardmäßig temporäre Chats";
+"settings.privacy.temporaryChatDefaultFooter" = "Temporäre Chats werden nicht auf dem Server gespeichert. Sie können einen temporären Chat manuell speichern.";

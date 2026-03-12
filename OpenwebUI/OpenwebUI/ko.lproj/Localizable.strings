@@ -301,3 +301,16 @@
 
 // MARK: - SSO
 "sso.title" = "SSO 로그인";
+
+// MARK: - Temporary Chat
+"tempChat.indicator" = "임시 채팅";
+"tempChat.indicatorHelp" = "이 채팅은 기록에 표시되지 않으며 메시지가 저장되지 않습니다.";
+"tempChat.savedToast" = "채팅이 저장되었습니다";
+"toolbar.temporaryChat" = "임시 채팅";
+"toolbar.temporaryChatHelp" = "기록에 저장되지 않는 임시 채팅 시작";
+"toolbar.temporaryChatActiveHelp" = "임시 채팅이 활성화되어 있습니다 — 이 대화는 저장되지 않습니다";
+"toolbar.saveChat" = "채팅 저장";
+"toolbar.saveChatHelp" = "이 임시 채팅을 기록에 저장";
+"settings.section.privacy" = "개인 정보";
+"settings.privacy.temporaryChatDefault" = "기본적으로 임시 채팅 사용";
+"settings.privacy.temporaryChatDefaultFooter" = "임시 채팅은 서버에 저장되지 않습니다. 임시 채팅을 수동으로 저장할 수 있습니다.";

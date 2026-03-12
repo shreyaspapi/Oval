@@ -1,6 +1,5 @@
 import AppKit
 import AVFoundation
-import RunAnywhere
 
 /// Manages text-to-speech playback.
 /// Prefers RunAnywhere on-device TTS when loaded (better quality),
@@ -33,28 +32,9 @@ final class TTSManager: NSObject {
         synthesizer.delegate = handler
     }
 
-    /// Speak using RunAnywhere on-device TTS (higher quality Piper voice).
+    /// Speak using on-device TTS (RunAnywhere SDK removed — falls back to native).
     func speakWithRunAnywhere(_ text: String, messageId: String? = nil) {
-        stop()
-
-        let cleaned = cleanForSpeech(text)
-        guard !cleaned.isEmpty else { return }
-
-        isSpeaking = true
-        speakingMessageId = messageId
-
-        raPlaybackTask = Task { [weak self] in
-            do {
-                _ = try await RunAnywhere.speak(cleaned)
-            } catch {
-                // Non-fatal — just log
-            }
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                self?.isSpeaking = false
-                self?.speakingMessageId = nil
-            }
-        }
+        speak(text, messageId: messageId)
     }
 
     /// Speak using macOS native AVSpeechSynthesizer (fallback).
@@ -79,18 +59,11 @@ final class TTSManager: NSObject {
         synthesizer.speak(utterance)
     }
 
-    /// Stop any current speech immediately (both RunAnywhere and native).
+    /// Stop any current speech immediately.
     func stop() {
-        // Cancel RunAnywhere playback task
         raPlaybackTask?.cancel()
         raPlaybackTask = nil
 
-        // Stop RunAnywhere TTS engine + audio player immediately
-        Task {
-            await RunAnywhere.stopSpeaking()
-        }
-
-        // Stop native synthesizer
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }

@@ -492,6 +492,21 @@ final class AppState {
         didSet { LaunchAtLoginManager.setEnabled(launchAtLogin) }
     }
 
+    // MARK: - Temporary Chat
+
+    /// Whether the current chat session is temporary (not persisted to server).
+    /// Resets to `temporaryChatDefault` when a new conversation is started.
+    var isTemporaryChat: Bool = false
+
+    /// Whether new chats should default to temporary mode. Persisted in config.json.
+    var temporaryChatDefault: Bool = false {
+        didSet { guard !isLoadingConfig else { return }; saveServers() }
+    }
+
+    /// Set to true during loadServers() to prevent didSet observers from writing
+    /// incomplete state back to disk before config is fully hydrated.
+    private var isLoadingConfig = false
+
     // MARK: - Hotkey Preferences
 
     /// User-customizable global hotkey bindings. Persisted in config.json.
@@ -533,11 +548,6 @@ final class AppState {
 
     func onAppear() async {
         setupPersistentServicesIfNeeded()
-
-        // Initialize RunAnywhere SDK for on-device STT/TTS
-        Task {
-            await RunAnywhereService.shared.initialize()
-        }
 
         if let server = activeServer {
             // Already have a saved server, try to reconnect
@@ -1513,6 +1523,8 @@ final class AppState {
     }
 
     func selectConversation(_ id: String) async {
+        // Saved conversations are never temporary
+        isTemporaryChat = false
         // Save current conversation's messages before switching
         if let currentId = selectedConversationID {
             messageCache[currentId] = chatMessages
@@ -1570,6 +1582,13 @@ final class AppState {
         chatMessages = []
         messageInput = ""
         pendingAttachments = []
+        isTemporaryChat = temporaryChatDefault
+    }
+
+    /// Start a new temporary chat session regardless of the default setting.
+    func newTemporaryConversation() {
+        newConversation()
+        isTemporaryChat = true
     }
 
     /// Start a new conversation with a specific model pre-selected.
@@ -1771,6 +1790,39 @@ final class AppState {
         }
     }
 
+    // MARK: - Temporary Chat
+
+    /// Save the current temporary chat to the server, making it permanent.
+    func saveTemporaryChat() async {
+        guard isTemporaryChat, let client else { return }
+        guard !chatMessages.isEmpty else { return }
+
+        let title = chatMessages.first(where: { $0.role == "user" })
+            .map { String($0.content.prefix(100)) } ?? "Saved Chat"
+        let blob = buildChatBlob(title: title, assistantId: nil, assistantModel: nil)
+
+        do {
+            let oldId = selectedConversationID
+            let created = try await client.createChatWithHistory(blob: blob)
+            isTemporaryChat = false
+            suppressConversationSelection = true
+            selectedConversationID = created.id
+            // Migrate cached messages from the local ID to the new server ID
+            if let oldId, let cached = messageCache[oldId] {
+                messageCache[created.id] = cached
+                messageCache.removeValue(forKey: oldId)
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                suppressConversationSelection = false
+            }
+            await loadConversations(silent: true)
+            toastManager.show(String(localized: "tempChat.savedToast"), style: .success)
+        } catch {
+            toastManager.show("Failed to save chat: \(error.localizedDescription)", style: .error)
+        }
+    }
+
     // MARK: - Tag Management
 
     /// Fetch all tags from the server and update the local list.
@@ -1835,7 +1887,6 @@ final class AppState {
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
     }
-
     private func loadChatMessages(_ chatId: String) async {
         guard let client else { return }
         isLoadingChat = true
@@ -1990,38 +2041,47 @@ final class AppState {
 
         let assistantId = UUID().uuidString
 
-        // ── Step 1: Create chat on server if this is a new conversation ──
+        // ── Step 1: Create chat on server if this is a new conversation (skipped for temp chats) ──
         if isNewConversation {
-            let title = String(text.prefix(100))
-            let blob = buildChatBlob(title: title, assistantId: assistantId, assistantModel: model.id)
-
-            do {
-                let created = try await client.createChatWithHistory(blob: blob)
-                // Suppress onChange so it doesn't re-fetch messages from server
+            if isTemporaryChat {
+                // Temporary chat: assign a local ID without creating a server record
                 suppressConversationSelection = true
-                selectedConversationID = created.id
+                selectedConversationID = "local:\(UUID().uuidString)"
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(100))
                     suppressConversationSelection = false
                 }
-            } catch {
-                toastManager.show("Failed to create chat: \(error.localizedDescription)", style: .error)
+            } else {
+                let title = String(text.prefix(100))
+                let blob = buildChatBlob(title: title, assistantId: assistantId, assistantModel: model.id)
+
+                do {
+                    let created = try await client.createChatWithHistory(blob: blob)
+                    // Suppress onChange so it doesn't re-fetch messages from server
+                    suppressConversationSelection = true
+                    selectedConversationID = created.id
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(100))
+                        suppressConversationSelection = false
+                    }
+                } catch {
+                    toastManager.show("Failed to create chat: \(error.localizedDescription)", style: .error)
+                }
             }
         }
 
         // Capture the chat ID now — this won't change even if the user switches conversations
         guard let chatId = selectedConversationID else { return }
 
-        // For existing conversations, update the chat on the server so updated_at changes,
-        // then refresh the sidebar to move this chat to the top.
-        if !isNewConversation {
+        // For existing non-temp conversations, update updated_at and refresh sidebar.
+        if !isNewConversation && !isTemporaryChat {
             let earlyBlob = buildChatBlob(title: conversations.first(where: { $0.id == chatId })?.title ?? "Chat", assistantId: nil, assistantModel: nil)
             Task {
                 _ = try? await client.updateChat(id: chatId, blob: earlyBlob)
                 await self.loadConversations(silent: true)
             }
-        } else {
-            // New conversation — refresh sidebar to pick it up
+        } else if !isTemporaryChat {
+            // New non-temp conversation — refresh sidebar to pick it up
             Task { await self.loadConversations(silent: true) }
         }
 
@@ -2056,6 +2116,8 @@ final class AppState {
         // instead of SSE. This is critical for native tool calling — the server sends
         // tool execution status and the follow-up model response via Socket.IO events.
         let socketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        // Capture at send time to avoid race with saveTemporaryChat() during streaming
+        let isTempChat = isTemporaryChat
 
         // Wrap streaming in a cancellable task — runs in background even if user switches chats
         let task = Task { @MainActor [weak self] in
@@ -2176,35 +2238,41 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            // ── Notify server that streaming completed (triggers filters, follow-ups, etc.) ──
-            let completedMessages = self.getStreamingMessages(chatId: chatId)
-            let simplifiedMsgs = completedMessages.suffix(2).map {
-                ["role": $0.role, "content": $0.content, "id": $0.id]
+            if !isTempChat {
+                // ── Notify server that streaming completed (triggers filters, follow-ups, etc.) ──
+                let completedMessages = self.getStreamingMessages(chatId: chatId)
+                let simplifiedMsgs = completedMessages.suffix(2).map {
+                    ["role": $0.role, "content": $0.content, "id": $0.id]
+                }
+                await client.sendChatCompleted(
+                    chatId: chatId,
+                    messageId: assistantId,
+                    messages: simplifiedMsgs,
+                    model: model.id,
+                    sessionId: socketSessionId ?? UUID().uuidString
+                )
+
+                // ── Save final state to server ──
+                let finalMessages = self.getStreamingMessages(chatId: chatId)
+                self.messageCache[chatId] = finalMessages
+
+                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
+                    .map { String($0.content.prefix(100)) } ?? "New Chat"
+                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                _ = try? await client.updateChat(id: chatId, blob: blob)
+
+                // Generate title for new conversations
+                if isNewConversation {
+                    await self.generateAndSetTitle(chatId: chatId, modelId: model.id)
+                }
+
+                // Refresh sidebar from server so sort order reflects updated_at
+                await self.loadConversations(silent: true)
+            } else {
+                // Temp chat: just cache messages locally, no server calls
+                let finalMessages = self.getStreamingMessages(chatId: chatId)
+                self.messageCache[chatId] = finalMessages
             }
-            await client.sendChatCompleted(
-                chatId: chatId,
-                messageId: assistantId,
-                messages: simplifiedMsgs,
-                model: model.id,
-                sessionId: socketSessionId ?? UUID().uuidString
-            )
-
-            // ── Save final state to server ──
-            let finalMessages = self.getStreamingMessages(chatId: chatId)
-            self.messageCache[chatId] = finalMessages
-
-            let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
-                .map { String($0.content.prefix(100)) } ?? "New Chat"
-            let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-            _ = try? await client.updateChat(id: chatId, blob: blob)
-
-            // Generate title for new conversations
-            if isNewConversation {
-                await self.generateAndSetTitle(chatId: chatId, modelId: model.id)
-            }
-
-            // Refresh sidebar from server so sort order reflects updated_at
-            await self.loadConversations(silent: true)
         }
         streamingTaskByChat[chatId] = task
     }
@@ -2390,6 +2458,8 @@ final class AppState {
             let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
             let webSearchEnabled = isWebSearchEnabled
             let editSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+            // Capture at send time to avoid race with saveTemporaryChat() during streaming
+            let isTempChat = isTemporaryChat
 
             let task = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -2490,33 +2560,39 @@ final class AppState {
                 self.endStreaming(chatId: chatId)
                 self.socketStreamContinuation = nil
 
-                // Notify server that streaming completed (triggers filters, follow-ups, etc.)
-                let completedMessages = self.getStreamingMessages(chatId: chatId)
-                let simplifiedMsgs = completedMessages.suffix(2).map {
-                    ["role": $0.role, "content": $0.content, "id": $0.id]
-                }
-                await client.sendChatCompleted(
-                    chatId: chatId,
-                    messageId: assistantId,
-                    messages: simplifiedMsgs,
-                    model: model.id,
-                    sessionId: editSocketSessionId ?? UUID().uuidString
-                )
+                if !isTempChat {
+                    // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+                    let completedMessages = self.getStreamingMessages(chatId: chatId)
+                    let simplifiedMsgs = completedMessages.suffix(2).map {
+                        ["role": $0.role, "content": $0.content, "id": $0.id]
+                    }
+                    await client.sendChatCompleted(
+                        chatId: chatId,
+                        messageId: assistantId,
+                        messages: simplifiedMsgs,
+                        model: model.id,
+                        sessionId: editSocketSessionId ?? UUID().uuidString
+                    )
 
-                // Save to server and refresh sidebar
-                let finalMessages = self.messageCache[chatId] ?? []
-                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
-                    .map { String($0.content.prefix(100)) } ?? "New Chat"
-                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-                _ = try? await client.updateChat(id: chatId, blob: blob)
-                await self.loadConversations(silent: true)
+                    // Save to server and refresh sidebar
+                    let finalMessages = self.messageCache[chatId] ?? []
+                    let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
+                        .map { String($0.content.prefix(100)) } ?? "New Chat"
+                    let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                    _ = try? await client.updateChat(id: chatId, blob: blob)
+                    await self.loadConversations(silent: true)
+                } else {
+                    // Temp chat — cache messages locally only, skip all server persistence
+                    let finalMessages = self.getStreamingMessages(chatId: chatId)
+                    self.messageCache[chatId] = finalMessages
+                }
             }
             streamingTaskByChat[chatId] = task
         } else {
             // Just save the edit without re-streaming
             if let convId = selectedConversationID {
                 messageCache[convId] = chatMessages
-                if let client {
+                if let client, !isTemporaryChat {
                     let fallbackTitle = chatMessages.first(where: { $0.role == "user" })
                         .map { String($0.content.prefix(100)) } ?? "New Chat"
                     let blob = buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
@@ -2565,6 +2641,8 @@ final class AppState {
         let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
         let webSearchEnabled = isWebSearchEnabled
         let regenSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        // Capture at send time to avoid race with saveTemporaryChat() during streaming
+        let isTempChat = isTemporaryChat
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -2665,25 +2743,31 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            // Notify server that streaming completed (triggers filters, follow-ups, etc.)
-            let completedMessages = self.getStreamingMessages(chatId: chatId)
-            let simplifiedMsgs = completedMessages.suffix(2).map {
-                ["role": $0.role, "content": $0.content, "id": $0.id]
-            }
-            await client.sendChatCompleted(
-                chatId: chatId,
-                messageId: assistantId,
-                messages: simplifiedMsgs,
-                model: model.id,
-                sessionId: regenSocketSessionId ?? UUID().uuidString
-            )
+            if !isTempChat {
+                // Notify server that streaming completed (triggers filters, follow-ups, etc.)
+                let completedMessages = self.getStreamingMessages(chatId: chatId)
+                let simplifiedMsgs = completedMessages.suffix(2).map {
+                    ["role": $0.role, "content": $0.content, "id": $0.id]
+                }
+                await client.sendChatCompleted(
+                    chatId: chatId,
+                    messageId: assistantId,
+                    messages: simplifiedMsgs,
+                    model: model.id,
+                    sessionId: regenSocketSessionId ?? UUID().uuidString
+                )
 
-            let finalMessages = self.messageCache[chatId] ?? []
-            let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
-                .map { String($0.content.prefix(100)) } ?? "New Chat"
-            let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
-            _ = try? await client.updateChat(id: chatId, blob: blob)
-            await self.loadConversations(silent: true)
+                let finalMessages = self.messageCache[chatId] ?? []
+                let fallbackTitle = finalMessages.first(where: { $0.role == "user" })
+                    .map { String($0.content.prefix(100)) } ?? "New Chat"
+                let blob = self.buildChatBlob(title: fallbackTitle, assistantId: nil, assistantModel: nil)
+                _ = try? await client.updateChat(id: chatId, blob: blob)
+                await self.loadConversations(silent: true)
+            } else {
+                // Temp chat — cache messages locally only, skip all server persistence
+                let finalMessages = self.getStreamingMessages(chatId: chatId)
+                self.messageCache[chatId] = finalMessages
+            }
         }
         streamingTaskByChat[chatId] = task
     }
@@ -2695,12 +2779,7 @@ final class AppState {
     /// Strips reasoning/thinking blocks before speaking.
     func speakMessage(_ content: String) {
         let cleaned = stripReasoningBlocks(content)
-        if RunAnywhereService.shared.ttsModelState == .loaded {
-            // Use on-device RunAnywhere TTS (much better quality)
-            ttsManager.speakWithRunAnywhere(cleaned)
-        } else {
-            ttsManager.speak(cleaned)
-        }
+        ttsManager.speak(cleaned)
     }
 
     func stopSpeaking() {
@@ -3589,6 +3668,8 @@ final class AppState {
     private func loadServers() {
         let config = configManager.load()
         servers = config.servers
+        isLoadingConfig = true
+        defer { isLoadingConfig = false }
         activeServerID = config.activeServerID
         pinnedModelIDs = config.pinnedModelIDs
         // selectedModelID and defaultModelID are restored in loadModels()
@@ -3596,6 +3677,8 @@ final class AppState {
         _persistedDefaultModelID = config.defaultModelID
         // Restore hotkey preferences (fall back to defaults for existing configs)
         hotkeyPreferences = config.hotkeyPreferences ?? .defaults
+        // Restore privacy preferences
+        temporaryChatDefault = config.temporaryChatDefault
     }
 
     private func saveServers() {
@@ -3605,7 +3688,8 @@ final class AppState {
             selectedModelID: selectedModel?.id,
             defaultModelID: defaultModelID,
             pinnedModelIDs: pinnedModelIDs,
-            hotkeyPreferences: hotkeyPreferences
+            hotkeyPreferences: hotkeyPreferences,
+            temporaryChatDefault: temporaryChatDefault
         )
         configManager.save(config)
     }
