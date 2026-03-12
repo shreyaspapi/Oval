@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project OpenwebUI/OpenwebUI.xcodeproj \
+            -scheme OpenwebUI \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm"
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project OpenwebUI/OpenwebUI.xcodeproj \
+            -scheme OpenwebUI \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify || true
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project OpenwebUI/OpenwebUI.xcodeproj \
+            -scheme OpenwebUI \
+            -destination "platform=macOS" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify || true
