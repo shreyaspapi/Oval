@@ -1802,10 +1802,16 @@ final class AppState {
         let blob = buildChatBlob(title: title, assistantId: nil, assistantModel: nil)
 
         do {
+            let oldId = selectedConversationID
             let created = try await client.createChatWithHistory(blob: blob)
             isTemporaryChat = false
             suppressConversationSelection = true
             selectedConversationID = created.id
+            // Migrate cached messages from the local ID to the new server ID
+            if let oldId, let cached = messageCache[oldId] {
+                messageCache[created.id] = cached
+                messageCache.removeValue(forKey: oldId)
+            }
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(100))
                 suppressConversationSelection = false

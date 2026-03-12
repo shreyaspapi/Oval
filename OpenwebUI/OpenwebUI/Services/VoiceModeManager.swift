@@ -399,44 +399,11 @@ final class VoiceModeManager {
 
         logger.info("Processing audio: \(audio.count) bytes, peakRMS=\(self.peakRMS)")
 
-        // Pause capturing during processing (don't tear down the tap)
-        pauseCapture()
-
         // STT unavailable — RunAnywhere SDK removed
+        // Stop capture cleanly since we can't process audio without the SDK
+        stopCapture()
         sessionState = .error("Voice mode requires the RunAnywhere SDK")
         errorMessage = "On-device STT is not available in this build."
-        return
-
-        // Step 2: LLM — send to Open WebUI server
-        guard !isStopped, !Task.isCancelled else { return }
-        sessionState = .thinking
-        do {
-            let response = try await sendToServer(userMessage: currentTranscript)
-
-            guard !isStopped, !Task.isCancelled else { return }
-
-            assistantResponse = response
-            conversationHistory.append((role: "assistant", content: response))
-            logger.info("LLM response: \(response.prefix(100))")
-        } catch {
-            guard !isStopped, !Task.isCancelled else { return }
-            logger.error("LLM failed: \(error)")
-            sessionState = .error("Server error")
-            errorMessage = error.localizedDescription
-            return
-        }
-
-        // Step 3: TTS — RunAnywhere SDK removed, skip TTS
-        sessionState = .speaking
-        logger.info("TTS unavailable (RunAnywhere SDK removed)")
-
-        // Clear display for next turn
-        guard !isStopped, !Task.isCancelled else { return }
-        currentTranscript = ""
-        assistantResponse = ""
-
-        // Resume listening for next turn
-        await startListening()
     }
 
     // MARK: - Server LLM Call
