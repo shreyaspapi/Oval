@@ -2110,6 +2110,8 @@ final class AppState {
         // instead of SSE. This is critical for native tool calling — the server sends
         // tool execution status and the follow-up model response via Socket.IO events.
         let socketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        // Capture at send time to avoid race with saveTemporaryChat() during streaming
+        let isTempChat = isTemporaryChat
 
         // Wrap streaming in a cancellable task — runs in background even if user switches chats
         let task = Task { @MainActor [weak self] in
@@ -2230,9 +2232,7 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            let isTemp = self.isTemporaryChat
-
-            if !isTemp {
+            if !isTempChat {
                 // ── Notify server that streaming completed (triggers filters, follow-ups, etc.) ──
                 let completedMessages = self.getStreamingMessages(chatId: chatId)
                 let simplifiedMsgs = completedMessages.suffix(2).map {
@@ -2452,6 +2452,8 @@ final class AppState {
             let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
             let webSearchEnabled = isWebSearchEnabled
             let editSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+            // Capture at send time to avoid race with saveTemporaryChat() during streaming
+            let isTempChat = isTemporaryChat
 
             let task = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -2552,7 +2554,7 @@ final class AppState {
                 self.endStreaming(chatId: chatId)
                 self.socketStreamContinuation = nil
 
-                if !self.isTemporaryChat {
+                if !isTempChat {
                     // Notify server that streaming completed (triggers filters, follow-ups, etc.)
                     let completedMessages = self.getStreamingMessages(chatId: chatId)
                     let simplifiedMsgs = completedMessages.suffix(2).map {
@@ -2633,6 +2635,8 @@ final class AppState {
         let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
         let webSearchEnabled = isWebSearchEnabled
         let regenSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        // Capture at send time to avoid race with saveTemporaryChat() during streaming
+        let isTempChat = isTemporaryChat
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -2733,7 +2737,7 @@ final class AppState {
             self.endStreaming(chatId: chatId)
             self.socketStreamContinuation = nil
 
-            if !self.isTemporaryChat {
+            if !isTempChat {
                 // Notify server that streaming completed (triggers filters, follow-ups, etc.)
                 let completedMessages = self.getStreamingMessages(chatId: chatId)
                 let simplifiedMsgs = completedMessages.suffix(2).map {
