@@ -5,6 +5,30 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.8.0</title>
+            <description><![CDATA[
+                <h2>What is New in v1.8.0</h2>
+                <ul>
+<li><strong>Added</strong></li>
+<li><strong>Temporary/ephemeral chat mode</strong> — Start chats that are not saved to history, with option to save mid-conversation</li>
+<li><strong>Conversation tags</strong> — Tag-based filtering in the sidebar with search support</li>
+<li><strong>CI build workflow</strong> — GitHub Actions workflow that builds and tests the project on every pull request</li>
+<li><strong>Automated release workflow</strong> — GitHub Actions workflow triggered on tag push that builds, signs, notarizes, and publishes a GitHub Release</li>
+<li><strong>Removed</strong></li>
+<li><strong>RunAnywhereAI SDK dependency</strong> — Removed to simplify the build and reduce binary size</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 12 Mar 2026 15:19:23 +0000</pubDate>
+            <sparkle:version>14</sparkle:version>
+            <sparkle:shortVersionString>1.8.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.8.0/Oval-v1.8.0.dmg"
+                sparkle:edSignature="hoXZXelXAOBzY2Fyi6fhNwujER5ftggs7i/cwbcXvAbA6ZfP5LkRECla/dfbH3NyDrv7zayZiA9E9JgExpR4Bw=="
+                length="10574019"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.7.1</title>
             <description><![CDATA[
                 <h2>What is New in v1.7.1</h2>
