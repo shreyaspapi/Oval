@@ -308,5 +308,15 @@
 "about.copyright" = "Copyright (c) %@ Oval";
 "about.allRightsReserved" = "All rights reserved.";
 
+// MARK: - Tags
+"tags.untagged" = "Untagged";
+"tags.searchForTags" = "search for tags";
+"tags.editorTitle" = "Manage Tags";
+"tags.currentTags" = "Current Tags";
+"tags.addPlaceholder" = "Add a tag...";
+"tags.addButton" = "Add";
+"tags.suggestions" = "Suggestions";
+"conversation.manageTags" = "Manage Tags";
+
 // MARK: - SSO
 "sso.title" = "SSO Login";

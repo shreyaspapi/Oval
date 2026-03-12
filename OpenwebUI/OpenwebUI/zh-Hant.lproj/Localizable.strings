@@ -288,4 +288,15 @@
 "about.copyright" = "版權所有 (c) %@ Oval";
 "about.allRightsReserved" = "保留所有權利。";
 
+// MARK: - Tags
+"tags.untagged" = "無標籤";
+"tags.searchForTags" = "搜尋標籤";
+"tags.editorTitle" = "管理標籤";
+"tags.currentTags" = "目前標籤";
+"tags.addPlaceholder" = "新增標籤...";
+"tags.addButton" = "新增";
+"tags.suggestions" = "建議";
+"conversation.manageTags" = "管理標籤";
+
+// MARK: - SSO
 "sso.title" = "SSO 登入";
