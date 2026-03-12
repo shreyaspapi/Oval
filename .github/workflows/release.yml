@@ -17,6 +17,7 @@ jobs:
       SCHEME: OpenwebUI
       PROJECT: OpenwebUI/OpenwebUI.xcodeproj
       APP_NAME: Oval
+      CODE_SIGN_ID: "Developer ID Application: Shreyas Papinwar (FYS9RNAGTV)"
 
     steps:
       - name: Checkout
@@ -35,8 +36,8 @@ jobs:
 
       - name: Import signing certificate
         env:
-          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
@@ -79,7 +80,7 @@ jobs:
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
+            CODE_SIGN_IDENTITY="$CODE_SIGN_ID" \
             DEVELOPMENT_TEAM="${{ secrets.TEAM_ID }}" \
             CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
             OTHER_CODE_SIGN_FLAGS="--timestamp"
@@ -99,7 +100,7 @@ jobs:
               <key>signingStyle</key>
               <string>manual</string>
               <key>signingCertificate</key>
-              <string>${{ secrets.CODE_SIGN_IDENTITY }}</string>
+              <string>Developer ID Application</string>
           </dict>
           </plist>
           PLIST
