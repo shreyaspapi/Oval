@@ -163,3 +163,52 @@ jobs:
           body: ${{ steps.notes.outputs.body }}
           files: ${{ steps.dmg.outputs.dmg_path }}
           fail_on_unmatched_files: true
+
+      - name: Sparkle EdDSA sign DMG
+        id: sparkle
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Get sign_update from Sparkle SPM artifacts
+          SIGN_UPDATE=$(find "$RUNNER_TEMP/spm/artifacts/sparkle" -name "sign_update" -type f | head -1)
+          if [ -z "$SIGN_UPDATE" ]; then
+            echo "sign_update not found, building from SPM artifacts..."
+            SIGN_UPDATE=$(find "$RUNNER_TEMP/spm" -name "sign_update" -type f | head -1)
+          fi
+
+          # Sign the DMG
+          SIGN_OUTPUT=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" "${{ steps.dmg.outputs.dmg_path }}" --ed-key-file -)
+
+          # Parse: sparkle:edSignature="..." length="..."
+          ED_SIGNATURE=$(echo "$SIGN_OUTPUT" | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+          DMG_LENGTH=$(echo "$SIGN_OUTPUT" | grep -o 'length="[^"]*"' | cut -d'"' -f2)
+
+          echo "ed_signature=$ED_SIGNATURE" >> "$GITHUB_OUTPUT"
+          echo "dmg_length=$DMG_LENGTH"     >> "$GITHUB_OUTPUT"
+
+      - name: Update appcast.xml
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          ED_SIGNATURE: ${{ steps.sparkle.outputs.ed_signature }}
+          DMG_LENGTH: ${{ steps.sparkle.outputs.dmg_length }}
+        run: |
+          BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION' "$PROJECT/project.pbxproj" | tr -dc '0-9')
+          python3 scripts/update_appcast.py \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --build "$BUILD" \
+            --signature "$ED_SIGNATURE" \
+            --length "$DMG_LENGTH" \
+            --changelog CHANGELOG.md \
+            --appcast appcast.xml
+
+      - name: Push appcast.xml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add appcast.xml
+          git commit -m "Update appcast.xml for ${{ steps.version.outputs.tag }}"
+          git push origin main
