@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-03-16
+
+### Fixed
+
+- **Chat switching performance**: Optimized chat switching speed by parallelizing API calls (tags and task IDs fetched concurrently), removing expensive recursive message list computation from render path, and eliminating unnecessary DOM destruction/recreation of message components when switching between conversations
+
 ## [1.8.0] - 2026-03-12
 
 ### Added
