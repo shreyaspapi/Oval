@@ -1943,7 +1943,8 @@ final class AppState {
             }
 
             messageCache[chatId] = messages
-            if selectedConversationID == chatId {
+            // Only update UI if this conversation is still selected AND messages actually changed
+            if selectedConversationID == chatId && messages != chatMessages {
                 chatMessages = messages
             }
         } catch {

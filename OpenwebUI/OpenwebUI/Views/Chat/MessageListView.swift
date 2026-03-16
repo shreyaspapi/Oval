@@ -4,7 +4,21 @@ import SwiftUI
 struct MessageListView: View {
     @Bindable var appState: AppState
 
+    /// Pre-computed once per render instead of O(n) per message.
+    private var lastAssistantMessageId: String? {
+        appState.chatMessages.last(where: { $0.role == "assistant" })?.id
+    }
+
+    /// Pre-computed once per render instead of per-message.
+    private var lastMessageId: String? {
+        appState.chatMessages.last?.id
+    }
+
     var body: some View {
+        let lastAssistantId = lastAssistantMessageId
+        let lastId = lastMessageId
+        let isCurrentlyStreaming = appState.isStreaming
+
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -20,8 +34,8 @@ struct MessageListView: View {
                         ForEach(appState.chatMessages) { message in
                             MessageBubbleView(
                                 message: message,
-                                isStreaming: isStreamingMessage(message),
-                                isLastAssistant: isLastAssistantMessage(message),
+                                isStreaming: isCurrentlyStreaming && message.id == lastId && message.role == "assistant",
+                                isLastAssistant: message.role == "assistant" && message.id == lastAssistantId,
                                 onEdit: { messageId, newContent, resubmit in
                                     Task { await appState.editMessage(messageId, newContent: newContent, resubmit: resubmit) }
                                 },
@@ -55,15 +69,6 @@ struct MessageListView: View {
                 scrollToBottom(proxy: proxy)
             }
         }
-    }
-
-    private func isStreamingMessage(_ message: ChatMessage) -> Bool {
-        appState.isStreaming && message.id == appState.chatMessages.last?.id && message.role == "assistant"
-    }
-
-    private func isLastAssistantMessage(_ message: ChatMessage) -> Bool {
-        guard message.role == "assistant" else { return false }
-        return appState.chatMessages.last(where: { $0.role == "assistant" })?.id == message.id
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
