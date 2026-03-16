@@ -7,17 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.8.3] - 2026-03-16
-
-### Fixed
-
-- **CI: fix intermittent archive failure**: Added retry logic (up to 3 attempts) to the Archive step in the release workflow to handle Xcode 26.3 ibtoold asset catalog agent crashes on macOS 15 CI runners
-
-## [1.8.2] - 2026-03-16
+## [1.8.4] - 2026-03-16
 
 ### Fixed
 
 - **Chat switching performance**: Cached expensive regex-based parsing (tool calls, reasoning blocks, markdown) in message views so it only runs when content changes instead of every render. Pre-computed last-assistant-message ID once per render instead of scanning per-message (O(n^2) to O(n)). Added Equatable to MarkdownTextView so SwiftUI skips unchanged re-renders. Skip redundant UI updates when background refresh returns identical messages.
+- **CI: switch to macOS 26 runner**: Xcode 26.3's ibtoold asset catalog agent crashes on macOS 15 runners due to dyld symbol mismatches in CoreMedia/MediaToolbox frameworks. Switched both build and release workflows from `macos-15` to `macos-26` runners to match the deployment target.
 
 ## [1.8.1] - 2026-03-16
 
