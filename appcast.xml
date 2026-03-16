@@ -5,6 +5,26 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.8.4</title>
+            <description><![CDATA[
+                <h2>What is New in v1.8.4</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Chat switching performance</strong>: Cached expensive regex-based parsing (tool calls, reasoning blocks, markdown) in message views so it only runs when content changes instead of every render. Pre-computed last-assistant-message ID once per render instead of scanning per-message (O(n^2) to O(n)). Added Equatable to MarkdownTextView so SwiftUI skips unchanged re-renders. Skip redundant UI updates when background refresh returns identical messages.</li>
+<li><strong>CI: switch to macOS 26 runner</strong>: Xcode 26.3's ibtoold asset catalog agent crashes on macOS 15 runners due to dyld symbol mismatches in CoreMedia/MediaToolbox frameworks. Switched both build and release workflows from `macos-15` to `macos-26` runners to match the deployment target.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 16 Mar 2026 07:41:25 +0000</pubDate>
+            <sparkle:version>18</sparkle:version>
+            <sparkle:shortVersionString>1.8.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.8.4/Oval-v1.8.4.dmg"
+                sparkle:edSignature="JxVUB7KTb+Z9Nkr31FQjjUaauBPRYk0wKEfATXyhJ/wEx8o+1D32K1dR2HbMwmbxReHqE1xrHvW2LNB5NccHBA=="
+                length="10497284"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.8.1</title>
             <description><![CDATA[
                 <h2>What is New in v1.8.1</h2>
