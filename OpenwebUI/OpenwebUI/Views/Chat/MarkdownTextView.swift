@@ -4,13 +4,18 @@ import SwiftUI
 /// Uses Open WebUI's exact color palette and font sizes.
 /// When `sources` are provided, citation references like [1], [2] in the content
 /// become tappable links that open the corresponding source URL.
-struct MarkdownTextView: View {
+struct MarkdownTextView: View, Equatable {
     let content: String
     var sources: [ChatSourceReference]?
 
+    nonisolated static func == (lhs: MarkdownTextView, rhs: MarkdownTextView) -> Bool {
+        lhs.content == rhs.content && lhs.sources == rhs.sources
+    }
+
     var body: some View {
+        let parsedBlocks = Self.parseBlocks(content)
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+            ForEach(Array(parsedBlocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .codeBlock(let language, let code):
                     CodeBlockView(language: language, code: code)
@@ -32,7 +37,7 @@ struct MarkdownTextView: View {
         case codeBlock(language: String, code: String)
     }
 
-    private var blocks: [Block] {
+    nonisolated private static func parseBlocks(_ content: String) -> [Block] {
         var result: [Block] = []
         let lines = content.components(separatedBy: "\n")
         var i = 0

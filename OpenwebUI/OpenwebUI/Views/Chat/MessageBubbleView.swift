@@ -19,28 +19,11 @@ struct MessageBubbleView: View {
     @State private var isEditing = false
     @State private var editText = ""
 
-    /// Merge tool calls from the message model with those parsed from content HTML.
-    /// The server embeds tool call results as `<details type="tool_calls">` in the content.
-    private var resolvedToolCalls: [ToolCall] {
-        var calls = message.toolCalls ?? []
-        let contentParsed = AppState.parseToolCallDetails(from: message.content)
-        for parsed in contentParsed {
-            if let idx = calls.firstIndex(where: { $0.id == parsed.id }) {
-                // Update with result/status from content HTML
-                if parsed.result != nil || parsed.status == .completed {
-                    calls[idx] = parsed
-                }
-            } else {
-                calls.append(parsed)
-            }
-        }
-        return calls
-    }
-
-    /// Message content with tool call HTML details stripped (rendered separately above).
-    private var strippedContent: String {
-        AppState.stripToolCallDetails(from: message.content)
-    }
+    // Cached parsed content — recomputed only when message content changes
+    @State private var cachedToolCalls: [ToolCall] = []
+    @State private var cachedStrippedContent: String = ""
+    @State private var cachedParsed: ParsedContent = ParsedContent(reasoning: [], visibleContent: "")
+    @State private var lastParsedContent: String = ""
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -55,6 +38,35 @@ struct MessageBubbleView: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
+        .onAppear { recomputeParsedContent() }
+        .onChange(of: message.content) { _, _ in recomputeParsedContent() }
+        .onChange(of: message.toolCalls) { _, _ in recomputeParsedContent() }
+    }
+
+    /// Recompute expensive regex-based parsing only when content actually changes.
+    private func recomputeParsedContent() {
+        let key = message.content + (message.toolCalls?.map(\.id).joined() ?? "")
+        guard key != lastParsedContent else { return }
+        lastParsedContent = key
+
+        // Resolve tool calls
+        var calls = message.toolCalls ?? []
+        let contentParsed = AppState.parseToolCallDetails(from: message.content)
+        for parsed in contentParsed {
+            if let idx = calls.firstIndex(where: { $0.id == parsed.id }) {
+                if parsed.result != nil || parsed.status == .completed {
+                    calls[idx] = parsed
+                }
+            } else {
+                calls.append(parsed)
+            }
+        }
+        cachedToolCalls = calls
+
+        // Strip tool call HTML and parse reasoning
+        let stripped = AppState.stripToolCallDetails(from: message.content)
+        cachedStrippedContent = stripped
+        cachedParsed = parseReasoningBlocks(stripped)
     }
 
     // MARK: - User Message
@@ -208,8 +220,8 @@ struct MessageBubbleView: View {
                 }
 
                 // Tool calls (from streaming chunks and/or parsed from content HTML)
-                let allToolCalls = resolvedToolCalls
-                if !allToolCalls.isEmpty {
+                if !cachedToolCalls.isEmpty {
+                    let allToolCalls = cachedToolCalls
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(allToolCalls) { tc in
                             ToolCallView(toolCall: tc, isStreaming: isStreaming)
@@ -225,9 +237,8 @@ struct MessageBubbleView: View {
                 }
 
                 // Reasoning/thinking blocks (parsed from content)
-                let parsed = parseReasoningBlocks(strippedContent)
-                if !parsed.reasoning.isEmpty {
-                    ForEach(Array(parsed.reasoning.enumerated()), id: \.offset) { _, block in
+                if !cachedParsed.reasoning.isEmpty {
+                    ForEach(Array(cachedParsed.reasoning.enumerated()), id: \.offset) { _, block in
                         ReasoningBlockView(block: block, isStreaming: isStreaming)
                     }
                 }
@@ -238,7 +249,7 @@ struct MessageBubbleView: View {
                 }
 
                 // Message content (with reasoning and tool call HTML stripped)
-                if parsed.visibleContent.isEmpty && isStreaming {
+                if cachedParsed.visibleContent.isEmpty && isStreaming {
                     HStack(spacing: 4) {
                         ForEach(0..<3, id: \.self) { _ in
                             Circle()
@@ -248,8 +259,8 @@ struct MessageBubbleView: View {
                         }
                     }
                     .padding(.top, 4)
-                } else if !parsed.visibleContent.isEmpty {
-                    MarkdownTextView(content: parsed.visibleContent, sources: message.sources)
+                } else if !cachedParsed.visibleContent.isEmpty {
+                    MarkdownTextView(content: cachedParsed.visibleContent, sources: message.sources)
                 }
 
                 // Sources / citations (from Socket.IO source events)
