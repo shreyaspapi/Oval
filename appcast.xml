@@ -5,6 +5,25 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.8.1</title>
+            <description><![CDATA[
+                <h2>What is New in v1.8.1</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Chat switching performance</strong>: Optimized chat switching speed by parallelizing API calls (tags and task IDs fetched concurrently), removing expensive recursive message list computation from render path, and eliminating unnecessary DOM destruction/recreation of message components when switching between conversations</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 16 Mar 2026 05:48:48 +0000</pubDate>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>1.8.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.8.1/Oval-v1.8.1.dmg"
+                sparkle:edSignature="dFB3E4/oqhl8XJ9I0sZVv9Xurmrp+TyzicY0eeV792z5dtm1KhDAByva0pp/bv6IfTTzXwF2ecCeZEXV8bJ+CQ=="
+                length="10603061"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.8.0</title>
             <description><![CDATA[
                 <h2>What is New in v1.8.0</h2>
