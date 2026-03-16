@@ -70,20 +70,36 @@ jobs:
 
       - name: Archive
         run: |
-          xcodebuild archive \
-            -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -archivePath "$RUNNER_TEMP/Oval.xcarchive" \
-            -configuration Release \
-            -destination "generic/platform=macOS" \
-            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
-            ARCHS=arm64 \
-            ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$CODE_SIGN_ID" \
-            DEVELOPMENT_TEAM="${{ secrets.TEAM_ID }}" \
-            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
-            OTHER_CODE_SIGN_FLAGS="--timestamp"
+          # Retry up to 3 times — Xcode 26.3's ibtoold asset catalog agent
+          # intermittently crashes on macOS 15 runners due to dyld symbol
+          # mismatches in CoreMedia/MediaToolbox frameworks.
+          for attempt in 1 2 3; do
+            echo "--- Archive attempt $attempt ---"
+            rm -rf "$RUNNER_TEMP/Oval.xcarchive"
+            if xcodebuild archive \
+              -project "$PROJECT" \
+              -scheme "$SCHEME" \
+              -archivePath "$RUNNER_TEMP/Oval.xcarchive" \
+              -configuration Release \
+              -destination "generic/platform=macOS" \
+              -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
+              ARCHS=arm64 \
+              ONLY_ACTIVE_ARCH=NO \
+              CODE_SIGN_STYLE=Manual \
+              CODE_SIGN_IDENTITY="$CODE_SIGN_ID" \
+              DEVELOPMENT_TEAM="${{ secrets.TEAM_ID }}" \
+              CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+              OTHER_CODE_SIGN_FLAGS="--timestamp"; then
+              echo "Archive succeeded on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Archive failed after 3 attempts"
+              exit 1
+            fi
+            echo "Archive failed on attempt $attempt, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Export signed app
         run: |

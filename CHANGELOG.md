@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-03-16
+
+### Fixed
+
+- **CI: fix intermittent archive failure**: Added retry logic (up to 3 attempts) to the Archive step in the release workflow to handle Xcode 26.3 ibtoold asset catalog agent crashes on macOS 15 CI runners
+
 ## [1.8.2] - 2026-03-16
 
 ### Fixed
