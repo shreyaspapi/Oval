@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-03-19
+
+### Security
+
+- **GPG-signed commit history**: All commits in the repository are now GPG-signed with a verified key for supply chain integrity
+
 ## [1.9.2] - 2026-03-19
 
 ### Fixed
