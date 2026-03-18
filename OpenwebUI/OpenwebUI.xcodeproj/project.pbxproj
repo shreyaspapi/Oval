@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA1111112F5SPARKLE00000002 /* Sparkle */; };
 		EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = EA3333332F5FLUIDAUDIO0002 /* FluidAudio */; };
 		EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = EA4444442F5TEXTUAL0000002 /* Textual */; };
 		EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = EAF6EDD92F56ACA400DCBE29 /* SocketIO */; };
@@ -61,7 +60,6 @@
 			files = (
 				EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */,
 				EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */,
-				EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */,
 				EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -125,7 +123,6 @@
 			packageProductDependencies = (
 				EAF6EDD92F56ACA400DCBE29 /* SocketIO */,
 				EA3333332F5FLUIDAUDIO0002 /* FluidAudio */,
-				EA1111112F5SPARKLE00000002 /* Sparkle */,
 				EA4444442F5TEXTUAL0000002 /* Textual */,
 			);
 			productName = OpenwebUI;
@@ -425,7 +422,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 20;
-				DEVELOPMENT_TEAM = J3LH4H9AA4;
+				DEVELOPMENT_TEAM = FYS9RNAGTV;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -466,7 +463,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 20;
-				DEVELOPMENT_TEAM = J3LH4H9AA4;
+				DEVELOPMENT_TEAM = FYS9RNAGTV;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -625,14 +622,6 @@
 				minimumVersion = 2.7.0;
 			};
 		};
-		EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 		EA3333332F5FLUIDAUDIO0003 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
@@ -649,28 +638,31 @@
 				minimumVersion = 0.3.1;
 			};
 		};
+		EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		EA1111112F5SPARKLE00000002 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EA1111112F5SPARKLE00000003 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
 		EA3333332F5FLUIDAUDIO0002 /* FluidAudio */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EA3333332F5FLUIDAUDIO0003 /* XCRemoteSwiftPackageReference "FluidAudio" */;
 			productName = FluidAudio;
 		};
-		EAF6EDD92F56ACA400DCBE29 /* SocketIO */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */;
-			productName = SocketIO;
-		};
 		EA4444442F5TEXTUAL0000002 /* Textual */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EA4444442F5TEXTUAL0000003 /* XCRemoteSwiftPackageReference "textual" */;
 			productName = Textual;
+		};
+		EAF6EDD92F56ACA400DCBE29 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */;
+			productName = SocketIO;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
