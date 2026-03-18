@@ -5,6 +5,26 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.2</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.2</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Chat load delay (1-6s) on sidebar click</strong>: Root cause was actor contention — prefetch tasks flooding the `OpenWebUIClient` actor queue, blocking user-initiated requests. Prefetch tasks are now cancelled when a conversation is selected, and stagger increased to 100ms to reduce saturation</li>
+<li><strong>Sparkle auto-update restored</strong>: Re-linked Sparkle framework to the target so `canImport(Sparkle)` resolves to `true` and the real `SPUStandardUpdaterController` is active again. "Check for Updates" menu item works, appcast.xml feed is live</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 18 Mar 2026 21:03:59 +0000</pubDate>
+            <sparkle:version>22</sparkle:version>
+            <sparkle:shortVersionString>1.9.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.2/Oval-v1.9.2.dmg"
+                sparkle:edSignature="LD6fF0gBPmBa3nllgP7nLgF4f4Inno7o4RjBie4AjMwhGshleyuXK15C/tdvwkGfgS0Tvn0GkdeaAusISn2yAQ=="
+                length="12207679"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.9.1</title>
             <description><![CDATA[
                 <h2>What is New in v1.9.1</h2>
