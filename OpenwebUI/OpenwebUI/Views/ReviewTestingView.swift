@@ -143,7 +143,7 @@ struct ReviewTestingView: View {
                             featureItem("Auto-generated chat titles")
                             featureItem("Conversation caching & prefetch")
                             featureItem("Light & dark mode (adaptive colors)")
-                            featureItem("Quick Chat window (Ctrl+Space)")
+                            featureItem("Quick Chat window (Ctrl+Shift+Space)")
                             featureItem("System tray menu bar icon")
                             featureItem("macOS Settings window (Cmd+,)")
                             featureItem("Keyboard shortcuts (Cmd+N, Cmd+F, etc.)")

@@ -2,7 +2,7 @@ import SwiftUI
 import Carbon.HIToolbox
 
 /// A button-style control that captures a keyboard shortcut when clicked.
-/// Click to start recording, press a key combo (with at least one modifier), press Esc to cancel,
+/// Click to start recording, press a key combo with Control or Command, press Esc to cancel,
 /// or press Delete/Backspace to clear.
 struct ShortcutRecorderView: View {
     @Binding var binding: HotkeyBinding
@@ -23,7 +23,7 @@ struct ShortcutRecorderView: View {
                 if isRecording {
                     Image(systemName: "record.circle")
                         .foregroundStyle(.red)
-                    Text("Press shortcut...")
+                    Text("Press Ctrl/Cmd shortcut...")
                         .foregroundStyle(.secondary)
                 } else {
                     Text(binding.displayString)
@@ -79,13 +79,10 @@ struct ShortcutRecorderView: View {
 
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-        // Require at least one modifier key (prevent bare letter shortcuts)
-        let hasModifier = flags.contains(.control) || flags.contains(.option)
-            || flags.contains(.shift) || flags.contains(.command)
-        guard hasModifier else { return }
+        let newBinding = HotkeyBinding(keyCode: event.keyCode, nsFlags: flags)
+        guard newBinding.isSupportedGlobalShortcut else { return }
 
         // Accept the shortcut
-        let newBinding = HotkeyBinding(keyCode: event.keyCode, nsFlags: flags)
         binding = newBinding
         stopRecording()
         onChanged?()

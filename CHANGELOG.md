@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-03-18
+
+### Fixed
+
+- **Mac App Store hotkey compliance**: Replaced raw keyboard event capture with Carbon event hotkeys so global shortcuts no longer depend on Accessibility access
+- **Quick Chat default shortcut conflict**: Changed the default Quick Chat shortcut from `Ctrl+Space` to `Ctrl+Shift+Space` to avoid common macOS input-source conflicts
+
 ## [1.8.4] - 2026-03-16
 
 ### Fixed
