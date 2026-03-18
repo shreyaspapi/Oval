@@ -472,26 +472,6 @@ actor OpenWebUIClient {
         req.allHTTPHeaderFields = authHeader
         let (data, _) = try await URLSession.shared.data(for: req)
 
-        // DEBUG: Log raw JSON for chat responses
-        if path.contains("/chats/") && !path.contains("page=") {
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let chat = json["chat"] as? [String: Any],
-               let history = chat["history"] as? [String: Any],
-               let messages = history["messages"] as? [String: Any] {
-                clientLog.info("[Oval] GET \(path): \(messages.count) messages in history")
-                for (msgId, msgData) in messages {
-                    if let msg = msgData as? [String: Any] {
-                        let role = msg["role"] as? String ?? "?"
-                        let hasSH = msg["statusHistory"] != nil
-                        if hasSH {
-                            let shCount = (msg["statusHistory"] as? [[String: Any]])?.count ?? 0
-                            clientLog.info("[Oval]   msg[\(msgId)] role=\(role) statusHistory.count=\(shCount)")
-                        }
-                    }
-                }
-            }
-        }
-
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {

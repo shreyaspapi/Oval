@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA1111112F5SPARKLE00000002 /* Sparkle */; };
 		EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = EA3333332F5FLUIDAUDIO0002 /* FluidAudio */; };
+		EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = EA4444442F5TEXTUAL0000002 /* Textual */; };
 		EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = EAF6EDD92F56ACA400DCBE29 /* SocketIO */; };
 /* End PBXBuildFile section */
 
@@ -61,6 +62,7 @@
 				EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */,
 				EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */,
 				EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */,
+				EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,6 +126,7 @@
 				EAF6EDD92F56ACA400DCBE29 /* SocketIO */,
 				EA3333332F5FLUIDAUDIO0002 /* FluidAudio */,
 				EA1111112F5SPARKLE00000002 /* Sparkle */,
+				EA4444442F5TEXTUAL0000002 /* Textual */,
 			);
 			productName = OpenwebUI;
 			productReference = EA7C0B812F54467400484ACB /* Oval.app */;
@@ -216,6 +219,7 @@
 				EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */,
 				EA1111112F5SPARKLE00000003 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				EA3333332F5FLUIDAUDIO0003 /* XCRemoteSwiftPackageReference "FluidAudio" */,
+				EA4444442F5TEXTUAL0000003 /* XCRemoteSwiftPackageReference "textual" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EA7C0B822F54467400484ACB /* Products */;
@@ -637,6 +641,14 @@
 				minimumVersion = 0.7.9;
 			};
 		};
+		EA4444442F5TEXTUAL0000003 /* XCRemoteSwiftPackageReference "textual" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/textual";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -654,6 +666,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EAF6EDD82F56ACA400DCBE29 /* XCRemoteSwiftPackageReference "socket" */;
 			productName = SocketIO;
+		};
+		EA4444442F5TEXTUAL0000002 /* Textual */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EA4444442F5TEXTUAL0000003 /* XCRemoteSwiftPackageReference "textual" */;
+			productName = Textual;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

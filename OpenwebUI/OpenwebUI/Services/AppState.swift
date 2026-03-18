@@ -319,6 +319,11 @@ final class AppState {
 
     /// Cached messages keyed by conversation ID. Avoids re-fetching on every click.
     private var messageCache: [String: [ChatMessage]] = [:]
+    /// When each conversation's cache was last populated from the server.
+    private var messageCacheTimestamps: [String: Date] = [:]
+    /// In-flight chat load task — cancelled when the user switches to another chat
+    /// so we don't waste network/main-actor time on a chat that's no longer visible.
+    private var chatLoadTask: Task<Void, Never>?
 
     // MARK: - Mini Chat (Spotlight-style overlay)
 
@@ -490,6 +495,14 @@ final class AppState {
     }
     var launchAtLogin: Bool = false {
         didSet { LaunchAtLoginManager.setEnabled(launchAtLogin) }
+    }
+
+    // MARK: - UI Preferences
+
+    /// Whether the server rail (left-most sidebar with server icons) is visible.
+    /// Users with a single server can hide it to reclaim space. Persisted in config.json.
+    var showServerRail: Bool = true {
+        didSet { guard !isLoadingConfig else { return }; saveServers() }
     }
 
     // MARK: - Temporary Chat
@@ -1509,10 +1522,12 @@ final class AppState {
                 let newChats = chats.filter { !existingIds.contains($0.id) }
                 conversations.append(contentsOf: newChats)
                 if chats.count < 50 { hasMoreConversations = false }
-                // Prefetch new conversations
-                for convo in newChats {
-                    if messageCache[convo.id] == nil {
-                        Task { await refreshChatMessages(convo.id, silent: true) }
+                // Prefetch new conversations at low priority
+                let toPrefetch = newChats.prefix(20).filter { messageCache[$0.id] == nil }
+                for (i, convo) in toPrefetch.enumerated() {
+                    Task.detached(priority: .background) { [weak self] in
+                        if i > 0 { try? await Task.sleep(for: .milliseconds(i * 50)) }
+                        await self?.refreshChatMessages(convo.id, silent: true)
                     }
                 }
             }
@@ -1523,6 +1538,11 @@ final class AppState {
     }
 
     func selectConversation(_ id: String) async {
+        // Cancel any in-flight load from a previous selection so it doesn't
+        // waste network time or overwrite the UI for the wrong conversation.
+        chatLoadTask?.cancel()
+        chatLoadTask = nil
+
         // Saved conversations are never temporary
         isTemporaryChat = false
         // Save current conversation's messages before switching
@@ -1551,12 +1571,19 @@ final class AppState {
         // Use cached messages immediately if available
         if let cached = messageCache[id] {
             chatMessages = cached
-            // Refresh in background (silent update, no loading indicator)
-            Task {
-                await refreshChatMessages(id, silent: true)
+            // Only refresh if cache is older than 30 seconds to avoid
+            // flooding the server and main actor with redundant fetches.
+            let lastFetched = messageCacheTimestamps[id] ?? .distantPast
+            if Date().timeIntervalSince(lastFetched) > 30 {
+                chatLoadTask = Task {
+                    await refreshChatMessages(id, silent: true)
+                }
             }
         } else {
-            await loadChatMessages(id)
+            chatLoadTask = Task {
+                await loadChatMessages(id)
+            }
+            await chatLoadTask?.value
         }
     }
 
@@ -1892,35 +1919,27 @@ final class AppState {
         isLoadingChat = true
         do {
             let chat = try await client.getChat(id: chatId)
+            // Bail out if the user already switched to another conversation
+            guard !Task.isCancelled, selectedConversationID == chatId else {
+                isLoadingChat = false
+                return
+            }
             let messages = chat.chat?.history?.linearMessages() ?? []
-
-            // DEBUG: Log statusHistory presence
-            let msgsWithStatus = messages.filter { $0.statusHistory != nil && !($0.statusHistory?.isEmpty ?? true) }
-            if !msgsWithStatus.isEmpty {
-                ovalLog.info("[Oval] loadChatMessages: \(msgsWithStatus.count) messages have statusHistory in chat \(chatId)")
-                for msg in msgsWithStatus {
-                    ovalLog.info("[Oval]   msg[\(msg.id)] role=\(msg.role) statusHistory.count=\(msg.statusHistory?.count ?? 0)")
-                    for s in msg.statusHistory ?? [] {
-                        ovalLog.info("[Oval]     action=\(s.action) done=\(s.done) queries=\(s.queries ?? []) urls=\(s.urls ?? [])")
-                    }
-                }
-            } else {
-                ovalLog.debug("[Oval] loadChatMessages: no messages with statusHistory in chat \(chatId) (total: \(messages.count))")
-            }
-
             messageCache[chatId] = messages
-            // Only update UI if this conversation is still selected
-            if selectedConversationID == chatId {
-                chatMessages = messages
-            }
+            messageCacheTimestamps[chatId] = Date()
+            chatMessages = messages
+        } catch is CancellationError {
+            // Expected when the user switches away — don't show an error
         } catch {
-            toastManager.show("Failed to load messages: \(error.localizedDescription)", style: .error)
-            print("[Oval DEBUG] loadChatMessages error: \(error)")
             if selectedConversationID == chatId {
+                toastManager.show("Failed to load messages: \(error.localizedDescription)", style: .error)
+                ovalLog.error("[Oval] loadChatMessages error for \(chatId): \(error.localizedDescription)")
                 chatMessages = []
             }
         }
-        isLoadingChat = false
+        if selectedConversationID == chatId {
+            isLoadingChat = false
+        }
     }
 
     /// Silently refresh messages for a conversation (no loading spinner).
@@ -1930,19 +1949,8 @@ final class AppState {
         do {
             let chat = try await client.getChat(id: chatId)
             let messages = chat.chat?.history?.linearMessages() ?? []
-
-            // DEBUG: Log statusHistory presence
-            let msgsWithStatus = messages.filter { $0.statusHistory != nil && !($0.statusHistory?.isEmpty ?? true) }
-            if !msgsWithStatus.isEmpty {
-                ovalLog.info("[Oval] refreshChatMessages: \(msgsWithStatus.count) messages have statusHistory in chat \(chatId)")
-                for msg in msgsWithStatus {
-                    ovalLog.info("[Oval]   msg[\(msg.id)] role=\(msg.role) statusHistory.count=\(msg.statusHistory?.count ?? 0)")
-                }
-            } else {
-                ovalLog.debug("[Oval] refreshChatMessages: no messages with statusHistory in chat \(chatId) (total: \(messages.count))")
-            }
-
             messageCache[chatId] = messages
+            messageCacheTimestamps[chatId] = Date()
             // Only update UI if this conversation is still selected AND messages actually changed
             if selectedConversationID == chatId && messages != chatMessages {
                 chatMessages = messages
@@ -1954,14 +1962,19 @@ final class AppState {
         if !silent { isLoadingChat = false }
     }
 
-    /// Prefetch messages for all visible conversations in the background.
+    /// Prefetch messages for recent conversations in the background.
+    /// Covers the first 20 conversations so most sidebar clicks are instant
+    /// cache hits. Requests are staggered to avoid saturating the network.
     func prefetchConversations() {
         guard client != nil else { return }
-        for conversation in conversations {
-            if messageCache[conversation.id] == nil {
-                Task {
-                    await refreshChatMessages(conversation.id, silent: true)
+        let uncached = conversations.prefix(20).filter { messageCache[$0.id] == nil }
+        for (i, conversation) in uncached.enumerated() {
+            Task.detached(priority: .background) { [weak self] in
+                // Stagger requests slightly to avoid a burst of 20 simultaneous fetches
+                if i > 0 {
+                    try? await Task.sleep(for: .milliseconds(i * 50))
                 }
+                await self?.refreshChatMessages(conversation.id, silent: true)
             }
         }
     }
@@ -2804,17 +2817,18 @@ final class AppState {
 
     // MARK: - Tool Call Details Parser
 
+    // Pre-compiled regexes for tool call parsing (avoid recompiling per call)
+    private static let toolCallClosedRegex = try! NSRegularExpression(
+        pattern: #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?</details>"#)
+    private static let toolCallUnclosedRegex = try! NSRegularExpression(
+        pattern: #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?$"#)
+
     /// Parse `<details type="tool_calls" ...>` blocks from message content.
     /// Open WebUI embeds tool call results as HTML details tags in the streaming content.
     static func parseToolCallDetails(from content: String) -> [ToolCall] {
         var toolCalls: [ToolCall] = []
 
-        // Match both closed and unclosed (in-progress) tool call details
-        let closedPattern = #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?</details>"#
-        let unclosedPattern = #"<details[^>]*type="tool_calls"([^>]*)>[\s\S]*?$"#
-
-        for pattern in [closedPattern, unclosedPattern] {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { continue }
+        for regex in [toolCallClosedRegex, toolCallUnclosedRegex] {
             let nsContent = content as NSString
             let matches = regex.matches(in: content, options: [], range: NSRange(location: 0, length: nsContent.length))
 
@@ -2843,17 +2857,26 @@ final class AppState {
                 }
             }
             // If we found closed matches, don't also look for unclosed
-            if !toolCalls.isEmpty && pattern == closedPattern { break }
+            if !toolCalls.isEmpty && regex === toolCallClosedRegex { break }
         }
 
         return toolCalls
     }
 
+    /// Cache of compiled attribute-extraction regexes, keyed by attribute name.
+    private static var attributeRegexCache: [String: NSRegularExpression] = [:]
+
     /// Extract an HTML attribute value from an attributes string.
     private static func extractAttribute(_ name: String, from attrs: String) -> String? {
-        let pattern = name + #"="([^"]*)""#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: attrs, range: NSRange(location: 0, length: (attrs as NSString).length)) else {
+        let regex: NSRegularExpression
+        if let cached = attributeRegexCache[name] {
+            regex = cached
+        } else {
+            guard let compiled = try? NSRegularExpression(pattern: name + #"="([^"]*)""#) else { return nil }
+            attributeRegexCache[name] = compiled
+            regex = compiled
+        }
+        guard let match = regex.firstMatch(in: attrs, range: NSRange(location: 0, length: (attrs as NSString).length)) else {
             return nil
         }
         return (attrs as NSString).substring(with: match.range(at: 1))
@@ -3679,6 +3702,8 @@ final class AppState {
         hotkeyPreferences = config.hotkeyPreferences ?? .defaults
         // Restore privacy preferences
         temporaryChatDefault = config.temporaryChatDefault
+        // Restore UI preferences
+        showServerRail = config.showServerRail
     }
 
     private func saveServers() {
@@ -3689,7 +3714,8 @@ final class AppState {
             defaultModelID: defaultModelID,
             pinnedModelIDs: pinnedModelIDs,
             hotkeyPreferences: hotkeyPreferences,
-            temporaryChatDefault: temporaryChatDefault
+            temporaryChatDefault: temporaryChatDefault,
+            showServerRail: showServerRail
         )
         configManager.save(config)
     }

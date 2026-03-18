@@ -9,8 +9,10 @@ struct ChatView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // MARK: - Server Rail (Discord-style, always visible)
-            ServerRailView(appState: appState)
+            // MARK: - Server Rail (Discord-style, toggleable via preferences)
+            if appState.showServerRail {
+                ServerRailView(appState: appState)
+            }
 
             // MARK: - Sidebar (conversations list)
             if appState.isSidebarVisible {

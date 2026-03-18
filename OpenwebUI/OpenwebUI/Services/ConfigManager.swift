@@ -18,6 +18,9 @@ final class ConfigManager {
 
         // Privacy preferences
         var temporaryChatDefault: Bool = false
+
+        // UI preferences
+        var showServerRail: Bool = true
     }
 
     private let fileManager = FileManager.default
