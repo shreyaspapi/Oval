@@ -5,6 +5,25 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.3</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.3</h2>
+                <ul>
+<li><strong>Security</strong></li>
+<li><strong>GPG-signed commit history</strong>: All commits in the repository are now GPG-signed with a verified key for supply chain integrity</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 18 Mar 2026 21:17:56 +0000</pubDate>
+            <sparkle:version>23</sparkle:version>
+            <sparkle:shortVersionString>1.9.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.3/Oval-v1.9.3.dmg"
+                sparkle:edSignature="FHocq1VeWu5aAH15MdusI9C84w/+BG0TMam2FenfsGhriqN6R1dW0GJGmn54H0pwbcxgo1pFME97ZKK1snukBQ=="
+                length="12207393"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.9.2</title>
             <description><![CDATA[
                 <h2>What is New in v1.9.2</h2>
