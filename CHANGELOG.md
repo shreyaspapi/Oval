@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-03-18
+
+### Added
+
+- **Textual markdown rendering**: Migrated from hand-rolled markdown parser to the [Textual](https://github.com/gonzalezreal/textual) library for richer structured text rendering (headings, lists, tables, blockquotes, inline code, links)
+- **Toggle server sidebar visibility**: New "Show Server Sidebar" toggle in Preferences > Behavior lets single-server users hide the 56px server rail to reclaim space ([#44](https://github.com/shreyaspapi/Oval/issues/44))
+
+### Fixed
+
+- **Code block copy button not clickable**: Code blocks are now rendered outside Textual's text-selection overlay so the "Copy code" button works reliably
+- **Code block horizontal scroll**: Long code lines can now be scrolled horizontally instead of being clipped
+- **Code fence parsing**: Closing fence detection now follows CommonMark spec — only bare backtick lines close a fence, preventing misparse when code blocks demonstrate nested fences
+
+### Improved
+
+- **Chat switching speed**: Prefetch increased from 5 to 20 conversations with staggered requests; 30-second cache TTL avoids redundant fetches; in-flight loads are cancelled when switching away
+- **Pre-compiled regexes**: Tool call, reasoning block, and attribute extraction regexes are compiled once as static properties instead of per-call
+- **Debug log cleanup**: Removed verbose statusHistory debug logging from AppState and raw JSON logging from OpenWebUIClient
+
 ## [1.8.5] - 2026-03-18
 
 ### Fixed
