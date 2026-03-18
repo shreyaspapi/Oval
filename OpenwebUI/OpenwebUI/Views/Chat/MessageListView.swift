@@ -30,6 +30,19 @@ struct MessageListView: View {
                             Spacer()
                         }
                         .padding(.top, 40)
+                    } else if appState.chatMessages.isEmpty && appState.selectedConversationID != nil {
+                        // Conversation selected but no messages yet — trigger a load
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .controlSize(.regular)
+                            Spacer()
+                        }
+                        .padding(.top, 40)
+                        .onAppear {
+                            // Re-fetch: the cache was likely stale/empty from a decode failure
+                            Task { await appState.retryLoadChat() }
+                        }
                     } else {
                         ForEach(appState.chatMessages) { message in
                             MessageBubbleView(

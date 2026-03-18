@@ -10,7 +10,7 @@ struct ChatAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.chatMessages.isEmpty && appState.selectedConversationID == nil {
+            if appState.selectedConversationID == nil && appState.chatMessages.isEmpty {
                 WelcomeView(appState: appState)
             } else {
                 MessageListView(appState: appState)
