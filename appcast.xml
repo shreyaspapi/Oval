@@ -5,6 +5,34 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.0</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.0</h2>
+                <ul>
+<li><strong>Added</strong></li>
+<li><strong>Textual markdown rendering</strong>: Migrated from hand-rolled markdown parser to the Textual library for richer structured text rendering (headings, lists, tables, blockquotes, inline code, links)</li>
+<li><strong>Toggle server sidebar visibility</strong>: New "Show Server Sidebar" toggle in Preferences > Behavior lets single-server users hide the 56px server rail to reclaim space (#44)</li>
+<li><strong>Fixed</strong></li>
+<li><strong>Code block copy button not clickable</strong>: Code blocks are now rendered outside Textual's text-selection overlay so the "Copy code" button works reliably</li>
+<li><strong>Code block horizontal scroll</strong>: Long code lines can now be scrolled horizontally instead of being clipped</li>
+<li><strong>Code fence parsing</strong>: Closing fence detection now follows CommonMark spec — only bare backtick lines close a fence, preventing misparse when code blocks demonstrate nested fences</li>
+<li><strong>Improved</strong></li>
+<li><strong>Chat switching speed</strong>: Prefetch increased from 5 to 20 conversations with staggered requests; 30-second cache TTL avoids redundant fetches; in-flight loads are cancelled when switching away</li>
+<li><strong>Pre-compiled regexes</strong>: Tool call, reasoning block, and attribute extraction regexes are compiled once as static properties instead of per-call</li>
+<li><strong>Debug log cleanup</strong>: Removed verbose statusHistory debug logging from AppState and raw JSON logging from OpenWebUIClient</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 18 Mar 2026 10:56:05 +0000</pubDate>
+            <sparkle:version>20</sparkle:version>
+            <sparkle:shortVersionString>1.9.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.0/Oval-v1.9.0.dmg"
+                sparkle:edSignature="tJlcMo2ARmNwRwFoo+rUF7hiiLbIRenCQQwnBQbEiIzzRpqX1kjliktgxMjWnWXpJEmfqCyd6FwI8VvIpBEGCQ=="
+                length="12191725"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.8.4</title>
             <description><![CDATA[
                 <h2>What is New in v1.8.4</h2>
