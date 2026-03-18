@@ -5,7 +5,7 @@ import Carbon.HIToolbox
 
 /// A single customizable keyboard shortcut: key code + modifier flags.
 /// Codable so it can be persisted to config.json.
-/// Sendable so it can be safely read from the nonisolated CGEvent callback.
+/// Sendable so it can be safely read from nonisolated hotkey callbacks.
 struct HotkeyBinding: Codable, Equatable, Sendable {
     /// Virtual key code (`kVK_*` constants from Carbon).
     var keyCode: UInt16
@@ -18,6 +18,21 @@ struct HotkeyBinding: Codable, Equatable, Sendable {
     var option: Bool  { CGEventFlags(rawValue: modifiers).contains(.maskAlternate) }
     var shift: Bool   { CGEventFlags(rawValue: modifiers).contains(.maskShift) }
     var command: Bool  { CGEventFlags(rawValue: modifiers).contains(.maskCommand) }
+
+    /// Carbon modifier flags used by RegisterEventHotKey.
+    var carbonModifiers: UInt32 {
+        var carbonModifiers: UInt32 = 0
+        if control { carbonModifiers |= UInt32(controlKey) }
+        if option  { carbonModifiers |= UInt32(optionKey) }
+        if shift   { carbonModifiers |= UInt32(shiftKey) }
+        if command { carbonModifiers |= UInt32(cmdKey) }
+        return carbonModifiers
+    }
+
+    /// Sandboxed global hotkeys must include Control or Command on current macOS releases.
+    var isSupportedGlobalShortcut: Bool {
+        control || command
+    }
 
     /// Create from an NSEvent (used by the shortcut recorder and NSEvent monitor).
     init(keyCode: UInt16, nsFlags: NSEvent.ModifierFlags) {
@@ -164,7 +179,7 @@ struct HotkeyPreferences: Codable, Equatable, Sendable {
 
     /// Factory defaults matching the original hard-coded hotkeys.
     static let defaults = HotkeyPreferences(
-        quickChat:    HotkeyBinding(keyCode: UInt16(kVK_Space),  cgFlags: .maskControl),
+        quickChat:    HotkeyBinding(keyCode: UInt16(kVK_Space),  cgFlags: [.maskControl, .maskShift]),
         toggleWindow: HotkeyBinding(keyCode: UInt16(kVK_Space),  cgFlags: [.maskControl, .maskAlternate]),
         pasteToChat:  HotkeyBinding(keyCode: UInt16(kVK_ANSI_V), cgFlags: [.maskControl, .maskShift])
     )

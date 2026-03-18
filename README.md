@@ -28,7 +28,7 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 - **Multi-server support** — add, switch, and manage multiple Open WebUI servers
 
 ### Quick Chat
-- **Global hotkey** (`Ctrl+Space`) — Spotlight-style floating chat window, always accessible
+- **Global hotkey** (`Ctrl+Shift+Space`) — Spotlight-style floating chat window, always accessible
 - **Paste to chat** (`Ctrl+Shift+V`) — paste clipboard content into a new quick chat
 - **Compact input mode** that expands into a full conversation view
 
@@ -58,7 +58,7 @@ A native macOS client for [Open WebUI](https://openwebui.com). Chat with your se
 |:---:|:---:|
 | ![Login](screenshots/login.png) | ![Sidebar](screenshots/sidebar.png) |
 
-| Chat with Markdown & Code | Quick Chat (Ctrl+Space) |
+| Chat with Markdown & Code | Quick Chat (Ctrl+Shift+Space) |
 |:---:|:---:|
 | ![Chat](screenshots/chat.png) | ![Quick Chat](screenshots/quick-chat.png) |
 
@@ -109,7 +109,7 @@ open OpenwebUI/OpenwebUI.xcodeproj
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Space` | Toggle Quick Chat |
+| `Ctrl+Shift+Space` | Toggle Quick Chat |
 | `Ctrl+Option+Space` | Toggle main window |
 | `Ctrl+Shift+V` | Paste clipboard into new Quick Chat |
 | `Cmd+N` | New conversation |

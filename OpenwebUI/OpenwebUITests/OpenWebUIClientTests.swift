@@ -400,7 +400,14 @@ struct ChatBlobModelTests {
             files: nil,
             toolCalls: nil,
             toolCallId: nil,
-            statusHistory: nil
+            statusHistory: nil,
+            sources: nil,
+            codeExecutions: nil,
+            followUps: nil,
+            usage: nil,
+            messageError: nil,
+            done: nil,
+            modelIdx: nil
         )
         let data = try JSONEncoder().encode(msg)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
@@ -416,7 +423,9 @@ struct ChatBlobModelTests {
         let msg = ChatBlobMessage(
             id: "m1", role: "user", content: "Hi", model: nil,
             parentId: nil, childrenIds: [], timestamp: nil,
-            images: nil, files: nil, toolCalls: nil, toolCallId: nil, statusHistory: nil
+            images: nil, files: nil, toolCalls: nil, toolCallId: nil, statusHistory: nil,
+            sources: nil, codeExecutions: nil, followUps: nil, usage: nil, messageError: nil,
+            done: nil, modelIdx: nil
         )
         let history = ChatBlobHistory(messages: ["m1": msg], currentId: "m1")
         let data = try JSONEncoder().encode(history)
@@ -438,7 +447,9 @@ struct ChatBlobModelTests {
         let msg = ChatBlobMessage(
             id: "m1", role: "assistant", content: "Searching...", model: "llama3",
             parentId: nil, childrenIds: [], timestamp: nil,
-            images: nil, files: nil, toolCalls: [tc], toolCallId: nil, statusHistory: nil
+            images: nil, files: nil, toolCalls: [tc], toolCallId: nil, statusHistory: nil,
+            sources: nil, codeExecutions: nil, followUps: nil, usage: nil, messageError: nil,
+            done: nil, modelIdx: nil
         )
         let data = try JSONEncoder().encode(msg)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
@@ -452,7 +463,9 @@ struct ChatBlobModelTests {
         let msg = ChatBlobMessage(
             id: "m1", role: "user", content: "See attached", model: nil,
             parentId: nil, childrenIds: [], timestamp: nil,
-            images: nil, files: [file], toolCalls: nil, toolCallId: nil, statusHistory: nil
+            images: nil, files: [file], toolCalls: nil, toolCallId: nil, statusHistory: nil,
+            sources: nil, codeExecutions: nil, followUps: nil, usage: nil, messageError: nil,
+            done: nil, modelIdx: nil
         )
         let data = try JSONEncoder().encode(msg)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
@@ -467,7 +480,9 @@ struct ChatBlobModelTests {
             id: "m1", role: "user", content: "Look at this", model: nil,
             parentId: nil, childrenIds: [], timestamp: nil,
             images: ["data:image/png;base64,abc"], files: nil,
-            toolCalls: nil, toolCallId: nil, statusHistory: nil
+            toolCalls: nil, toolCallId: nil, statusHistory: nil,
+            sources: nil, codeExecutions: nil, followUps: nil, usage: nil, messageError: nil,
+            done: nil, modelIdx: nil
         )
         let data = try JSONEncoder().encode(msg)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
