@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-03-19
+
+### Fixed
+
+- **Chat load delay (1-6s) on sidebar click**: Root cause was actor contention — prefetch tasks flooding the `OpenWebUIClient` actor queue, blocking user-initiated requests. Prefetch tasks are now cancelled when a conversation is selected, and stagger increased to 100ms to reduce saturation
+- **Sparkle auto-update restored**: Re-linked Sparkle framework to the target so `canImport(Sparkle)` resolves to `true` and the real `SPUStandardUpdaterController` is active again. "Check for Updates" menu item works, appcast.xml feed is live
+
 ## [1.9.1] - 2026-03-19
 
 ### Fixed

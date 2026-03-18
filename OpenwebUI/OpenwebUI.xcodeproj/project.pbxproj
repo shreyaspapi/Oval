@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA1111112F5SPARKLE00000002 /* Sparkle */; };
 		EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = EA3333332F5FLUIDAUDIO0002 /* FluidAudio */; };
 		EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = EA4444442F5TEXTUAL0000002 /* Textual */; };
 		EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = EAF6EDD92F56ACA400DCBE29 /* SocketIO */; };
@@ -58,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EA1111112F5SPARKLE00000001 /* Sparkle in Frameworks */,
 				EAF6EDDA2F56ACA400DCBE29 /* SocketIO in Frameworks */,
 				EA3333332F5FLUIDAUDIO0001 /* FluidAudio in Frameworks */,
 				EA4444442F5TEXTUAL0000001 /* Textual in Frameworks */,
@@ -121,6 +123,7 @@
 			);
 			name = OpenwebUI;
 			packageProductDependencies = (
+				EA1111112F5SPARKLE00000002 /* Sparkle */,
 				EAF6EDD92F56ACA400DCBE29 /* SocketIO */,
 				EA3333332F5FLUIDAUDIO0002 /* FluidAudio */,
 				EA4444442F5TEXTUAL0000002 /* Textual */,
@@ -421,7 +424,7 @@
 				CODE_SIGN_ENTITLEMENTS = OpenwebUI/OpenwebUI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = FYS9RNAGTV;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -440,7 +443,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.9.1;
+				MARKETING_VERSION = 1.9.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shreyas.oval;
 				PRODUCT_NAME = Oval;
 				REGISTER_APP_GROUPS = YES;
@@ -462,7 +465,7 @@
 				CODE_SIGN_ENTITLEMENTS = OpenwebUI/OpenwebUI.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = FYS9RNAGTV;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -481,7 +484,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.9.1;
+				MARKETING_VERSION = 1.9.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.shreyas.oval;
 				PRODUCT_NAME = Oval;
 				REGISTER_APP_GROUPS = YES;
@@ -499,7 +502,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = J3LH4H9AA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -519,7 +522,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = J3LH4H9AA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -538,7 +541,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = J3LH4H9AA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -557,7 +560,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEVELOPMENT_TEAM = J3LH4H9AA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -649,6 +652,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		EA1111112F5SPARKLE00000002 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EA1111112F5SPARKLE00000003 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		EA3333332F5FLUIDAUDIO0002 /* FluidAudio */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EA3333332F5FLUIDAUDIO0003 /* XCRemoteSwiftPackageReference "FluidAudio" */;

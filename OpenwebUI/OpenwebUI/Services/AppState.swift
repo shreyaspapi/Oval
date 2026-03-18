@@ -311,6 +311,10 @@ final class AppState {
     /// Active streaming task for mini chat — cancelled when user taps stop.
     private var miniStreamingTask: Task<Void, Never>?
 
+    /// Background prefetch tasks — cancelled when the user explicitly selects a
+    /// conversation so their request doesn't queue behind prefetch on the actor.
+    private var prefetchTasks: [Task<Void, Never>] = []
+
     /// When true, the sidebar onChange handler should NOT call selectConversation().
     /// Used when programmatically setting selectedConversationID (e.g. after creating a new chat).
     var suppressConversationSelection: Bool = false
@@ -1525,10 +1529,12 @@ final class AppState {
                 // Prefetch new conversations at low priority
                 let toPrefetch = newChats.prefix(20).filter { messageCache[$0.id] == nil }
                 for (i, convo) in toPrefetch.enumerated() {
-                    Task.detached(priority: .background) { [weak self] in
-                        if i > 0 { try? await Task.sleep(for: .milliseconds(i * 50)) }
+                    let task = Task.detached(priority: .background) { [weak self] in
+                        if i > 0 { try? await Task.sleep(for: .milliseconds(i * 100)) }
+                        guard !Task.isCancelled else { return }
                         await self?.refreshChatMessages(convo.id, silent: true)
                     }
+                    prefetchTasks.append(task)
                 }
             }
         } catch {
@@ -1542,6 +1548,11 @@ final class AppState {
         // waste network time or overwrite the UI for the wrong conversation.
         chatLoadTask?.cancel()
         chatLoadTask = nil
+
+        // Cancel background prefetch tasks so the user's request doesn't
+        // queue behind them on the OpenWebUIClient actor.
+        for task in prefetchTasks { task.cancel() }
+        prefetchTasks.removeAll()
 
         // Saved conversations are never temporary
         isTemporaryChat = false
@@ -1989,19 +2000,25 @@ final class AppState {
 
     /// Prefetch messages for recent conversations in the background.
     /// Covers the first 50 conversations so most sidebar clicks are instant
-    /// cache hits. Uses concurrent batches for fast warm-up.
+    /// cache hits. Tasks are stored so they can be cancelled when the user
+    /// explicitly selects a conversation (prevents actor contention).
     func prefetchConversations() {
         guard client != nil else { return }
+        // Cancel any previous prefetch wave
+        for task in prefetchTasks { task.cancel() }
+        prefetchTasks.removeAll()
+
         let uncached = conversations.prefix(50).filter { messageCache[$0.id] == nil }
-        // Prefetch in concurrent batches of 6 to balance speed vs. server load.
-        // First 10 fire immediately (most likely to be clicked), rest are staggered.
         for (i, conversation) in uncached.enumerated() {
-            Task.detached(priority: i < 10 ? .medium : .background) { [weak self] in
-                if i >= 10 {
-                    try? await Task.sleep(for: .milliseconds((i - 10) * 30))
+            let task = Task.detached(priority: .background) { [weak self] in
+                // Stagger all requests to avoid flooding the actor/server
+                if i > 0 {
+                    try? await Task.sleep(for: .milliseconds(i * 100))
                 }
+                guard !Task.isCancelled else { return }
                 await self?.refreshChatMessages(conversation.id, silent: true)
             }
+            prefetchTasks.append(task)
         }
     }
 
