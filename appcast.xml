@@ -5,6 +5,32 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.1</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.1</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Stream error "cannot decode raw data"</strong>: Replaced `URLSession.AsyncBytes.lines` with a manual byte-level SSE line reader that tolerates non-UTF-8 bytes and split multi-byte sequences (#45)</li>
+<li><strong>Conversations not loading from sidebar</strong>: Made `ChatHistory` decode messages individually so a single malformed message no longer prevents the entire conversation from loading; added resilient `try?` wrappers for nested decodable fields (`files`, `toolCalls`, `statusHistory`, `sources`, `usage`, `error`)</li>
+<li><strong>Blank chat area on conversation switch</strong>: Empty cached results from prior decode failures are now treated as cache misses and re-fetched; added a self-healing retry when the view detects a blank state</li>
+<li><strong>Improved</strong></li>
+<li><strong>Chat switching speed</strong>: Skip redundant `chatMessages` assignment when cached data is identical (avoids full SwiftUI view diff); added shared `NSCache`-backed caches for parsed message content (regex results) and decoded base64 images so switching back to previously viewed conversations is instant</li>
+<li><strong>Prefetch coverage</strong>: Increased from 20 to 50 conversations; first 10 fire at medium priority for fast warm-up</li>
+<li><strong>Background refresh debounce</strong>: 300ms delay before stale-cache refresh so the cached render completes smoothly without a second diff pass</li>
+<li><strong>Decode error diagnostics</strong>: Detailed `DecodingError` logging (type mismatch, key not found, data corrupted) with full coding path for easier debugging</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 18 Mar 2026 20:41:55 +0000</pubDate>
+            <sparkle:version>21</sparkle:version>
+            <sparkle:shortVersionString>1.9.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.1/Oval-v1.9.1.dmg"
+                sparkle:edSignature="ISiBkY2yJGcZHWX8k2ExK+GH6qIH5w38JOUNVBxJEb1J9O3+qrdERJVfOh6JVFTrptCBho4kDLTW8AsUbPHWBw=="
+                length="11193121"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.9.0</title>
             <description><![CDATA[
                 <h2>What is New in v1.9.0</h2>
