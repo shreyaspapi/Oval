@@ -329,7 +329,7 @@ struct ChatListItem: Codable, Identifiable, Equatable {
 struct ChatResponse: Codable {
     let id: String
     let user_id: String?
-    let title: String
+    let title: String?
     let chat: ChatData?
     let pinned: Bool?
     let archived: Bool?
@@ -351,11 +351,68 @@ struct ChatFolder: Codable, Identifiable {
 struct ChatData: Codable {
     let history: ChatHistory?
     let title: String?
+
+    init(history: ChatHistory?, title: String?) {
+        self.history = history
+        self.title = title
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        // Gracefully handle history decode failures — better to show an empty
+        // conversation than to fail the entire chat load.
+        history = try? c.decodeIfPresent(ChatHistory.self, forKey: .history)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case history, title
+    }
 }
 
 struct ChatHistory: Codable {
     let messages: [String: ChatMessage]?
     let currentId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case messages, currentId
+    }
+
+    init(messages: [String: ChatMessage]?, currentId: String?) {
+        self.messages = messages
+        self.currentId = currentId
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        currentId = try c.decodeIfPresent(String.self, forKey: .currentId)
+
+        // Decode messages individually so a single malformed message doesn't
+        // prevent the entire conversation from loading.
+        if let rawMessages = try? c.decodeIfPresent([String: ChatMessage].self, forKey: .messages) {
+            messages = rawMessages
+        } else if c.contains(.messages) {
+            // Fallback: decode as raw JSON and attempt each message individually
+            let rawContainer = try c.nestedContainer(keyedBy: DynamicCodingKey.self, forKey: .messages)
+            var decoded: [String: ChatMessage] = [:]
+            for key in rawContainer.allKeys {
+                if let msg = try? rawContainer.decode(ChatMessage.self, forKey: key) {
+                    decoded[key.stringValue] = msg
+                }
+            }
+            messages = decoded.isEmpty ? nil : decoded
+        } else {
+            messages = nil
+        }
+    }
+}
+
+/// Dynamic coding key for iterating unknown dictionary keys.
+private struct DynamicCodingKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+    init?(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { self.intValue = intValue; self.stringValue = "\(intValue)" }
 }
 
 struct ChatMessage: Identifiable, Equatable {
@@ -415,19 +472,29 @@ extension ChatMessage: Codable {
         role = try c.decode(String.self, forKey: .role)
         content = try c.decodeIfPresent(String.self, forKey: .content) ?? ""
         model = try c.decodeIfPresent(String.self, forKey: .model)
-        timestamp = try c.decodeIfPresent(Double.self, forKey: .timestamp)
+        // timestamp may arrive as a Double or a numeric String depending on server version
+        if let ts = try? c.decodeIfPresent(Double.self, forKey: .timestamp) {
+            timestamp = ts
+        } else if let tsString = try? c.decodeIfPresent(String.self, forKey: .timestamp),
+                  let ts = Double(tsString) {
+            timestamp = ts
+        } else {
+            timestamp = nil
+        }
         parentId = try c.decodeIfPresent(String.self, forKey: .parentId)
         childrenIds = try c.decodeIfPresent([String].self, forKey: .childrenIds)
         images = try c.decodeIfPresent([String].self, forKey: .images)
-        files = try c.decodeIfPresent([ChatFileRef].self, forKey: .files)
-        toolCalls = try c.decodeIfPresent([ToolCall].self, forKey: .toolCalls)
+        // files may fail to decode if the server format changed — degrade gracefully
+        files = (try? c.decodeIfPresent([ChatFileRef].self, forKey: .files)) ?? nil
+        toolCalls = (try? c.decodeIfPresent([ToolCall].self, forKey: .toolCalls)) ?? nil
         toolCallId = try c.decodeIfPresent(String.self, forKey: .toolCallId)
-        statusHistory = try c.decodeIfPresent([StatusEventCodable].self, forKey: .statusHistory)?.map(\.toStatusEvent)
-        sources = try c.decodeIfPresent([ChatSourceReference].self, forKey: .sources)
-        codeExecutions = try c.decodeIfPresent([ChatCodeExecution].self, forKey: .codeExecutions)
+        // statusHistory can contain varied shapes from different server versions — skip on failure
+        statusHistory = (try? c.decodeIfPresent([StatusEventCodable].self, forKey: .statusHistory))?.map(\.toStatusEvent)
+        sources = (try? c.decodeIfPresent([ChatSourceReference].self, forKey: .sources)) ?? nil
+        codeExecutions = (try? c.decodeIfPresent([ChatCodeExecution].self, forKey: .codeExecutions)) ?? nil
         followUps = try c.decodeIfPresent([String].self, forKey: .followUps)
-        usage = try c.decodeIfPresent(TokenUsage.self, forKey: .usage)
-        messageError = try c.decodeIfPresent(ChatMessageError.self, forKey: .messageError)
+        usage = (try? c.decodeIfPresent(TokenUsage.self, forKey: .usage)) ?? nil
+        messageError = (try? c.decodeIfPresent(ChatMessageError.self, forKey: .messageError)) ?? nil
         // serverFiles is not Codable — populated at runtime from Socket.IO events
         serverFiles = nil
     }

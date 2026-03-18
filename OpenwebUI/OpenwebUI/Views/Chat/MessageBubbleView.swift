@@ -1,5 +1,59 @@
 import SwiftUI
 
+// MARK: - Shared Parsed Content Cache
+
+/// Thread-safe cache for expensive regex parsing results. Survives view identity
+/// changes so switching between conversations doesn't re-parse identical messages.
+/// Uses NSCache for automatic memory management under pressure.
+private final class ParsedContentCache: @unchecked Sendable {
+    static let shared = ParsedContentCache()
+
+    struct Entry {
+        let toolCalls: [ToolCall]
+        let strippedContent: String
+        let parsed: MessageBubbleView.ParsedContent
+    }
+
+    private let cache = NSCache<NSString, Box<Entry>>()
+
+    init() {
+        cache.countLimit = 500 // keep last ~500 messages' parse results
+    }
+
+    func get(key: String) -> Entry? {
+        cache.object(forKey: key as NSString)?.value
+    }
+
+    func set(key: String, entry: Entry) {
+        cache.setObject(Box(entry), forKey: key as NSString)
+    }
+
+    /// Box wrapper so value types can live in NSCache.
+    private final class Box<T> {
+        let value: T
+        init(_ value: T) { self.value = value }
+    }
+}
+
+/// Thread-safe cache for decoded base64 data-URI images.
+private final class ImageDataCache: @unchecked Sendable {
+    static let shared = ImageDataCache()
+    private let cache = NSCache<NSString, NSImage>()
+
+    init() {
+        cache.countLimit = 100
+        cache.totalCostLimit = 200 * 1024 * 1024 // ~200 MB
+    }
+
+    func get(key: String) -> NSImage? {
+        cache.object(forKey: key as NSString)
+    }
+
+    func set(key: String, image: NSImage) {
+        cache.setObject(image, forKey: key as NSString)
+    }
+}
+
 /// A single message matching Open WebUI's bubble style.
 /// User messages: right-aligned in bg-gray-850 bubble with Liquid Glass.
 /// Assistant messages: left-aligned with avatar, no bubble.
@@ -44,10 +98,21 @@ struct MessageBubbleView: View {
     }
 
     /// Recompute expensive regex-based parsing only when content actually changes.
+    /// Results are stored in a shared NSCache so switching back to a previously
+    /// viewed conversation is instant (no re-parsing).
     private func recomputeParsedContent() {
         let key = message.content + (message.toolCalls?.map(\.id).joined() ?? "")
         guard key != lastParsedContent else { return }
         lastParsedContent = key
+
+        // Check shared cache first — survives view identity changes
+        let cacheKey = "\(message.id):\(key.hashValue)"
+        if let cached = ParsedContentCache.shared.get(key: cacheKey) {
+            cachedToolCalls = cached.toolCalls
+            cachedStrippedContent = cached.strippedContent
+            cachedParsed = cached.parsed
+            return
+        }
 
         // Resolve tool calls
         var calls = message.toolCalls ?? []
@@ -67,6 +132,13 @@ struct MessageBubbleView: View {
         let stripped = AppState.stripToolCallDetails(from: message.content)
         cachedStrippedContent = stripped
         cachedParsed = parseReasoningBlocks(stripped)
+
+        // Store in shared cache for future visits
+        ParsedContentCache.shared.set(key: cacheKey, entry: .init(
+            toolCalls: cachedToolCalls,
+            strippedContent: stripped,
+            parsed: cachedParsed
+        ))
     }
 
     // MARK: - User Message
@@ -513,10 +585,18 @@ struct MessageBubbleView: View {
     // MARK: - Helpers
 
     private func imageFromDataURI(_ uri: String) -> NSImage? {
+        // Use a hash of the first 64 chars as the cache key (unique enough, avoids
+        // hashing multi-MB base64 strings). Full data URI is too expensive to hash.
+        let cacheKey = String(uri.prefix(64))
+        if let cached = ImageDataCache.shared.get(key: cacheKey) {
+            return cached
+        }
         guard let commaIndex = uri.firstIndex(of: ",") else { return nil }
         let base64String = String(uri[uri.index(after: commaIndex)...])
-        guard let data = Data(base64Encoded: base64String) else { return nil }
-        return NSImage(data: data)
+        guard let data = Data(base64Encoded: base64String),
+              let image = NSImage(data: data) else { return nil }
+        ImageDataCache.shared.set(key: cacheKey, image: image)
+        return image
     }
 
     private func iconForMIME(_ mime: String) -> String {

@@ -1568,18 +1568,33 @@ final class AppState {
             return
         }
 
-        // Use cached messages immediately if available
-        if let cached = messageCache[id] {
-            chatMessages = cached
+        // Use cached messages immediately if available.
+        // Treat an empty cache as a miss — it likely means a previous decode
+        // failed silently, so we should re-fetch from the server.
+        if let cached = messageCache[id], !cached.isEmpty {
+            // Only assign if actually different — avoids triggering a full
+            // SwiftUI view diff when switching back to an already-visible chat.
+            if cached != chatMessages {
+                chatMessages = cached
+            }
             // Only refresh if cache is older than 30 seconds to avoid
             // flooding the server and main actor with redundant fetches.
+            // Delay briefly so the cached messages render first — a second
+            // SwiftUI diff pass right after the first one causes visible jank.
             let lastFetched = messageCacheTimestamps[id] ?? .distantPast
             if Date().timeIntervalSince(lastFetched) > 30 {
+                let chatId = id
                 chatLoadTask = Task {
-                    await refreshChatMessages(id, silent: true)
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    await refreshChatMessages(chatId, silent: true)
                 }
             }
         } else {
+            // Set loading state SYNCHRONOUSLY so the UI shows a spinner
+            // on the very next frame — before any async work begins.
+            chatMessages = []
+            isLoadingChat = true
             chatLoadTask = Task {
                 await loadChatMessages(id)
             }
@@ -1942,6 +1957,16 @@ final class AppState {
         }
     }
 
+    /// Retry loading messages for the currently selected conversation.
+    /// Called by the view when it detects the chat area is blank (empty cache
+    /// from a prior decode failure). Clears the stale cache entry first.
+    func retryLoadChat() async {
+        guard let id = selectedConversationID, !isLoadingChat else { return }
+        messageCache.removeValue(forKey: id)
+        messageCacheTimestamps.removeValue(forKey: id)
+        await loadChatMessages(id)
+    }
+
     /// Silently refresh messages for a conversation (no loading spinner).
     private func refreshChatMessages(_ chatId: String, silent: Bool) async {
         guard let client else { return }
@@ -1963,16 +1988,17 @@ final class AppState {
     }
 
     /// Prefetch messages for recent conversations in the background.
-    /// Covers the first 20 conversations so most sidebar clicks are instant
-    /// cache hits. Requests are staggered to avoid saturating the network.
+    /// Covers the first 50 conversations so most sidebar clicks are instant
+    /// cache hits. Uses concurrent batches for fast warm-up.
     func prefetchConversations() {
         guard client != nil else { return }
-        let uncached = conversations.prefix(20).filter { messageCache[$0.id] == nil }
+        let uncached = conversations.prefix(50).filter { messageCache[$0.id] == nil }
+        // Prefetch in concurrent batches of 6 to balance speed vs. server load.
+        // First 10 fire immediately (most likely to be clicked), rest are staggered.
         for (i, conversation) in uncached.enumerated() {
-            Task.detached(priority: .background) { [weak self] in
-                // Stagger requests slightly to avoid a burst of 20 simultaneous fetches
-                if i > 0 {
-                    try? await Task.sleep(for: .milliseconds(i * 50))
+            Task.detached(priority: i < 10 ? .medium : .background) { [weak self] in
+                if i >= 10 {
+                    try? await Task.sleep(for: .milliseconds((i - 10) * 30))
                 }
                 await self?.refreshChatMessages(conversation.id, silent: true)
             }

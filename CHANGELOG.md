@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-03-19
+
+### Fixed
+
+- **Stream error "cannot decode raw data"**: Replaced `URLSession.AsyncBytes.lines` with a manual byte-level SSE line reader that tolerates non-UTF-8 bytes and split multi-byte sequences ([#45](https://github.com/shreyaspapi/Oval/issues/45))
+- **Conversations not loading from sidebar**: Made `ChatHistory` decode messages individually so a single malformed message no longer prevents the entire conversation from loading; added resilient `try?` wrappers for nested decodable fields (`files`, `toolCalls`, `statusHistory`, `sources`, `usage`, `error`)
+- **Blank chat area on conversation switch**: Empty cached results from prior decode failures are now treated as cache misses and re-fetched; added a self-healing retry when the view detects a blank state
+
+### Improved
+
+- **Chat switching speed**: Skip redundant `chatMessages` assignment when cached data is identical (avoids full SwiftUI view diff); added shared `NSCache`-backed caches for parsed message content (regex results) and decoded base64 images so switching back to previously viewed conversations is instant
+- **Prefetch coverage**: Increased from 20 to 50 conversations; first 10 fire at medium priority for fast warm-up
+- **Background refresh debounce**: 300ms delay before stale-cache refresh so the cached render completes smoothly without a second diff pass
+- **Decode error diagnostics**: Detailed `DecodingError` logging (type mismatch, key not found, data corrupted) with full coding path for easier debugging
+
 ## [1.9.0] - 2026-03-18
 
 ### Added

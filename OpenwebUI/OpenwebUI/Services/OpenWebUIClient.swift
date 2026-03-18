@@ -389,7 +389,11 @@ actor OpenWebUIClient {
                         // Don't finish — AppState will finish the stream when Socket.IO
                         // sends the completion done event
                     } else {
-                        // SSE path: read the streaming response line by line
+                        // SSE path: read the streaming response as raw bytes and
+                        // decode lines manually. We avoid `bytes.lines` because it
+                        // throws "cannot decode raw data" when the response contains
+                        // non-UTF-8 bytes or when multi-byte UTF-8 sequences are
+                        // split across chunk boundaries.
                         let (bytes, response) = try await URLSession.shared.bytes(for: req)
 
                         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
@@ -397,32 +401,44 @@ actor OpenWebUIClient {
                             return
                         }
 
-                        for try await line in bytes.lines {
-                            guard line.hasPrefix("data: ") else { continue }
-                            let payload = String(line.dropFirst(6))
+                        var lineBuffer = Data()
+                        for try await byte in bytes {
+                            if byte == UInt8(ascii: "\n") {
+                                // Decode the accumulated line (lossy: replaces bad bytes with U+FFFD)
+                                let line = String(data: lineBuffer, encoding: .utf8)
+                                    ?? String(bytes: lineBuffer, encoding: .isoLatin1)
+                                    ?? ""
+                                lineBuffer.removeAll(keepingCapacity: true)
 
-                            if payload == "[DONE]" {
-                                break
-                            }
+                                guard line.hasPrefix("data: ") else { continue }
+                                let payload = String(line.dropFirst(6))
 
-                            guard let data = payload.data(using: .utf8),
-                                  let chunk = try? JSONDecoder().decode(ChatCompletionChunk.self, from: data)
-                            else { continue }
-
-                            if let error = chunk.error {
-                                continuation.finish(throwing: NSError(domain: "OpenWebUI", code: -1, userInfo: [NSLocalizedDescriptionKey: error]))
-                                return
-                            }
-
-                            if let delta = chunk.choices?.first?.delta {
-                                if let content = delta.content {
-                                    continuation.yield(.content(content))
+                                if payload == "[DONE]" {
+                                    break
                                 }
-                                if let toolCalls = delta.tool_calls {
-                                    for tc in toolCalls {
-                                        continuation.yield(.toolCall(tc))
+
+                                guard let data = payload.data(using: .utf8),
+                                      let chunk = try? JSONDecoder().decode(ChatCompletionChunk.self, from: data)
+                                else { continue }
+
+                                if let error = chunk.error {
+                                    continuation.finish(throwing: NSError(domain: "OpenWebUI", code: -1, userInfo: [NSLocalizedDescriptionKey: error]))
+                                    return
+                                }
+
+                                if let delta = chunk.choices?.first?.delta {
+                                    if let content = delta.content {
+                                        continuation.yield(.content(content))
+                                    }
+                                    if let toolCalls = delta.tool_calls {
+                                        for tc in toolCalls {
+                                            continuation.yield(.toolCall(tc))
+                                        }
                                     }
                                 }
+                            } else if byte != UInt8(ascii: "\r") {
+                                // Skip \r (from \r\n line endings) and accumulate everything else
+                                lineBuffer.append(byte)
                             }
                         }
 
@@ -470,12 +486,33 @@ actor OpenWebUIClient {
         }
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.allHTTPHeaderFields = authHeader
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            clientLog.error("[Oval] HTTP \(http.statusCode) for GET \(path)")
+            throw URLError(.badServerResponse)
+        }
 
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            clientLog.error("[Oval] Decode error for \(path): \(error.localizedDescription)")
+            // Log detailed decode error for debugging
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .typeMismatch(let type, let context):
+                    clientLog.error("[Oval] Decode typeMismatch for \(path): expected \(String(describing: type)) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                case .valueNotFound(let type, let context):
+                    clientLog.error("[Oval] Decode valueNotFound for \(path): \(String(describing: type)) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                case .keyNotFound(let key, let context):
+                    clientLog.error("[Oval] Decode keyNotFound for \(path): \(key.stringValue) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                case .dataCorrupted(let context):
+                    clientLog.error("[Oval] Decode dataCorrupted for \(path): \(context.debugDescription) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+                @unknown default:
+                    clientLog.error("[Oval] Decode error for \(path): \(error.localizedDescription)")
+                }
+            } else {
+                clientLog.error("[Oval] Decode error for \(path): \(error.localizedDescription)")
+            }
             throw error
         }
     }
