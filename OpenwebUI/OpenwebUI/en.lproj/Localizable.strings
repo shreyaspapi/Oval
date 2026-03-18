@@ -237,6 +237,7 @@
 "settings.section.behavior" = "Behavior";
 "settings.behavior.launchAtLogin" = "Launch at Login";
 "settings.behavior.alwaysOnTop" = "Always on Top";
+"settings.behavior.showServerRail" = "Show Server Sidebar";
 
 "settings.section.shortcuts" = "Keyboard Shortcuts";
 "settings.shortcuts.quickChat" = "Quick Chat";

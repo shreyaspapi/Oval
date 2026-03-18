@@ -1,6 +1,7 @@
 import SwiftUI
+import Textual
 
-/// Renders markdown-style content as styled text.
+/// Renders markdown-style content as styled text using Textual.
 /// Uses Open WebUI's exact color palette and font sizes.
 /// When `sources` are provided, citation references like [1], [2] in the content
 /// become tappable links that open the corresponding source URL.
@@ -13,18 +14,18 @@ struct MarkdownTextView: View, Equatable {
     }
 
     var body: some View {
-        let parsedBlocks = Self.parseBlocks(content)
+        let blocks = Self.parseBlocks(preprocessedContent)
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(parsedBlocks.enumerated()), id: \.offset) { _, block in
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .codeBlock(let language, let code):
                     CodeBlockView(language: language, code: code)
                 case .text(let text):
-                    Text(parseInlineMarkdown(text))
-                        .font(AppFont.body())
+                    StructuredText(markdown: text)
+                        .textual.textSelection(.enabled)
+                        .textual.structuredTextStyle(OvalMarkdownStyle())
+                        .font(.system(size: 14))
                         .foregroundStyle(AppColors.textPrimary)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -37,6 +38,15 @@ struct MarkdownTextView: View, Equatable {
         case codeBlock(language: String, code: String)
     }
 
+    /// Split markdown content into text blocks and fenced code blocks.
+    /// Code blocks are rendered separately so they sit outside Textual's
+    /// text-selection overlay, which would otherwise swallow button taps
+    /// and scroll gestures.
+    ///
+    /// Follows CommonMark rules for fenced code blocks:
+    /// - Opening fence: 3+ backticks optionally followed by a language hint
+    /// - Closing fence: at least as many backticks as the opening, with
+    ///   nothing else on the line (except optional whitespace)
     nonisolated private static func parseBlocks(_ content: String) -> [Block] {
         var result: [Block] = []
         let lines = content.components(separatedBy: "\n")
@@ -45,24 +55,38 @@ struct MarkdownTextView: View, Equatable {
 
         while i < lines.count {
             let line = lines[i]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-            if line.hasPrefix("```") {
+            // Count leading backticks to detect an opening fence (3+)
+            let backtickCount = trimmed.prefix(while: { $0 == "`" }).count
+            let afterBackticks = String(trimmed.dropFirst(backtickCount))
+                .trimmingCharacters(in: .whitespaces)
+
+            // Opening fence: 3+ backticks, the info string must not contain backticks
+            if backtickCount >= 3 && !afterBackticks.contains("`") {
                 if !currentText.isEmpty {
                     result.append(.text(currentText.trimmingCharacters(in: .newlines)))
                     currentText = ""
                 }
 
-                let language = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                let language = afterBackticks
                 var codeLines: [String] = []
                 i += 1
 
-                while i < lines.count && !lines[i].hasPrefix("```") {
+                // Closing fence: a line whose trimmed content is ONLY backticks
+                // (at least as many as the opening fence)
+                while i < lines.count {
+                    let closeTrimmed = lines[i].trimmingCharacters(in: .whitespaces)
+                    let closeBackticks = closeTrimmed.prefix(while: { $0 == "`" }).count
+                    let isClosingFence = closeBackticks >= backtickCount
+                        && closeTrimmed.allSatisfy({ $0 == "`" || $0.isWhitespace })
+                    if isClosingFence { break }
                     codeLines.append(lines[i])
                     i += 1
                 }
 
                 result.append(.codeBlock(language: language, code: codeLines.joined(separator: "\n")))
-                i += 1
+                i += 1 // skip closing fence
             } else {
                 currentText += (currentText.isEmpty ? "" : "\n") + line
                 i += 1
@@ -76,69 +100,45 @@ struct MarkdownTextView: View, Equatable {
         return result
     }
 
-    // MARK: - Inline Markdown
+    // MARK: - Citation Preprocessing
 
-    private func parseInlineMarkdown(_ text: String) -> AttributedString {
-        var result = AttributedString()
+    /// Pre-process markdown to convert citation references [1], [2] into markdown links
+    /// when sources are available, so Textual renders them as tappable links.
+    private var preprocessedContent: String {
+        guard let sources, !sources.isEmpty else { return content }
 
-        let lines = text.components(separatedBy: "\n")
-        for (lineIndex, line) in lines.enumerated() {
-            if lineIndex > 0 {
-                result.append(AttributedString("\n"))
+        var result = content
+        // Match citation patterns: [1], [2], etc. (not [^1] footnotes, not [text](url) links)
+        // Process in reverse order of index to avoid offset issues
+        let nsContent = result as NSString
+        let pattern = #"\[(\d+)\](?!\()"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return content }
+
+        let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsContent.length))
+
+        // Process matches in reverse to preserve string positions
+        for match in matches.reversed() {
+            let fullRange = match.range
+            let indexRange = match.range(at: 1)
+            let indexStr = nsContent.substring(with: indexRange)
+
+            guard let index = Int(indexStr),
+                  index >= 1,
+                  index <= sources.count else { continue }
+
+            if let url = sourceURL(at: index) {
+                let label = sourceLabel(at: index) ?? "\(index)"
+                let replacement = "[\(label)](\(url.absoluteString))"
+                result = (result as NSString).replacingCharacters(in: fullRange, with: replacement)
             }
-
-            // Headings
-            if line.hasPrefix("### ") {
-                var heading = AttributedString(String(line.dropFirst(4)))
-                heading.font = AppFont.h3
-                heading.foregroundColor = AppColors.textHeading
-                result.append(heading)
-                continue
-            } else if line.hasPrefix("## ") {
-                var heading = AttributedString(String(line.dropFirst(3)))
-                heading.font = AppFont.h2
-                heading.foregroundColor = AppColors.textHeading
-                result.append(heading)
-                continue
-            } else if line.hasPrefix("# ") {
-                var heading = AttributedString(String(line.dropFirst(2)))
-                heading.font = AppFont.h1
-                heading.foregroundColor = AppColors.textHeading
-                result.append(heading)
-                continue
-            }
-
-            // List items
-            var processedLine = line
-            if line.hasPrefix("- ") || line.hasPrefix("* ") {
-                var bullet = AttributedString("  \u{2022} ")
-                bullet.foregroundColor = AppColors.textListMarker
-                result.append(bullet)
-                processedLine = String(line.dropFirst(2))
-            } else if let match = line.range(of: #"^\d+\.\s"#, options: .regularExpression) {
-                var num = AttributedString("  " + String(line[match]))
-                num.foregroundColor = AppColors.textListMarker
-                result.append(num)
-                processedLine = String(line[match.upperBound...])
-            }
-
-            result.append(parseInlineFormatting(processedLine))
         }
 
         return result
     }
 
-    // MARK: - Citation Pattern
-
-    /// Regex matching citation references: [1], [2,3], [1][2], [1, 2, 3]
-    /// Excludes footnote-style [^1] references.
-    private static let citationRegex = try! NSRegularExpression(
-        pattern: #"\[(\d[\d,\s]*)\]"#,
-        options: []
-    )
+    // MARK: - Source Helpers
 
     /// Resolve the URL for a source at a given 1-based index.
-    /// Checks url, then metadata fields (matching Conduit's SourceHelper).
     private func sourceURL(at oneBasedIndex: Int) -> URL? {
         guard let sources, oneBasedIndex >= 1, oneBasedIndex <= sources.count else { return nil }
         let source = sources[oneBasedIndex - 1]
@@ -155,190 +155,106 @@ struct MarkdownTextView: View, Equatable {
     private func sourceLabel(at oneBasedIndex: Int) -> String? {
         guard let sources, oneBasedIndex >= 1, oneBasedIndex <= sources.count else { return nil }
         let source = sources[oneBasedIndex - 1]
-        // Try to extract domain from URL
         if let urlStr = source.url ?? source.metadata?["url"] ?? source.metadata?["source"],
            let url = URL(string: urlStr), let host = url.host {
-            // Strip common prefixes for cleaner display
             let domain = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
             return domain
         }
-        // Fall back to title
         if let title = source.title, !title.isEmpty {
             return title.count > 30 ? String(title.prefix(27)) + "..." : title
         }
         return nil
     }
+}
 
-    // MARK: - Inline Formatting
+// MARK: - Oval Markdown Style
 
-    private func parseInlineFormatting(_ text: String) -> AttributedString {
-        var result = AttributedString()
-        var remaining = text[...]
-
-        while !remaining.isEmpty {
-            // Markdown link: [text](url)
-            if remaining.hasPrefix("["),
-               let closeBracket = remaining.dropFirst(1).firstIndex(of: "]") {
-                let afterBracket = remaining[remaining.index(after: closeBracket)...]
-                if afterBracket.hasPrefix("("),
-                   let closeParen = afterBracket.dropFirst(1).firstIndex(of: ")") {
-                    let linkText = String(remaining[remaining.index(after: remaining.startIndex)..<closeBracket])
-                    let urlString = String(afterBracket[afterBracket.index(after: afterBracket.startIndex)..<closeParen])
-
-                    // Check if this is actually a citation like [1](url) — treat as citation badge
-                    if let _ = linkText.range(of: #"^\d[\d,\s]*$"#, options: .regularExpression) {
-                        // Citation with explicit URL — render as badge
-                        let indices = parseCitationIndices(linkText)
-                        result.append(buildCitationBadge(indices: indices, overrideURL: URL(string: urlString)))
-                    } else if let url = URL(string: urlString) {
-                        // Regular markdown link
-                        var attr = AttributedString(linkText)
-                        attr.link = url
-                        attr.foregroundColor = AppColors.accentBlue
-                        attr.underlineStyle = .single
-                        result.append(attr)
-                    } else {
-                        // Invalid URL — render as plain text
-                        var attr = AttributedString("[\(linkText)](\(urlString))")
-                        attr.foregroundColor = AppColors.textPrimary
-                        result.append(attr)
-                    }
-                    remaining = remaining[remaining.index(after: closeParen)...]
-                    continue
-                }
-
-                // Check for citation: [1], [2,3], etc. (not footnote [^1])
-                let bracketContent = String(remaining[remaining.index(after: remaining.startIndex)..<closeBracket])
-                if !bracketContent.hasPrefix("^"),
-                   let _ = bracketContent.range(of: #"^\d[\d,\s]*$"#, options: .regularExpression),
-                   sources != nil, !(sources?.isEmpty ?? true) {
-                    let indices = parseCitationIndices(bracketContent)
-                    // Render as citation badge if we have valid indices within the sources range
-                    if !indices.isEmpty, let srcs = sources, indices.allSatisfy({ $0 >= 1 && $0 <= srcs.count }) {
-                        result.append(buildCitationBadge(indices: indices, overrideURL: nil))
-                        remaining = remaining[remaining.index(after: closeBracket)...]
-                        continue
-                    }
-                }
-
-                // Not a link or citation — fall through to render as regular text
-            }
-
-            // Bold: **text**
-            if remaining.hasPrefix("**"),
-               let endRange = remaining.dropFirst(2).range(of: "**") {
-                let boldText = String(remaining[remaining.index(remaining.startIndex, offsetBy: 2)..<endRange.lowerBound])
-                var attr = AttributedString(boldText)
-                attr.font = AppFont.semibold()
-                attr.foregroundColor = AppColors.textBold
-                result.append(attr)
-                remaining = remaining[endRange.upperBound...]
-                continue
-            }
-
-            // Inline code: `text`
-            if remaining.hasPrefix("`") && !remaining.hasPrefix("``"),
-               let endIdx = remaining.dropFirst(1).firstIndex(of: "`") {
-                let codeText = String(remaining[remaining.index(after: remaining.startIndex)..<endIdx])
-                var attr = AttributedString(codeText)
-                attr.font = AppFont.mono(size: 13)
-                attr.foregroundColor = AppColors.inlineCodeText
-                attr.backgroundColor = AppColors.inlineCodeBg
-                result.append(attr)
-                remaining = remaining[remaining.index(after: endIdx)...]
-                continue
-            }
-
-            // Italic: *text*
-            if remaining.hasPrefix("*"),
-               let endIdx = remaining.dropFirst(1).firstIndex(of: "*") {
-                let italicText = String(remaining[remaining.index(after: remaining.startIndex)..<endIdx])
-                var attr = AttributedString(italicText)
-                attr.font = .system(size: 14).italic()
-                attr.foregroundColor = AppColors.textItalic
-                result.append(attr)
-                remaining = remaining[remaining.index(after: endIdx)...]
-                continue
-            }
-
-            // Regular character
-            var char = AttributedString(String(remaining.first!))
-            char.foregroundColor = AppColors.textPrimary
-            result.append(char)
-            remaining = remaining.dropFirst(1)
-        }
-
-        return result
+/// Custom StructuredText style matching Open WebUI's dark theme.
+struct OvalMarkdownStyle: StructuredText.Style {
+    var inlineStyle: InlineStyle {
+        InlineStyle()
+            .code(
+                .monospaced,
+                .fontScale(0.93),
+                .foregroundColor(AppColors.inlineCodeText),
+                .backgroundColor(AppColors.inlineCodeBg)
+            )
+            .emphasis(.italic, .foregroundColor(AppColors.textItalic))
+            .strong(.fontWeight(.semibold), .foregroundColor(AppColors.textBold))
+            .link(.foregroundColor(AppColors.accentBlue), .underlineStyle(.single))
     }
 
-    // MARK: - Citation Helpers
-
-    /// Parse comma-separated citation indices from bracket content like "1", "1,2,3", "1, 2".
-    private func parseCitationIndices(_ content: String) -> [Int] {
-        content.components(separatedBy: ",")
-            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-            .filter { $0 > 0 }
+    var headingStyle: OvalHeadingStyle {
+        OvalHeadingStyle()
     }
 
-    /// Build an attributed string for a citation badge: superscript numbered link.
-    /// For single citations like [1], shows the number as a linked superscript.
-    /// For multi-citations like [1,2], shows each number.
-    private func buildCitationBadge(indices: [Int], overrideURL: URL?) -> AttributedString {
-        var result = AttributedString()
+    var paragraphStyle: StructuredText.DefaultParagraphStyle {
+        .default
+    }
 
-        for (i, index) in indices.enumerated() {
-            let url = overrideURL ?? sourceURL(at: index)
-            let label = sourceLabel(at: index)
+    var blockQuoteStyle: StructuredText.DefaultBlockQuoteStyle {
+        .default
+    }
 
-            // Superscript-style numbered badge
-            var badge = AttributedString("\(index)")
-            badge.font = .system(size: 10, weight: .semibold)
-            badge.foregroundColor = .white
-            badge.backgroundColor = AppColors.accentBlue
-            badge.baselineOffset = 4
+    var codeBlockStyle: StructuredText.DefaultCodeBlockStyle {
+        .default
+    }
 
-            if let url {
-                badge.link = url
-                // When there's a source label (domain), show it as a tooltip-style suffix
-                if let label {
-                    var labelAttr = AttributedString(" \(label)")
-                    labelAttr.font = .system(size: 10, weight: .medium)
-                    labelAttr.foregroundColor = AppColors.accentBlue
-                    labelAttr.baselineOffset = 4
-                    labelAttr.link = url
-                    badge.append(labelAttr)
-                }
-            }
+    var tableStyle: StructuredText.DefaultTableStyle {
+        .default
+    }
 
-            if i > 0 {
-                var sep = AttributedString(" ")
-                sep.font = .system(size: 10)
-                sep.baselineOffset = 4
-                result.append(sep)
-            }
-            result.append(badge)
-        }
+    var tableCellStyle: StructuredText.DefaultTableCellStyle {
+        .default
+    }
 
-        // Add a thin space after the badge group so it doesn't stick to the next word
-        var space = AttributedString("\u{2009}")
-        space.font = .system(size: 10)
-        result.append(space)
+    var thematicBreakStyle: StructuredText.DividerThematicBreakStyle {
+        .divider
+    }
 
-        return result
+    var listItemStyle: StructuredText.DefaultListItemStyle {
+        .default
+    }
+
+    var unorderedListMarker: StructuredText.HierarchicalSymbolListMarker {
+        .hierarchical(.disc, .circle, .square)
+    }
+
+    var orderedListMarker: StructuredText.DecimalListMarker {
+        .decimal
+    }
+}
+
+// MARK: - Heading Style
+
+struct OvalHeadingStyle: StructuredText.HeadingStyle {
+    private static let fontScales: [CGFloat] = [1.72, 1.43, 1.15, 1, 0.875, 0.85]
+
+    func makeBody(configuration: Configuration) -> some View {
+        let level = min(configuration.headingLevel, 6)
+        let scale = Self.fontScales[level - 1]
+
+        configuration.label
+            .textual.fontScale(scale)
+            .fontWeight(level <= 2 ? .bold : .semibold)
+            .foregroundStyle(AppColors.textHeading)
+            .textual.blockSpacing(.fontScaled(top: 1.2, bottom: 0.4))
     }
 }
 
 // MARK: - Code Block View with Liquid Glass header
 
+/// Standalone code block rendered outside Textual's view hierarchy so
+/// the copy button and horizontal scroll work without interference
+/// from the text-selection overlay.
 private struct CodeBlockView: View {
     let language: String
     let code: String
-
     @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header with Liquid Glass effect
+            // Header with language label and copy button
             HStack {
                 Text(language.isEmpty ? "code" : language)
                     .font(AppFont.caption())
@@ -369,12 +285,13 @@ private struct CodeBlockView: View {
             .padding(.vertical, 8)
             .background(AppColors.codeBlockHeader)
 
-            // Code content
+            // Code content with horizontal scrolling
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
                     .font(AppFont.mono(size: 13))
                     .foregroundStyle(AppColors.codeBlockText)
                     .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: false)
                     .padding(14)
             }
             .background(AppColors.codeBlockBg)

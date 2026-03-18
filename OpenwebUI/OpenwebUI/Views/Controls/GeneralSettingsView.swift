@@ -106,6 +106,11 @@ struct GeneralSettingsView: View {
                     get: { appState.alwaysOnTop },
                     set: { appState.alwaysOnTop = $0 }
                 ))
+
+                Toggle(String(localized: "settings.behavior.showServerRail"), isOn: Binding(
+                    get: { appState.showServerRail },
+                    set: { newValue in withAnimation(.easeInOut(duration: 0.2)) { appState.showServerRail = newValue } }
+                ))
             }
 
             // Section: Privacy

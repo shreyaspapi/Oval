@@ -345,16 +345,22 @@ struct MessageBubbleView: View {
         let visibleContent: String
     }
 
+    // Pre-compiled regexes for reasoning block parsing (avoid recompiling per call)
+    private static let reasoningClosedRegex = try! NSRegularExpression(
+        pattern: #"<details[^>]*type="reasoning"([^>]*)>([\s\S]*?)</details>"#)
+    private static let reasoningDurationRegex = try! NSRegularExpression(
+        pattern: #"duration="(\d+(?:\.\d+)?)"#)
+    private static let reasoningSummaryRegex = try! NSRegularExpression(
+        pattern: #"<summary>(.*?)</summary>"#)
+    private static let reasoningUnclosedRegex = try! NSRegularExpression(
+        pattern: #"<details[^>]*type="reasoning"([^>]*)>([\s\S]*?)$"#)
+
     /// Parse <details type="reasoning">...</details> blocks from the message content.
     private func parseReasoningBlocks(_ content: String) -> ParsedContent {
         var blocks: [ReasoningBlock] = []
         var visible = content
 
-        // Regex to match <details type="reasoning" ...>...<summary>...</summary>...\n</details>
-        let pattern = #"<details[^>]*type="reasoning"([^>]*)>([\s\S]*?)</details>"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-            return ParsedContent(reasoning: [], visibleContent: content)
-        }
+        let regex = Self.reasoningClosedRegex
 
         let nsContent = content as NSString
         let matches = regex.matches(in: content, options: [], range: NSRange(location: 0, length: nsContent.length))
@@ -370,15 +376,13 @@ struct MessageBubbleView: View {
             // Extract done and duration from attributes
             let isDone = attrs.contains("done=\"true\"") || !isStreaming
             var duration: String? = nil
-            if let durationMatch = try? NSRegularExpression(pattern: #"duration="(\d+(?:\.\d+)?)"#).firstMatch(in: attrs, range: NSRange(location: 0, length: (attrs as NSString).length)) {
+            if let durationMatch = Self.reasoningDurationRegex.firstMatch(in: attrs, range: NSRange(location: 0, length: (attrs as NSString).length)) {
                 duration = (attrs as NSString).substring(with: durationMatch.range(at: 1))
             }
 
             // Extract summary
             var summary = "Thinking"
-            let summaryPattern = #"<summary>(.*?)</summary>"#
-            if let summaryRegex = try? NSRegularExpression(pattern: summaryPattern),
-               let summaryMatch = summaryRegex.firstMatch(in: inner, range: NSRange(location: 0, length: (inner as NSString).length)) {
+            if let summaryMatch = Self.reasoningSummaryRegex.firstMatch(in: inner, range: NSRange(location: 0, length: (inner as NSString).length)) {
                 summary = (inner as NSString).substring(with: summaryMatch.range(at: 1))
             }
 
@@ -401,9 +405,7 @@ struct MessageBubbleView: View {
         }
 
         // Also handle unclosed reasoning blocks (still streaming)
-        let unclosedPattern = #"<details[^>]*type="reasoning"([^>]*)>([\s\S]*?)$"#
-        if let unclosedRegex = try? NSRegularExpression(pattern: unclosedPattern),
-           let match = unclosedRegex.firstMatch(in: visible, range: NSRange(location: 0, length: (visible as NSString).length)) {
+        if let match = Self.reasoningUnclosedRegex.firstMatch(in: visible, range: NSRange(location: 0, length: (visible as NSString).length)) {
             let innerRange = match.range(at: 2)
             let inner = (visible as NSString).substring(with: innerRange)
 
