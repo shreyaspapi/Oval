@@ -11,7 +11,13 @@ final class SocketStreamContinuationRef: @unchecked Sendable {
 
 /// HTTP client for the Open WebUI API.
 /// Handles auth, models, chats, and streaming chat completions.
-actor OpenWebUIClient {
+///
+/// This is a plain `Sendable` class — not an actor — because it holds only
+/// immutable state (`let` properties) and uses `URLSession.shared` which is
+/// already thread-safe.  Making it an actor would serialize every HTTP call
+/// onto a single executor, causing user-initiated requests to queue behind
+/// background prefetch calls (the "actor contention" chat-load delay).
+final class OpenWebUIClient: Sendable {
     let baseURL: String
     let apiKey: String
 
