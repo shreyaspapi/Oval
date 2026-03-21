@@ -315,6 +315,10 @@ final class AppState {
     /// conversation so their request doesn't queue behind prefetch on the actor.
     private var prefetchTasks: [Task<Void, Never>] = []
 
+    /// Debounce task for rapid sidebar clicks — only the last click within the
+    /// debounce window actually triggers a network load.
+    private var selectionDebounceTask: Task<Void, Never>?
+
     /// When true, the sidebar onChange handler should NOT call selectConversation().
     /// Used when programmatically setting selectedConversationID (e.g. after creating a new chat).
     var suppressConversationSelection: Bool = false
@@ -1544,22 +1548,20 @@ final class AppState {
     }
 
     func selectConversation(_ id: String) async {
-        // Cancel any in-flight load from a previous selection so it doesn't
-        // waste network time or overwrite the UI for the wrong conversation.
+        // ── 1. Immediately cancel any in-flight work ────────────────────
         chatLoadTask?.cancel()
         chatLoadTask = nil
-
-        // Cancel background prefetch tasks so the user's request doesn't
-        // queue behind them on the OpenWebUIClient actor.
+        selectionDebounceTask?.cancel()
+        selectionDebounceTask = nil
         for task in prefetchTasks { task.cancel() }
         prefetchTasks.removeAll()
 
-        // Saved conversations are never temporary
+        // ── 2. Lightweight bookkeeping (no heavy work on main actor) ────
         isTemporaryChat = false
-        // Save current conversation's messages before switching
-        if let currentId = selectedConversationID {
+
+        // Save current conversation's messages to cache (pointer copy, fast)
+        if let currentId = selectedConversationID, currentId != id {
             messageCache[currentId] = chatMessages
-            // If the current conversation is streaming, also save to the streaming cache
             if streamingChatIDs.contains(currentId) {
                 streamingMessagesCache[currentId] = chatMessages
             }
@@ -1567,49 +1569,45 @@ final class AppState {
 
         selectedConversationID = id
 
-        // In demo mode, just use the cache (no server to fetch from)
+        // ── 3. Instant path: demo mode ──────────────────────────────────
         if isDemoMode {
             chatMessages = messageCache[id] ?? []
             return
         }
 
-        // If switching to a conversation that's currently streaming, use its cached messages
+        // ── 4. Instant path: streaming conversation ─────────────────────
         if streamingChatIDs.contains(id) {
             chatMessages = streamingMessagesCache[id] ?? messageCache[id] ?? []
             return
         }
 
-        // Use cached messages immediately if available.
-        // Treat an empty cache as a miss — it likely means a previous decode
-        // failed silently, so we should re-fetch from the server.
+        // ── 5. Instant path: cached messages ────────────────────────────
         if let cached = messageCache[id], !cached.isEmpty {
-            // Only assign if actually different — avoids triggering a full
-            // SwiftUI view diff when switching back to an already-visible chat.
-            if cached != chatMessages {
-                chatMessages = cached
-            }
-            // Only refresh if cache is older than 30 seconds to avoid
-            // flooding the server and main actor with redundant fetches.
-            // Delay briefly so the cached messages render first — a second
-            // SwiftUI diff pass right after the first one causes visible jank.
+            chatMessages = cached
+            // Debounce background refresh — if the user keeps clicking, only
+            // the last conversation gets refreshed (avoids flooding the server).
+            let chatId = id
             let lastFetched = messageCacheTimestamps[id] ?? .distantPast
             if Date().timeIntervalSince(lastFetched) > 30 {
-                let chatId = id
-                chatLoadTask = Task {
-                    try? await Task.sleep(for: .milliseconds(300))
+                selectionDebounceTask = Task {
+                    try? await Task.sleep(for: .milliseconds(500))
                     guard !Task.isCancelled else { return }
                     await refreshChatMessages(chatId, silent: true)
                 }
             }
-        } else {
-            // Set loading state SYNCHRONOUSLY so the UI shows a spinner
-            // on the very next frame — before any async work begins.
-            chatMessages = []
-            isLoadingChat = true
-            chatLoadTask = Task {
-                await loadChatMessages(id)
-            }
-            await chatLoadTask?.value
+            return
+        }
+
+        // ── 6. Cache miss: show spinner, debounce the network fetch ─────
+        chatMessages = []
+        isLoadingChat = true
+        let chatId = id
+        selectionDebounceTask = Task {
+            // Wait briefly — if the user clicks again within 150ms this
+            // task is cancelled and no network request is wasted.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            await self.loadChatMessages(chatId)
         }
     }
 
@@ -1950,7 +1948,14 @@ final class AppState {
                 isLoadingChat = false
                 return
             }
-            let messages = chat.chat?.history?.linearMessages() ?? []
+            // Run the tree walk off the main actor so it doesn't block the UI.
+            let messages = await Task.detached(priority: .userInitiated) {
+                chat.chat?.history?.linearMessages() ?? []
+            }.value
+            guard !Task.isCancelled, selectedConversationID == chatId else {
+                isLoadingChat = false
+                return
+            }
             messageCache[chatId] = messages
             messageCacheTimestamps[chatId] = Date()
             chatMessages = messages
@@ -1984,11 +1989,18 @@ final class AppState {
         if !silent { isLoadingChat = true }
         do {
             let chat = try await client.getChat(id: chatId)
-            let messages = chat.chat?.history?.linearMessages() ?? []
+            // Run the tree walk off the main actor so it doesn't block the UI.
+            let messages = await Task.detached(priority: .background) {
+                chat.chat?.history?.linearMessages() ?? []
+            }.value
+            guard !Task.isCancelled else { return }
             messageCache[chatId] = messages
             messageCacheTimestamps[chatId] = Date()
-            // Only update UI if this conversation is still selected AND messages actually changed
-            if selectedConversationID == chatId && messages != chatMessages {
+            // Only update UI if this conversation is still selected AND messages
+            // actually changed. Use cheap count + last-ID check instead of O(n)
+            // Equatable comparison on the full array.
+            if selectedConversationID == chatId,
+               messages.count != chatMessages.count || messages.last?.id != chatMessages.last?.id {
                 chatMessages = messages
             }
         } catch {
