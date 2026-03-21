@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.4] - 2026-03-21
+
+### Fixed
+
+- **Chat load delay (architecture fix)**: Replaced `actor OpenWebUIClient` with `final class Sendable` — the actor serialized all HTTP calls on a single executor, so user requests queued behind prefetch even after cancellation. Since the client holds only immutable state and uses thread-safe `URLSession.shared`, actor isolation was unnecessary
+
 ## [1.9.3] - 2026-03-19
 
 ### Security
