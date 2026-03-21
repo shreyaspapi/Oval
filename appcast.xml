@@ -5,6 +5,24 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.4</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.4</h2>
+                <ul>
+<li>See GitHub release for details.</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 21 Mar 2026 08:24:13 +0000</pubDate>
+            <sparkle:version>23</sparkle:version>
+            <sparkle:shortVersionString>1.9.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.4/Oval-v1.9.4.dmg"
+                sparkle:edSignature="r1QvOz7HSkrLjRmhagfifV3w7zC0AtK1Ec2KuckRAoXrg+WI6QhhQ00sQQsU8PPRVPBM5K31nwaWZJpmx1vXCQ=="
+                length="12318740"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.9.3</title>
             <description><![CDATA[
                 <h2>What is New in v1.9.3</h2>
