@@ -5,6 +5,25 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 1.9.5</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.5</h2>
+                <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Rapid sidebar switching delay eliminated</strong>: Debounced network fetches (150ms) and background refreshes (500ms) so only the last click triggers work. Moved `linearMessages()` tree walk off the main actor. Replaced expensive O(n) array equality with cheap count + last-ID check</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 21 Mar 2026 08:54:56 +0000</pubDate>
+            <sparkle:version>25</sparkle:version>
+            <sparkle:shortVersionString>1.9.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.5/Oval-v1.9.5.dmg"
+                sparkle:edSignature="C3KW+9xog8CrGMbPayAMz+FfQQeJgN198pRPhNXS3boy40Xwhd0FmEfJ1E69x6rA4GrtcpvQ2iDMtwhgu6ZDBQ=="
+                length="12319423"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.9.4</title>
             <description><![CDATA[
                 <h2>What is New in v1.9.4</h2>
