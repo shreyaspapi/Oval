@@ -14,6 +14,10 @@ struct MessageListView: View {
         appState.chatMessages.last?.id
     }
 
+    /// Track the previous message count so we can distinguish a chat switch
+    /// (count goes from N → 0 → M) from a new message arriving (count N → N+1).
+    @State private var previousMessageCount: Int = 0
+
     var body: some View {
         let lastAssistantId = lastAssistantMessageId
         let lastId = lastMessageId
@@ -75,18 +79,32 @@ struct MessageListView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 16)
             }
-            .onChange(of: appState.chatMessages.count) { _, _ in
-                scrollToBottom(proxy: proxy)
+            .onChange(of: appState.chatMessages.count) { oldCount, newCount in
+                // When switching chats the count jumps (e.g. 50 → 0 → 30).
+                // Only animate when a new message is appended to the SAME chat
+                // (count increases by a small amount). For chat switches, snap
+                // instantly to avoid a slow animated scroll through the new list.
+                let isChatSwitch = newCount == 0 || (previousMessageCount == 0 && newCount > 1)
+                previousMessageCount = newCount
+                if isChatSwitch {
+                    scrollToBottom(proxy: proxy, animated: false)
+                } else {
+                    scrollToBottom(proxy: proxy, animated: true)
+                }
             }
             .onChange(of: appState.streamingContent) { _, _ in
-                scrollToBottom(proxy: proxy)
+                scrollToBottom(proxy: proxy, animated: true)
             }
         }
     }
 
-    private func scrollToBottom(proxy: ScrollViewProxy) {
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
         guard let lastId = appState.chatMessages.last?.id else { return }
-        withAnimation(.easeOut(duration: 0.15)) {
+        if animated {
+            withAnimation(.easeOut(duration: 0.15)) {
+                proxy.scrollTo(lastId, anchor: .bottom)
+            }
+        } else {
             proxy.scrollTo(lastId, anchor: .bottom)
         }
     }
