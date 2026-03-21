@@ -9,6 +9,25 @@
             <description><![CDATA[
                 <h2>What is New in v1.9.4</h2>
                 <ul>
+<li><strong>Fixed</strong></li>
+<li><strong>Chat load delay (architecture fix)</strong>: Replaced `actor OpenWebUIClient` with `final class Sendable` — the actor serialized all HTTP calls on a single executor, so user requests queued behind prefetch even after cancellation. Since the client holds only immutable state and uses thread-safe `URLSession.shared`, actor isolation was unnecessary</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 21 Mar 2026 08:35:42 +0000</pubDate>
+            <sparkle:version>24</sparkle:version>
+            <sparkle:shortVersionString>1.9.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shreyaspapi/Oval/releases/download/v1.9.4/Oval-v1.9.4.dmg"
+                sparkle:edSignature="ghmcfUl05xX+s3S+DbPu0IKq9BcFAGsO4MjeLW6TudXwHpjt9R7vo8oIDf70QD+N0qh+bq1re/gn3H+Q4RE5Bw=="
+                length="12318793"
+                type="application/octet-stream" />
+        </item>
+        <item>
+            <title>Version 1.9.4</title>
+            <description><![CDATA[
+                <h2>What is New in v1.9.4</h2>
+                <ul>
 <li>See GitHub release for details.</li>
                 </ul>
             ]]></description>
