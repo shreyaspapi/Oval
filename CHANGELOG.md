@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.5] - 2026-03-21
+
+### Fixed
+
+- **Rapid sidebar switching delay eliminated**: Debounced network fetches (150ms) and background refreshes (500ms) so only the last click triggers work. Moved `linearMessages()` tree walk off the main actor. Replaced expensive O(n) array equality with cheap count + last-ID check
+
 ## [1.9.4] - 2026-03-21
 
 ### Fixed
