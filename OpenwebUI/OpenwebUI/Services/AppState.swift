@@ -1567,7 +1567,11 @@ final class AppState {
             }
         }
 
-        selectedConversationID = id
+        // Only mutate if actually different — avoids a redundant @Observable
+        // notification (the List binding already set this value).
+        if selectedConversationID != id {
+            selectedConversationID = id
+        }
 
         // ── 3. Instant path: demo mode ──────────────────────────────────
         if isDemoMode {
@@ -1602,7 +1606,10 @@ final class AppState {
         chatMessages = []
         isLoadingChat = true
         let chatId = id
-        selectionDebounceTask = Task {
+        // Store in chatLoadTask so it is properly cancelled when the user
+        // switches to another conversation (selectionDebounceTask is for
+        // background refreshes only).
+        chatLoadTask = Task {
             // Wait briefly — if the user clicks again within 150ms this
             // task is cancelled and no network request is wasted.
             try? await Task.sleep(for: .milliseconds(150))
@@ -1940,12 +1947,14 @@ final class AppState {
     }
     private func loadChatMessages(_ chatId: String) async {
         guard let client else { return }
-        isLoadingChat = true
+        // isLoadingChat is already set by the caller (selectConversation / retryLoadChat).
+        // Only set it here when called from paths that didn't set it yet.
+        if !isLoadingChat { isLoadingChat = true }
         do {
             let chat = try await client.getChat(id: chatId)
             // Bail out if the user already switched to another conversation
             guard !Task.isCancelled, selectedConversationID == chatId else {
-                isLoadingChat = false
+                if selectedConversationID == chatId { isLoadingChat = false }
                 return
             }
             // Run the tree walk off the main actor so it doesn't block the UI.
@@ -1953,7 +1962,7 @@ final class AppState {
                 chat.chat?.history?.linearMessages() ?? []
             }.value
             guard !Task.isCancelled, selectedConversationID == chatId else {
-                isLoadingChat = false
+                if selectedConversationID == chatId { isLoadingChat = false }
                 return
             }
             messageCache[chatId] = messages
@@ -2021,17 +2030,21 @@ final class AppState {
         prefetchTasks.removeAll()
 
         let uncached = conversations.prefix(50).filter { messageCache[$0.id] == nil }
-        for (i, conversation) in uncached.enumerated() {
-            let task = Task.detached(priority: .background) { [weak self] in
-                // Stagger all requests to avoid flooding the actor/server
+        // Use a single task that sequentially fetches with small delays.
+        // This avoids spawning 50 concurrent tasks that all hop back to
+        // the main actor simultaneously, and keeps stagger short (30ms)
+        // so the first ~10 conversations are cached within 300ms.
+        let task = Task.detached(priority: .background) { [weak self] in
+            for (i, conversation) in uncached.enumerated() {
+                guard !Task.isCancelled else { break }
                 if i > 0 {
-                    try? await Task.sleep(for: .milliseconds(i * 100))
+                    try? await Task.sleep(for: .milliseconds(30))
                 }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else { break }
                 await self?.refreshChatMessages(conversation.id, silent: true)
             }
-            prefetchTasks.append(task)
         }
+        prefetchTasks.append(task)
     }
 
     // MARK: - User
