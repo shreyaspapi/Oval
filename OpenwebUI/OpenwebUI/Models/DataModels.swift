@@ -274,6 +274,7 @@ struct ModelCapabilities: Codable, Hashable {
     let web_search: Bool?
     let image_generation: Bool?
     let code_interpreter: Bool?
+    let memory: Bool?
 }
 
 struct SuggestionPrompt: Codable, Hashable {
@@ -445,6 +446,9 @@ struct ChatMessage: Identifiable, Equatable {
     var messageError: ChatMessageError?
     /// Server-generated files (images from image generation, tool output files)
     var serverFiles: [[String: Any]]?
+    /// Server message metadata. For background sub-agent ("research agent") results the server
+    /// injects a message with `meta.internal == true` and `meta.type == "subagent"`.
+    var meta: MessageMeta?
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         lhs.id == rhs.id && lhs.content == rhs.content && lhs.role == rhs.role &&
@@ -454,8 +458,27 @@ struct ChatMessage: Identifiable, Equatable {
         lhs.statusHistory == rhs.statusHistory &&
         lhs.codeExecutions == rhs.codeExecutions &&
         lhs.followUps == rhs.followUps && lhs.usage == rhs.usage &&
-        lhs.messageError == rhs.messageError
+        lhs.messageError == rhs.messageError && lhs.meta == rhs.meta
     }
+}
+
+/// Server message metadata. Used to recognise internal sub-agent (task-delegation) result
+/// messages, which Open WebUI injects into the parent chat history.
+struct MessageMeta: Codable, Equatable {
+    var isInternal: Bool?
+    var type: String?
+    var delegationId: String?
+    var subagentChatId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case isInternal = "internal"
+        case type
+        case delegationId = "delegation_id"
+        case subagentChatId = "subagent_chat_id"
+    }
+
+    /// True for a background sub-agent result message.
+    var isSubagentResult: Bool { isInternal == true && type == "subagent" }
 }
 
 extension ChatMessage: Codable {
@@ -464,6 +487,7 @@ extension ChatMessage: Codable {
         case images, files, toolCalls, toolCallId, statusHistory
         case sources, codeExecutions = "code_executions", followUps, usage
         case messageError = "error"
+        case meta
     }
 
     init(from decoder: Decoder) throws {
@@ -495,6 +519,7 @@ extension ChatMessage: Codable {
         followUps = try c.decodeIfPresent([String].self, forKey: .followUps)
         usage = (try? c.decodeIfPresent(TokenUsage.self, forKey: .usage)) ?? nil
         messageError = (try? c.decodeIfPresent(ChatMessageError.self, forKey: .messageError)) ?? nil
+        meta = (try? c.decodeIfPresent(MessageMeta.self, forKey: .meta)) ?? nil
         // serverFiles is not Codable — populated at runtime from Socket.IO events
         serverFiles = nil
     }
@@ -518,6 +543,7 @@ extension ChatMessage: Codable {
         try c.encodeIfPresent(followUps, forKey: .followUps)
         try c.encodeIfPresent(usage, forKey: .usage)
         try c.encodeIfPresent(messageError, forKey: .messageError)
+        try c.encodeIfPresent(meta, forKey: .meta)
         // serverFiles is not encoded — runtime only
     }
 }
@@ -591,6 +617,23 @@ struct StreamOptions: Codable {
     let include_usage: Bool?
 }
 
+/// A tool available on the server, from `GET /api/v1/tools/`. Covers user-registered Python
+/// tools and external MCP tool servers (whose `id` looks like `server:mcp:kagi`).
+struct OWUITool: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let meta: Meta?
+
+    struct Meta: Codable, Hashable {
+        let description: String?
+    }
+
+    var toolDescription: String? { meta?.description }
+
+    static func == (lhs: OWUITool, rhs: OWUITool) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
 struct ChatCompletionRequest: Codable {
     let model: String
     let messages: [CompletionMessage]
@@ -599,6 +642,9 @@ struct ChatCompletionRequest: Codable {
     let max_tokens: Int?
     /// File IDs to include (for non-image files uploaded via /api/v1/files/)
     let files: [CompletionFileRef]?
+    /// IDs of tools the model may call this turn (from GET /api/v1/tools/). Includes MCP tool
+    /// servers like "server:mcp:kagi". Omitted when empty.
+    let tool_ids: [String]?
     /// Feature flags (web search, image gen, etc.)
     let features: ChatFeatures?
     /// Socket.IO session ID — when set, server routes events via Socket.IO instead of SSE
@@ -615,7 +661,7 @@ struct ChatCompletionRequest: Codable {
     let stream_options: StreamOptions?
 
     init(model: String, messages: [CompletionMessage], stream: Bool, temperature: Double?, max_tokens: Int?,
-         files: [CompletionFileRef]? = nil, features: ChatFeatures? = nil,
+         files: [CompletionFileRef]? = nil, tool_ids: [String]? = nil, features: ChatFeatures? = nil,
          session_id: String? = nil, chat_id: String? = nil,
          id: String? = nil, parent_id: String? = nil, parent_message: [String: String]? = nil,
          stream_options: StreamOptions? = nil) {
@@ -625,6 +671,7 @@ struct ChatCompletionRequest: Codable {
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.files = files
+        self.tool_ids = tool_ids
         self.features = features
         self.session_id = session_id
         self.chat_id = chat_id
@@ -734,6 +781,9 @@ struct ChunkDelta: Codable {
     let content: String?
     let role: String?
     let tool_calls: [ToolCallChunk]?
+    /// Chain-of-thought stream used by reasoning models (DeepSeek-R1 / Qwen / vLLM style).
+    /// Delivered on the raw SSE path separately from `content`.
+    let reasoning_content: String?
 }
 
 // MARK: - Tool Calling

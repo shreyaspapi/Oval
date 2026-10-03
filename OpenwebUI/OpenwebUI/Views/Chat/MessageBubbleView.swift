@@ -81,7 +81,9 @@ struct MessageBubbleView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            if message.role == "user" {
+            if message.meta?.isSubagentResult == true {
+                SubagentResultRow(message: message)
+            } else if message.role == "user" {
                 Spacer(minLength: 80)
                 userMessage
             } else {
@@ -322,15 +324,8 @@ struct MessageBubbleView: View {
 
                 // Message content (with reasoning and tool call HTML stripped)
                 if cachedParsed.visibleContent.isEmpty && isStreaming {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3, id: \.self) { _ in
-                            Circle()
-                                .fill(AppColors.textTertiary)
-                                .frame(width: 6, height: 6)
-                                .opacity(0.6)
-                        }
-                    }
-                    .padding(.top, 4)
+                    TypingIndicator()
+                        .padding(.top, 4)
                 } else if !cachedParsed.visibleContent.isEmpty {
                     MarkdownTextView(content: cachedParsed.visibleContent, sources: message.sources)
                 }
@@ -655,6 +650,7 @@ private struct ReasoningBlockView: View {
                     Text(headerText)
                         .font(AppFont.caption(size: 12).weight(.medium))
                         .foregroundStyle(AppColors.textSecondary)
+                        .pulsing(active: !block.isDone)
 
                     if !block.content.isEmpty {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -1235,5 +1231,142 @@ private struct FollowUpChipsView: View {
             }
         }
         .padding(.top, 4)
+    }
+}
+
+// MARK: - Typing Indicator
+
+/// Animated "assistant is responding" indicator shown before the first visible token
+/// arrives. Three dots rise and fade in a staggered wave. Driven by `TimelineView` so it
+/// animates smoothly without relying on `@State` toggles that can reset while streaming.
+struct TypingIndicator: View {
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let now = timeline.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { i in
+                    let p = Self.phase(now, index: i)
+                    Circle()
+                        .fill(AppColors.textTertiary)
+                        .frame(width: 6, height: 6)
+                        .opacity(0.35 + 0.65 * p)
+                        .offset(y: -3 * p)
+                }
+            }
+        }
+        .accessibilityLabel(Text("message.thinking"))
+    }
+
+    private static func phase(_ now: TimeInterval, index: Int) -> Double {
+        let rate = 1.3            // cycles per second
+        let stagger = 0.18        // seconds between successive dots
+        let v = sin((now - Double(index) * stagger) * rate * 2 * .pi)
+        return max(0, v)          // bounce only on the upswing (0...1)
+    }
+}
+
+// MARK: - Pulsing Text
+
+/// A gentle opacity "breathing" effect for in-progress labels (e.g. the streaming
+/// "Thinking…" reasoning header), echoing the Open WebUI web client's shimmer. Driven by
+/// `TimelineView` so no `@State` is needed. A no-op when `active` is false.
+private struct PulsingTextModifier: ViewModifier {
+    var active: Bool
+    func body(content: Content) -> some View {
+        if active {
+            TimelineView(.animation) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                let p = (sin(t * 2.2) + 1) / 2       // 0...1
+                content.opacity(0.5 + 0.5 * p)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Apply a gentle opacity pulse while `active` (used on streaming "Thinking…" labels).
+    func pulsing(active: Bool) -> some View { modifier(PulsingTextModifier(active: active)) }
+}
+
+// MARK: - Subagent Result Row
+
+/// Renders a background sub-agent ("research agent") result that Open WebUI injected into the
+/// chat. The server writes a message with `meta.type == "subagent"` whose content is a block:
+///
+///     [ASYNC SUBAGENT COMPLETE - deleg_xxxx]
+///     Subagent chat: <id>
+///     Status: completed  Duration: ...
+///     --- RESULT ---
+///     <the sub-agent's answer>
+///
+/// Shown as a collapsible row with a one-line summary, expandable to the full result.
+private struct SubagentResultRow: View {
+    let message: ChatMessage
+    @State private var expanded = false
+
+    private var resultText: String {
+        if let range = message.content.range(of: "--- RESULT ---") {
+            return String(message.content[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        // Fall back to dropping the bracketed header lines.
+        return message.content
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .drop(while: { $0.hasPrefix("[") || $0.hasPrefix("Subagent chat:") || $0.hasPrefix("Status:") })
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var summary: String {
+        resultText.split(separator: "\n").first.map(String.init) ?? "Sub-agent finished"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppColors.accentBlue)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Background sub-agent finished")
+                            .font(AppFont.caption(size: 12).weight(.semibold))
+                            .foregroundStyle(AppColors.textSecondary)
+                        if !expanded {
+                            Text(summary)
+                                .font(AppFont.caption(size: 11))
+                                .foregroundStyle(AppColors.textTertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer()
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(AppColors.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                Divider().padding(.horizontal, 12)
+                MarkdownTextView(content: resultText, sources: nil)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .background(AppColors.fileAttachmentBg.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AppColors.borderColor.opacity(0.5), lineWidth: 0.5)
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

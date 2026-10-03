@@ -119,6 +119,9 @@ struct ChatInputView: View {
                         .buttonStyle(.plain)
                         .help(appState.isWebSearchEnabled ? String(localized: "chatInput.webSearchDisable") : String(localized: "chatInput.webSearchEnable"))
 
+                        // Integrations: tools + model features (image gen, code interpreter, memory)
+                        IntegrationsButton(appState: appState)
+
                         // Speech-to-text toggle
                         Button {
                             if appState.speechManager.isListening {
@@ -557,5 +560,134 @@ struct AttachmentThumbnail: View {
         if mime.contains("json") { return "curlybraces" }
         if mime.contains("text") || mime.contains("html") { return "doc.plaintext" }
         return "doc"
+    }
+}
+
+// MARK: - Integrations Button
+
+/// Input-bar control for choosing which server tools and model features are active for the
+/// next message. Tools come from `GET /api/v1/tools/` (including MCP servers like Kagi).
+/// Feature toggles (image generation, code interpreter, memory) are shown only when the
+/// selected model advertises the capability in `info.meta.capabilities`.
+private struct IntegrationsButton: View {
+    @Bindable var appState: AppState
+    @State private var showPopover = false
+
+    private var caps: ModelCapabilities? { appState.selectedModel?.info?.meta?.capabilities }
+    private var hasImage: Bool { caps?.image_generation == true }
+    private var hasCode: Bool { caps?.code_interpreter == true }
+    private var hasMemory: Bool { caps?.memory == true }
+    private var hasAnyFeature: Bool { hasImage || hasCode || hasMemory }
+
+    private var activeCount: Int {
+        var n = appState.selectedToolIds.count
+        if hasImage && appState.isImageGenerationEnabled { n += 1 }
+        if hasCode && appState.isCodeInterpreterEnabled { n += 1 }
+        if hasMemory && appState.isMemoryEnabled { n += 1 }
+        return n
+    }
+    private var isActive: Bool { activeCount > 0 }
+
+    var body: some View {
+        if !appState.availableTools.isEmpty || hasAnyFeature {
+            Button {
+                showPopover.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "puzzlepiece.extension")
+                        .font(.system(size: 14, weight: .medium))
+                    if isActive {
+                        Text(verbatim: "\(activeCount)")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                }
+                .foregroundStyle(isActive ? Color.white : AppColors.textSecondary)
+                .padding(.horizontal, isActive ? 10 : 0)
+                .frame(minWidth: 32, minHeight: 32)
+                .background(isActive ? AppColors.webSearchActiveBg.opacity(0.7) : AppColors.inputActionBg.opacity(0.6))
+                .clipShape(Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help("Tools and features")
+            .popover(isPresented: $showPopover, arrowEdge: .top) {
+                IntegrationsPopover(appState: appState, hasImage: hasImage, hasCode: hasCode, hasMemory: hasMemory)
+            }
+        }
+    }
+}
+
+private struct IntegrationsPopover: View {
+    @Bindable var appState: AppState
+    let hasImage: Bool
+    let hasCode: Bool
+    let hasMemory: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if hasImage || hasCode || hasMemory {
+                sectionHeader("Features")
+                if hasImage {
+                    toggleRow("Image generation", systemImage: "photo", isOn: $appState.isImageGenerationEnabled)
+                }
+                if hasCode {
+                    toggleRow("Code interpreter", systemImage: "curlybraces", isOn: $appState.isCodeInterpreterEnabled)
+                }
+                if hasMemory {
+                    toggleRow("Memory", systemImage: "brain", isOn: $appState.isMemoryEnabled)
+                }
+            }
+
+            if !appState.availableTools.isEmpty {
+                if hasImage || hasCode || hasMemory { Divider().padding(.vertical, 4) }
+                sectionHeader("Tools")
+                ForEach(appState.availableTools) { tool in
+                    toolRow(tool)
+                }
+            }
+        }
+        .padding(.bottom, 10)
+        .frame(width: 300)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(AppColors.textTertiary)
+            .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 2)
+    }
+
+    private func toggleRow(_ title: String, systemImage: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Label(title, systemImage: systemImage).font(.system(size: 13))
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .padding(.horizontal, 12).padding(.vertical, 4)
+    }
+
+    private func toolRow(_ tool: OWUITool) -> some View {
+        let binding = Binding<Bool>(
+            get: { appState.selectedToolIds.contains(tool.id) },
+            set: { on in
+                if on { appState.selectedToolIds.insert(tool.id) }
+                else { appState.selectedToolIds.remove(tool.id) }
+            }
+        )
+        return Toggle(isOn: binding) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(tool.name).font(.system(size: 13))
+                if let d = tool.toolDescription, !d.isEmpty {
+                    Text(d)
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppColors.textTertiary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .padding(.horizontal, 12).padding(.vertical, 4)
     }
 }

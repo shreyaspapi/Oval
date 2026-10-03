@@ -54,6 +54,26 @@ final class AppState {
         servers.first { $0.id == activeServerID }
     }
 
+    /// Whether the Socket.IO streaming path can be used for the active server.
+    ///
+    /// The Open WebUI socket handshake authenticates with `get_verified_user_by_token`, which
+    /// only decodes JWT session tokens (email / SSO login). An API key (`sk-…`) connects at the
+    /// transport level but never joins the `user:{id}` room, so it receives **zero** streaming
+    /// events — the chat would appear to hang with no reply. For API-key auth we therefore fall
+    /// back to the HTTP SSE path (which authenticates fine with the key as a Bearer token).
+    var canStreamOverSocket: Bool {
+        guard socketService.isConnected else { return false }
+        guard let server = activeServer else { return false }
+        if server.authMethod == .apiKey { return false }
+        if server.apiKey.hasPrefix("sk-") { return false }
+        return true
+    }
+
+    /// The socket session id to route streaming through, or `nil` to force the SSE path.
+    private var socketSessionIdForStreaming: String? {
+        canStreamOverSocket ? socketService.sessionId : nil
+    }
+
     // MARK: - Per-Server State
 
     var models: [AIModel] = []
@@ -135,11 +155,24 @@ final class AppState {
     private var watchdogTimerByChat: [String: Task<Void, Never>] = [:]
 
     /// Watchdog timeout in seconds — if no streaming event arrives within this period, end the stream.
-    private let streamWatchdogTimeout: TimeInterval = 90
+    /// This is only a backstop for a truly stalled connection: the authoritative "turn done"
+    /// signal is `chat:completion {done:true}` / `chat:active {active:false}`. It must be long
+    /// enough to survive silent server-side work (e.g. a web/tool/sub-agent call can run for
+    /// a minute or more between socket events — a research turn was observed silent for ~100s).
+    private let streamWatchdogTimeout: TimeInterval = 300
 
     /// Per-conversation cached messages — used when user switches away from a streaming chat.
     /// The streaming task updates this instead of `chatMessages` when the user navigates away.
     private var streamingMessagesCache: [String: [ChatMessage]] = [:]
+
+    /// Per-conversation accumulator for the OpenAI Responses API streaming path
+    /// (`response:completion` events on Open WebUI 0.11+). Builds the displayed content
+    /// string (reasoning + answer) that the existing message renderer already understands.
+    private var responsesStateByChat: [String: ResponsesStreamState] = [:]
+
+    /// Per-conversation "turn is active" flag driven by `chat:active` events. `active:false`
+    /// is the server's authoritative "whole turn finished" signal.
+    private var streamActiveByChat: [String: Bool] = [:]
 
     /// Convenience: whether the *currently viewed* conversation is streaming.
     var isStreaming: Bool {
@@ -175,6 +208,8 @@ final class AppState {
         streamingTaskByChat.removeValue(forKey: chatId)
         streamingMessageIdByChat.removeValue(forKey: chatId)
         streamingMessagesCache.removeValue(forKey: chatId)
+        responsesStateByChat.removeValue(forKey: chatId)
+        streamActiveByChat.removeValue(forKey: chatId)
         cancelWatchdog(chatId: chatId)
     }
 
@@ -343,6 +378,29 @@ final class AppState {
     // MARK: - Features
 
     var isWebSearchEnabled: Bool = false
+    /// Built-in feature toggles sent as `features.*` in the chat request. Shown in the input
+    /// bar only when the selected model advertises the capability (`info.meta.capabilities`).
+    var isImageGenerationEnabled: Bool = false
+    var isCodeInterpreterEnabled: Bool = false
+    var isMemoryEnabled: Bool = false
+
+    /// Tools available on the server (`GET /api/v1/tools/`), fetched on connect. Includes MCP
+    /// tool servers such as Kagi.
+    var availableTools: [OWUITool] = []
+    /// IDs of tools the user has enabled for the next message (sent as `tool_ids`).
+    var selectedToolIds: Set<String> = []
+
+    /// Feature flags to actually send, masked by the selected model's advertised capabilities
+    /// so a toggle left on from a previous model is never sent to one that lacks it.
+    var effectiveFeatureFlags: (web: Bool, image: Bool, code: Bool, memory: Bool) {
+        let caps = selectedModel?.info?.meta?.capabilities
+        return (
+            web: isWebSearchEnabled && (caps?.web_search ?? true),
+            image: isImageGenerationEnabled && (caps?.image_generation ?? false),
+            code: isCodeInterpreterEnabled && (caps?.code_interpreter ?? false),
+            memory: isMemoryEnabled && (caps?.memory ?? false)
+        )
+    }
 
     // MARK: - Server Tool Dialogs (ack-based)
 
@@ -966,7 +1024,8 @@ final class AppState {
                 async let modelsResult: () = loadModels()
                 async let chatsResult: () = loadConversations()
                 async let userResult: () = loadUser()
-                _ = await (modelsResult, chatsResult, userResult)
+                async let toolsResult: () = loadTools()
+                _ = await (modelsResult, chatsResult, userResult, toolsResult)
             } else {
                 // Token expired for this server
                 prefillConnectFields(from: server)
@@ -1174,11 +1233,18 @@ final class AppState {
                 }
             }
 
-            // 6. Check done LAST (after processing all data in this event)
+            // 6. Finalize from the authoritative Responses `output` array (OWUI 0.11+).
+            //    This carries the full reasoning + message items for the completed turn.
+            if let output = data["output"] as? [[String: Any]], !output.isEmpty {
+                finalizeResponsesFromOutput(chatId: chatId, output: output)
+            }
+
+            // 7. Check done LAST (after processing all data in this event)
             if let done = data["done"] as? Bool, done {
                 socketStreamContinuation?.yield(.done)
                 socketStreamContinuation?.finish()
                 socketStreamContinuation = nil
+                responsesStateByChat.removeValue(forKey: chatId)
             }
 
         // ── Incremental content append ──
@@ -1404,6 +1470,40 @@ final class AppState {
             // Notification only — we don't currently track tags locally
             break
 
+        // ── OpenAI Responses API streaming (OWUI 0.11+) ──
+        // The 0.11 pipeline streams reasoning/answer deltas and function-call items as
+        // `response:completion` events instead of the legacy `chat:completion` deltas.
+        case "response:completion", "response.completion":
+            guard isValidMessage else { return }
+            handleResponsesEvent(chatId: chatId, data: data)
+
+        // ── Server asked the client to re-fetch the chat ──
+        // Used to surface messages the server injected out of band — notably background
+        // sub-agent ("research agent") results, which are written to history and announced
+        // via chat:reload. Skip while actively streaming this chat so we don't clobber the
+        // live streaming message; a later refresh/selection will pick it up.
+        case "chat:reload":
+            guard !streamingChatIDs.contains(chatId) else { break }
+            Task { @MainActor [weak self] in
+                await self?.refreshChatMessages(chatId, silent: true)
+            }
+
+        // ── Turn-level active flag (OWUI 0.11+) ──
+        // `active:false` is the server's authoritative "whole turn finished" signal and the
+        // safety net that ends the stream if a terminal `chat:completion {done:true}` is missed.
+        case "chat:active":
+            if let active = data["active"] as? Bool {
+                streamActiveByChat[chatId] = active
+                if !active, streamingMsgId != nil {
+                    if socketStreamContinuation != nil {
+                        socketStreamContinuation?.yield(.done)
+                        socketStreamContinuation?.finish()
+                        socketStreamContinuation = nil
+                    }
+                    responsesStateByChat.removeValue(forKey: chatId)
+                }
+            }
+
         default:
             break
         }
@@ -1455,7 +1555,274 @@ final class AppState {
         }
     }
 
+    // MARK: - Responses API streaming (OWUI 0.11+)
+
+    /// Accumulated state for the OpenAI Responses API streaming path. The server streams
+    /// `response.reasoning_text.delta` / `response.output_text.delta` over `response:completion`
+    /// events and sends the authoritative final `output` array in the terminal
+    /// `chat:completion {done:true}` event. We fold it into a single content string that reuses
+    /// the existing reasoning renderer (`<details type="reasoning">`).
+    /// A self-contained reducer for the OpenAI Responses API streaming path. Pure value type so
+    /// it can be unit-tested against captured server payloads without the rest of AppState.
+    struct ResponsesStreamState: Equatable {
+        var reasoning: String = ""
+        var reasoningClosed: Bool = false
+        var reasoningDuration: Int? = nil
+        var answer: String = ""
+        /// Tool calls the model made this turn, assembled from Responses output items. Rendered
+        /// as a collapsible "console" of each call's arguments and result.
+        var toolCalls: [ToolCallAccum] = []
+
+        struct ToolCallAccum: Equatable {
+            var callId: String
+            var name: String
+            var arguments: String = ""
+            var result: String? = nil
+            var done: Bool = false
+        }
+
+        private mutating func upsertToolCall(callId: String, name: String?, argsReplace: String? = nil, argsAppend: String? = nil, result: String? = nil, done: Bool? = nil) {
+            if let idx = toolCalls.firstIndex(where: { $0.callId == callId }) {
+                if let name, !name.isEmpty { toolCalls[idx].name = name }
+                if let argsReplace { toolCalls[idx].arguments = argsReplace }
+                if let argsAppend { toolCalls[idx].arguments += argsAppend }
+                if let result { toolCalls[idx].result = result }
+                if let done { toolCalls[idx].done = done }
+            } else {
+                toolCalls.append(ToolCallAccum(
+                    callId: callId, name: name ?? "tool",
+                    arguments: argsReplace ?? argsAppend ?? "", result: result, done: done ?? false
+                ))
+            }
+        }
+
+        /// Apply one `response:completion` event payload — either a plain
+        /// OpenAI chat.completion.chunk delta (role / content / reasoning_content) or a
+        /// Responses-API `response.*` event. Returns true if the state changed.
+        @discardableResult
+        mutating func apply(event data: [String: Any]) -> Bool {
+            // Classic chunk embedded in response:completion (role / content / finish_reason).
+            if let choices = data["choices"] as? [[String: Any]],
+               let delta = choices.first?["delta"] as? [String: Any] {
+                var changed = false
+                if let rc = delta["reasoning_content"] as? String, !rc.isEmpty {
+                    reasoning += rc; changed = true
+                }
+                if let c = delta["content"] as? String, !c.isEmpty {
+                    if !reasoning.isEmpty { reasoningClosed = true }
+                    answer += c; changed = true
+                }
+                return changed
+            }
+
+            guard let type = data["type"] as? String else { return false }
+            switch type {
+            case "response.reasoning_text.delta", "response.reasoning_summary_text.delta":
+                guard let d = data["delta"] as? String, !d.isEmpty else { return false }
+                reasoningClosed = false   // a new round of reasoning may follow a tool call
+                reasoning += d
+                return true
+            case "response.output_text.delta":
+                guard let d = data["delta"] as? String, !d.isEmpty else { return false }
+                if !reasoning.isEmpty { reasoningClosed = true }
+                answer += d
+                return true
+            case "response.output_item.added":
+                guard let item = data["item"] as? [String: Any],
+                      item["type"] as? String == "function_call" else { return false }
+                let cid = (item["call_id"] as? String) ?? (item["id"] as? String) ?? UUID().uuidString
+                upsertToolCall(callId: cid, name: item["name"] as? String,
+                               argsReplace: item["arguments"] as? String, done: false)
+                return true
+            case "response.function_call_arguments.delta":
+                guard let cid = data["item_id"] as? String, let d = data["delta"] as? String else { return false }
+                upsertToolCall(callId: cid, name: nil, argsAppend: d)
+                return true
+            case "response.function_call_arguments.done":
+                guard let cid = data["item_id"] as? String else { return false }
+                upsertToolCall(callId: cid, name: nil, argsReplace: data["arguments"] as? String)
+                return true
+            case "response.output_item.done":
+                guard let item = data["item"] as? [String: Any] else { return false }
+                switch item["type"] as? String {
+                case "reasoning":
+                    reasoningClosed = true
+                    if let d = Self.intDuration(item["duration"]) { reasoningDuration = d }
+                    return true
+                case "function_call":
+                    let cid = (item["call_id"] as? String) ?? (item["id"] as? String) ?? ""
+                    guard !cid.isEmpty else { return false }
+                    upsertToolCall(callId: cid, name: item["name"] as? String,
+                                   argsReplace: item["arguments"] as? String, done: true)
+                    return true
+                case "function_call_output":
+                    let cid = (item["call_id"] as? String) ?? ""
+                    guard !cid.isEmpty else { return false }
+                    upsertToolCall(callId: cid, name: nil, result: Self.outputText(item["output"]), done: true)
+                    return true
+                default:
+                    return false
+                }
+            default:
+                return false
+            }
+        }
+
+        /// Merge the authoritative final `output` array from the terminal
+        /// `chat:completion {done:true}` event. Returns false if there was nothing usable.
+        @discardableResult
+        mutating func finalize(output: [[String: Any]]) -> Bool {
+            func text(of item: [String: Any]) -> String {
+                (item["content"] as? [[String: Any]])?.compactMap { $0["text"] as? String }.joined() ?? ""
+            }
+            var reasoningParts: [String] = []
+            var answerParts: [String] = []
+            var dur: Int? = nil
+            for item in output {
+                switch item["type"] as? String {
+                case "reasoning":
+                    reasoningParts.append(text(of: item))
+                    if dur == nil { dur = Self.intDuration(item["duration"]) }
+                case "message":
+                    answerParts.append(text(of: item))
+                case "function_call":
+                    let cid = (item["call_id"] as? String) ?? (item["id"] as? String) ?? ""
+                    if !cid.isEmpty {
+                        upsertToolCall(callId: cid, name: item["name"] as? String,
+                                       argsReplace: item["arguments"] as? String, done: true)
+                    }
+                case "function_call_output":
+                    let cid = (item["call_id"] as? String) ?? ""
+                    if !cid.isEmpty {
+                        upsertToolCall(callId: cid, name: nil, result: Self.outputText(item["output"]), done: true)
+                    }
+                default:
+                    break
+                }
+            }
+            let r = reasoningParts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            // `message` items are interleaved with tool calls across rounds; earlier ones are
+            // often just whitespace preambles, so drop leading blank lines from the joined answer.
+            let a = String(answerParts.joined().drop(while: { $0 == "\n" || $0 == " " }))
+            guard !r.isEmpty || !a.isEmpty || !toolCalls.isEmpty else { return false }
+            reasoning = r; reasoningClosed = true; reasoningDuration = dur; answer = a
+            return true
+        }
+
+        /// Render to a displayed content string the message renderer already understands:
+        /// reasoning as a `<details type="reasoning">` block, each tool call as a
+        /// `<details type="tool_calls">` block (shown by ToolCallView), then the answer.
+        func render() -> String {
+            var s = ""
+            if !reasoning.isEmpty {
+                if reasoningClosed {
+                    var attrs = " done=\"true\""
+                    if let d = reasoningDuration { attrs += " duration=\"\(d)\"" }
+                    s += "<details type=\"reasoning\"\(attrs)>\n\(reasoning)\n</details>\n\n"
+                } else {
+                    s += "<details type=\"reasoning\">\n\(reasoning)"
+                }
+            }
+            for tc in toolCalls {
+                var attrs = " id=\"\(Self.htmlEncode(tc.callId))\" name=\"\(Self.htmlEncode(tc.name))\""
+                attrs += " arguments=\"\(Self.htmlEncode(tc.arguments))\""
+                if let r = tc.result { attrs += " result=\"\(Self.htmlEncode(r))\"" }
+                attrs += tc.done ? " done=\"true\"" : " done=\"false\""
+                s += "<details type=\"tool_calls\"\(attrs)><summary>Tool</summary></details>\n"
+            }
+            s += answer
+            return s
+        }
+
+        private static func intDuration(_ v: Any?) -> Int? {
+            if let i = v as? Int { return i }
+            if let d = v as? Double { return Int(d) }
+            return nil
+        }
+
+        /// Flatten a Responses `function_call_output` `output` value (usually
+        /// `[{type:"input_text", text:"..."}]`, sometimes a plain string) into display text.
+        private static func outputText(_ v: Any?) -> String? {
+            if let s = v as? String { return s }
+            if let arr = v as? [[String: Any]] {
+                let joined = arr.compactMap { $0["text"] as? String }.joined(separator: "\n")
+                return joined.isEmpty ? nil : joined
+            }
+            return nil
+        }
+
+        /// Encode a value for embedding in an HTML attribute (matches parseToolCallDetails).
+        private static func htmlEncode(_ s: String) -> String {
+            s.replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+                .replacingOccurrences(of: "\"", with: "&quot;")
+                .replacingOccurrences(of: "'", with: "&#39;")
+        }
+    }
+
+    /// Handle a single `response:completion` event payload.
+    private func handleResponsesEvent(chatId: String, data: [String: Any]) {
+        var state = responsesStateByChat[chatId] ?? ResponsesStreamState()
+        guard state.apply(event: data) else { return }
+        responsesStateByChat[chatId] = state
+        applyResponsesContent(chatId: chatId)
+    }
+
+    /// Build the displayed content from the current Responses accumulator and set it on the
+    /// streaming message.
+    private func applyResponsesContent(chatId: String) {
+        guard let state = responsesStateByChat[chatId] else { return }
+        setStreamingDisplayContent(chatId: chatId, content: state.render())
+    }
+
+    /// Finalize the streaming message from the authoritative `output` array in the terminal
+    /// `chat:completion {done:true}` event. Returns false if there was no usable output.
+    @discardableResult
+    private func finalizeResponsesFromOutput(chatId: String, output: [[String: Any]]) -> Bool {
+        var state = responsesStateByChat[chatId] ?? ResponsesStreamState()
+        guard state.finalize(output: output) else { return false }
+        responsesStateByChat[chatId] = state
+        applyResponsesContent(chatId: chatId)
+        return true
+    }
+
+    /// Set the full displayed content for the streaming assistant message, replacing (not
+    /// appending). Mirrors the flat-content branch of `chat:completion` handling.
+    private func setStreamingDisplayContent(chatId: String, content: String) {
+        streamingContentByChat[chatId] = content
+        guard let msgId = streamingMessageIdByChat[chatId] else { return }
+        var messages = getStreamingMessages(chatId: chatId)
+        guard let idx = messages.lastIndex(where: { $0.id == msgId }) else { return }
+        let msg = messages[idx]
+        var updated = ChatMessage(
+            id: msg.id, role: msg.role, content: content, model: msg.model,
+            timestamp: msg.timestamp, parentId: msg.parentId, childrenIds: msg.childrenIds
+        )
+        updated.toolCalls = msg.toolCalls
+        updated.statusHistory = msg.statusHistory
+        updated.sources = msg.sources
+        updated.codeExecutions = msg.codeExecutions
+        updated.followUps = msg.followUps
+        updated.usage = msg.usage
+        updated.messageError = msg.messageError
+        updated.serverFiles = msg.serverFiles
+        messages[idx] = updated
+        setStreamingMessages(chatId: chatId, messages: messages)
+    }
+
     // MARK: - Models
+
+    /// Fetch the server's available tools (MCP tool servers + registered tools) for the picker.
+    func loadTools() async {
+        guard let client else { return }
+        do {
+            availableTools = try await client.listTools()
+        } catch {
+            ovalLog.error("[Oval] Failed to load tools: \(error.localizedDescription)")
+            availableTools = []
+        }
+    }
 
     func loadModels() async {
         guard let client else { return }
@@ -2192,12 +2559,13 @@ final class AppState {
         // Move this conversation to the top of the sidebar immediately
         bumpConversationToTop(chatId: chatId)
 
-        let webSearchEnabled = isWebSearchEnabled
+        let featureFlags = effectiveFeatureFlags
+        let selectedTools = selectedToolIds.isEmpty ? nil : Array(selectedToolIds)
 
         // Capture Socket.IO session ID so the server routes events through the socket
         // instead of SSE. This is critical for native tool calling — the server sends
         // tool execution status and the follow-up model response via Socket.IO events.
-        let socketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        let socketSessionId = socketSessionIdForStreaming
         // Capture at send time to avoid race with saveTemporaryChat() during streaming
         let isTempChat = isTemporaryChat
 
@@ -2215,7 +2583,11 @@ final class AppState {
                     model: model.id,
                     messages: completionMsgs,
                     files: fileRefs,
-                    webSearch: webSearchEnabled,
+                    webSearch: featureFlags.web,
+                    toolIds: selectedTools,
+                    imageGeneration: featureFlags.image,
+                    codeInterpreter: featureFlags.code,
+                    memory: featureFlags.memory,
                     sessionId: socketSessionId,
                     chatId: socketSessionId != nil ? chatId : nil,
                     messageId: assistantId,
@@ -2538,8 +2910,9 @@ final class AppState {
             bumpConversationToTop(chatId: chatId)
 
             let completionMsgs = Self.buildCompletionMessages(from: chatMessages)
-            let webSearchEnabled = isWebSearchEnabled
-            let editSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+            let featureFlags = effectiveFeatureFlags
+            let selectedTools = selectedToolIds.isEmpty ? nil : Array(selectedToolIds)
+            let editSocketSessionId = socketSessionIdForStreaming
             // Capture at send time to avoid race with saveTemporaryChat() during streaming
             let isTempChat = isTemporaryChat
 
@@ -2551,7 +2924,11 @@ final class AppState {
                         model: model.id,
                         messages: completionMsgs,
                         files: nil,
-                        webSearch: webSearchEnabled,
+                        webSearch: featureFlags.web,
+                        toolIds: selectedTools,
+                        imageGeneration: featureFlags.image,
+                        codeInterpreter: featureFlags.code,
+                        memory: featureFlags.memory,
                         sessionId: editSocketSessionId,
                         chatId: editSocketSessionId != nil ? chatId : nil,
                         messageId: assistantId,
@@ -2721,8 +3098,9 @@ final class AppState {
         bumpConversationToTop(chatId: chatId)
 
         let completionMsgs = Self.buildCompletionMessages(from: Array(chatMessages.dropLast()))
-        let webSearchEnabled = isWebSearchEnabled
-        let regenSocketSessionId = socketService.isConnected ? socketService.sessionId : nil
+        let featureFlags = effectiveFeatureFlags
+        let selectedTools = selectedToolIds.isEmpty ? nil : Array(selectedToolIds)
+        let regenSocketSessionId = socketSessionIdForStreaming
         // Capture at send time to avoid race with saveTemporaryChat() during streaming
         let isTempChat = isTemporaryChat
 
@@ -2734,7 +3112,11 @@ final class AppState {
                     model: model.id,
                     messages: completionMsgs,
                     files: nil,
-                    webSearch: webSearchEnabled,
+                    webSearch: featureFlags.web,
+                    toolIds: selectedTools,
+                    imageGeneration: featureFlags.image,
+                    codeInterpreter: featureFlags.code,
+                    memory: featureFlags.memory,
                     sessionId: regenSocketSessionId,
                     chatId: regenSocketSessionId != nil ? chatId : nil,
                     messageId: assistantId,
